@@ -15,7 +15,7 @@ public sealed class RemasterOptions
     /// <summary>DI key of the premium <see cref="IImageGenerationService"/>, chosen by <c>Ai:RemasterProvider</c>.</summary>
     public const string ServiceKey = "remaster";
 
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; }
 
     /// <summary>How deep into the live board a comic must be to earn a redraw.</summary>
     public int TopN { get; set; } = 10;

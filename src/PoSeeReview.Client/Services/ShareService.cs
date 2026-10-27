@@ -19,7 +19,7 @@ public enum ShareOutcome
 
 /// <summary>
 /// The one share path: Web Share where it exists, clipboard where it does not, and the toast and
-/// stinger that confirm either. The comic page, the Hall of Fame and the duel all go through it.
+/// stinger that confirm either. The comic page and the Hall of Fame both go through it.
 /// </summary>
 public sealed class ShareService(
     IJSRuntime js,

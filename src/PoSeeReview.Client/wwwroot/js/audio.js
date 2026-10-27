@@ -349,7 +349,7 @@ export const SEMITONE = Math.pow(2, 1 / 12);
  * scale, the tempo and the timbre — so two restaurants sound different from each other, and a
  * strange one sounds strange rather than merely different.
  */
-function motif(seed, score = 50, { delay = 0, pan = null } = {}) {
+function motif(seed, score = 50) {
     const strange = Math.min(1, Math.max(0, score / 100));
     const random = seededRandom(hashString(seed));
 
@@ -381,13 +381,11 @@ function motif(seed, score = 50, { delay = 0, pan = null } = {}) {
             attack: 0.006,
             decay: beat * (i === noteCount - 1 ? 3.2 : 1.5),
             peak: 0.20 - i * 0.015,
-            delay: delay + i * beat,
+            delay: i * beat,
             // Slight detune that grows with strangeness: at the top of the range the motif is
             // audibly out of tune with itself.
             detune: (random() - 0.5) * strange * 34,
-            // A caller that places the motif (the duel's call and response) narrows it around
-            // that point; the random draw is still taken so the notes do not change.
-            pan: pan === null ? (random() - 0.5) * 1.2 : pan + (random() - 0.5) * 0.3,
+            pan: (random() - 0.5) * 1.2,
             send: 0.2 + strange * 0.4
         });
     }

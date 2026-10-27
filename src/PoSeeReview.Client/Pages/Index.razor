@@ -112,13 +112,13 @@
         @if (ShowLanding && HasLandingSide)
         {
             <aside class="landing-side" aria-label="Already drawn">
-                @if (_topComics is { Count: > 0 } && _recent is { Count: > 0 })
-                {
-                    <section class="landing-board" aria-labelledby="landing-board-title">
-                        <div class="landing-board-head">
-                            <h2 id="landing-board-title" class="comic-rows-heading">Already drawn</h2>
-                            <a href="@(_landingTab == LandingTab.Strangest ? "/leaderboard" : "/my-comics")">@(_landingTab == LandingTab.Strangest ? "Hall of Fame →" : "My comics →")</a>
-                        </div>
+                <section class="landing-board" aria-labelledby="landing-board-title">
+                    <div class="landing-board-head">
+                        <h2 id="landing-board-title" class="comic-rows-heading">@LandingTitle</h2>
+                        <a href="@(ShowingTop ? "/leaderboard" : "/my-comics")">@(ShowingTop ? "Hall of Fame →" : "My comics →")</a>
+                    </div>
+                    @if (HasTop && HasRecent)
+                    {
                         <div class="layout-toggle" role="group" aria-label="Show">
                             <button type="button" class="chip-toggle @(_landingTab == LandingTab.Strangest ? "chip-toggle--active" : "")"
                                     aria-pressed="@(_landingTab == LandingTab.Strangest ? "true" : "false")"
@@ -127,43 +127,11 @@
                                     aria-pressed="@(_landingTab == LandingTab.Recent ? "true" : "false")"
                                     @onclick="() => _landingTab = LandingTab.Recent">Recent</button>
                         </div>
-                        @if (_landingTab == LandingTab.Strangest)
-                        {
-                            <ol class="comic-rows comic-rows--stack">
-                                @foreach (var entry in _topComics)
-                                {
-                                    <ComicRow Href="@($"/comic/{entry.PlaceId}")"
-                                              Name="@entry.RestaurantName"
-                                              Score="@((int)Math.Round(entry.StrangenessScore))"
-                                              ImageUrl="@ComicImageUrl.For(entry.ComicBlobUrl, entry.PlaceId)"
-                                              Meta="@entry.Address" />
-                                }
-                            </ol>
-                        }
-                        else
-                        {
-                            <ul class="comic-rows comic-rows--stack">
-                                @foreach (var entry in _recent)
-                                {
-                                    <ComicRow Href="@($"/comic/{entry.PlaceId}")"
-                                              Name="@entry.RestaurantName"
-                                              Score="@entry.StrangenessScore"
-                                              ImageUrl="@ComicImageUrl.SameOrigin(entry.PlaceId)"
-                                              Meta="@RelativeTime.Format(entry.ViewedAt)" />
-                                }
-                            </ul>
-                        }
-                    </section>
-                }
-                else if (_topComics is { Count: > 0 })
-                {
-                    <section class="landing-board" aria-labelledby="landing-board-title">
-                        <div class="landing-board-head">
-                            <h2 id="landing-board-title" class="comic-rows-heading">Strangest right now</h2>
-                            <a href="/leaderboard">Hall of Fame →</a>
-                        </div>
+                    }
+                    @if (ShowingTop)
+                    {
                         <ol class="comic-rows comic-rows--stack">
-                            @foreach (var entry in _topComics)
+                            @foreach (var entry in _topComics!)
                             {
                                 <ComicRow Href="@($"/comic/{entry.PlaceId}")"
                                           Name="@entry.RestaurantName"
@@ -172,17 +140,11 @@
                                           Meta="@entry.Address" />
                             }
                         </ol>
-                    </section>
-                }
-                else if (_recent is { Count: > 0 })
-                {
-                    <section class="landing-board" aria-labelledby="landing-recent-title">
-                        <div class="landing-board-head">
-                            <h2 id="landing-recent-title" class="comic-rows-heading">Your recent comics</h2>
-                            <a href="/my-comics">My comics →</a>
-                        </div>
+                    }
+                    else
+                    {
                         <ul class="comic-rows comic-rows--stack">
-                            @foreach (var entry in _recent)
+                            @foreach (var entry in _recent!)
                             {
                                 <ComicRow Href="@($"/comic/{entry.PlaceId}")"
                                           Name="@entry.RestaurantName"
@@ -191,8 +153,8 @@
                                           Meta="@RelativeTime.Format(entry.ViewedAt)" />
                             }
                         </ul>
-                    </section>
-                }
+                    }
+                </section>
             </aside>
         }
     </div>
@@ -371,7 +333,14 @@
     /// <summary>The landing: nothing searched yet, or the first search did not land.</summary>
     private bool ShowLanding => !HasResults && _flowState is LocationFlowState.Idle or LocationFlowState.Denied or LocationFlowState.Error;
 
-    private bool HasLandingSide => _topComics is { Count: > 0 } || _recent is { Count: > 0 };
+    private bool HasTop => _topComics is { Count: > 0 };
+    private bool HasRecent => _recent is { Count: > 0 };
+    private bool HasLandingSide => HasTop || HasRecent;
+
+    /// <summary>The landing panel shows the board unless only history exists or the user picked Recent.</summary>
+    private bool ShowingTop => HasTop && (!HasRecent || _landingTab == LandingTab.Strangest);
+
+    private string LandingTitle => HasTop && HasRecent ? "Already drawn" : HasTop ? "Strangest right now" : "Your recent comics";
 
     private bool IsBusy => _flowState == LocationFlowState.Loading || _areaSearching;
 

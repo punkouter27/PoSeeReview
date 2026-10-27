@@ -30,17 +30,6 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Leaderboard_HasNoRegionOrLimitControls(string viewport)
-    {
-        var page = await SignedInAsync(viewport, "/leaderboard");
-        await page.Locator(".leaderboard-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
-
-        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit']"))
-            .ToHaveCountAsync(0);
-    }
-
-    [Theory]
-    [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Leaderboard_CardsAlwaysShowAComicStrip(string viewport)
     {
         var page = await SignedInAsync(viewport, "/leaderboard");
@@ -61,19 +50,21 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
     }
 
     /// <summary>
-    /// The heading and the never-an-error-banner rule on one page load. The heading renders
-    /// through PageShell (.page-hero-title / .page-shell-title) — there has been no
-    /// .leaderboard-header wrapper since that refactor, so an older selector matched nothing.
+    /// The heading, the minimal default and the never-an-error-banner rule on one page load. The
+    /// heading renders through PageShell (.page-hero-title / .page-shell-title). The default view
+    /// is the board alone: no region, limit or view chips — the archive and map are links under it.
     /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Leaderboard_RendersItsHeadingAndNeverAnErrorBanner(string viewport)
+    public async Task Leaderboard_DefaultsToTheBareBoard_WithItsHeadingAndNoErrorBanner(string viewport)
     {
         var page = await SignedInAsync(viewport, "/leaderboard");
         await page.Locator(".leaderboard-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
 
         await Assertions.Expect(page.Locator("h1.page-hero-title, h1.page-shell-title"))
             .ToHaveTextAsync("Hall of Fame");
+        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit'], .leaderboard-container .chip-toggle"))
+            .ToHaveCountAsync(0);
 
         await Assertions.Expect(page.Locator(".alert-danger")).ToHaveCountAsync(0);
         await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync(new() { Timeout = RenderTimeout });

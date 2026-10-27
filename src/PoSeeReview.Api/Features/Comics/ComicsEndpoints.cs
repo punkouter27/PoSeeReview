@@ -45,15 +45,14 @@ internal static class ComicsEndpoints
             .RequireValidPlaceId()
             .CacheOutput(SharedReadCachePolicy.Name);
 
-        app.MapGet("/share/duel/{a}/{b}/card.png", GetDuelCard)
-            .WithTags("Comics")
-            .AllowAnonymous()
-            .RequireValidPlaceId("a", "b")
-            .CacheOutput(SharedReadCachePolicy.Name);
-
         // Short links live in this slice because they only ever address a comic — see
         // ShareLinksEndpoints for why they are not under /api.
         app.MapShareLinkEndpoints();
+
+        // The duel page is gone; links shared before it was retired land on the board instead of a 404.
+        app.MapGet("/duel/{**rest}", () => Results.Redirect("/leaderboard"))
+            .ExcludeFromDescription()
+            .AllowAnonymous();
 
         return app;
     }
@@ -78,25 +77,6 @@ internal static class ComicsEndpoints
         return comic is null
             ? Results.NotFound()
             : CardResult(await shareCardService.RenderAsync(comic, http.RequestAborted), http);
-    }
-
-    /// <summary>Two comics side by side, for a shared head-to-head. 404 unless both can be shown.</summary>
-    private static async Task<IResult> GetDuelCard(
-        string a,
-        string b,
-        IComicGenerationService comicGenerationService,
-        ShareCardService shareCardService,
-        IContentModerationGate moderationGate,
-        HttpContext http)
-    {
-        var left = await ServableComicAsync(a, comicGenerationService, moderationGate, http.RequestAborted);
-        var right = left is null
-            ? null
-            : await ServableComicAsync(b, comicGenerationService, moderationGate, http.RequestAborted);
-
-        return left is null || right is null
-            ? Results.NotFound()
-            : CardResult(await shareCardService.RenderDuelAsync(left, right, http.RequestAborted), http);
     }
 
     /// <summary>

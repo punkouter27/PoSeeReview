@@ -14,37 +14,22 @@
 
 @* Class keeps `.leaderboard-container` on the element so the E2E UI suite's selector still
    resolves. No region picker: both views are worldwide (a regional live board is still reachable
-   by URL, ?region=US). The one control is WHEN — the live board churns with 24-hour comics, and
-   the weekly archive is the record that outlives them. *@
+   by URL, ?region=US). The live board churns with 24-hour comics; the weekly archive
+   (?view=week) is the record that outlives them. *@
 <PageShell Title="Hall of Fame"
            Width="PageShell.ShellWidth.Wide"
            Class="leaderboard-container">
 
     <Header>
-        @* One switch for what the board shows. The map only ever applied to the live board, and the
-           refresh button went: the board already re-reads itself every 60 seconds. *@
-        <div class="board-scope" role="group" aria-label="Board view">
-            <button type="button" class="chip-toggle @(IsView(BoardScope.Live, BoardLayout.List) ? "chip-toggle--active" : "")"
-                    aria-pressed="@(IsView(BoardScope.Live, BoardLayout.List) ? "true" : "false")"
-                    @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.List)">
-                Right now
+        @* The live list is the page; the archive and the map are side trips from the links under
+           it, so the header only offers the way back. No refresh button: the board re-reads itself
+           every 60 seconds. *@
+        @if (!IsView(BoardScope.Live, BoardLayout.List))
+        {
+            <button type="button" class="chip-toggle" @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.List)">
+                <span aria-hidden="true">←</span> Right now
             </button>
-            <button type="button" class="chip-toggle @(_scope == BoardScope.Weekly ? "chip-toggle--active" : "")"
-                    aria-pressed="@(_scope == BoardScope.Weekly ? "true" : "false")"
-                    @onclick="() => ShowAsync(BoardScope.Weekly, _layout)">
-                By week
-            </button>
-            @* Only once some entry carries coordinates: rows written before they were stored have
-               none, and a map of nothing is a broken-looking page. *@
-            @if (BoardPins.Count > 0 && !_mapUnavailable)
-            {
-                <button type="button" class="chip-toggle @(IsView(BoardScope.Live, BoardLayout.Map) ? "chip-toggle--active" : "")"
-                        aria-pressed="@(IsView(BoardScope.Live, BoardLayout.Map) ? "true" : "false")"
-                        @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.Map)">
-                    Map
-                </button>
-            }
-        </div>
+        }
     </Header>
 
     <ChildContent>
@@ -179,6 +164,19 @@
             }
         </ol>
     }
+    @* Under the live list even when it is empty: the archive outlives the comics on the board. *@
+    @if (IsView(BoardScope.Live, BoardLayout.List) && !isLoading && errorMessage is null)
+    {
+        <nav class="board-more" aria-label="More of the Hall of Fame">
+            <button type="button" class="link-button" @onclick="() => ShowAsync(BoardScope.Weekly, BoardLayout.List)">Past weeks</button>
+            @* Only once some entry carries coordinates: rows written before they were stored have
+               none, and a map of nothing is a broken-looking page. *@
+            @if (BoardPins.Count > 0 && !_mapUnavailable)
+            {
+                <button type="button" class="link-button" @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.Map)">See them on a map</button>
+            }
+        </nav>
+    }
     </div>
     </ChildContent>
 </PageShell>
@@ -290,14 +288,10 @@
 
     private bool IsView(BoardScope scope, BoardLayout layout) => _scope == scope && _layout == layout;
 
-    /// <summary>The header's one switch: the live list, the archive, or the live board on a map.</summary>
+    /// <summary>The live list, the archive, or the live board on a map.</summary>
     private async Task ShowAsync(BoardScope scope, BoardLayout layout)
     {
-        if (scope == BoardScope.Live)
-        {
-            _layout = layout;
-        }
-
+        _layout = layout;
         await SwitchScopeAsync(scope);
     }
 

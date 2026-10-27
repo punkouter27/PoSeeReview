@@ -1,4 +1,7 @@
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using PoSeeReview.Api.Storage;
 using PoSeeReview.Integration.TestFixtures;
 using Xunit;
 
@@ -7,171 +10,16 @@ namespace PoSeeReview.Integration.Storage;
 [Trait("Tier", "Integration")]
 [Trait("Domain", "Storage")]
 [Trait("Suite", "CriticalPath")]
-public class BlobStorageTests : IClassFixture<AzuriteFixture>, IDisposable
+public class BlobStorageTests : IClassFixture<AzuriteFixture>
 {
     private readonly AzuriteFixture _fixture;
     private readonly BlobServiceClient _blobServiceClient;
-    private readonly BlobContainerClient _containerClient;
-    private readonly string _testComicId;
 
     public BlobStorageTests(AzuriteFixture fixture)
     {
         _fixture = fixture;
         _fixture.EnsureAzuriteAvailable();
-
-        // Use Azurite connection string for local testing
         _blobServiceClient = new BlobServiceClient(_fixture.ConnectionString);
-        _containerClient = _blobServiceClient.GetBlobContainerClient("comics");
-        _testComicId = $"test-comic-{Guid.NewGuid()}";
-    }
-
-    [Fact]
-    [Trait("Category", "Integration")]
-    public async Task UploadComicImage_ValidImage_UploadsSuccessfully()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var imageBytes = GenerateTestImageBytes();
-        var blobName = $"{_testComicId}.png";
-        var blobClient = _containerClient.GetBlobClient(blobName);
-
-        // Act
-        var uploadOptions = new Azure.Storage.Blobs.Models.BlobUploadOptions
-        {
-            HttpHeaders = new Azure.Storage.Blobs.Models.BlobHttpHeaders
-            {
-                ContentType = "image/png"
-            }
-        };
-        await blobClient.UploadAsync(new BinaryData(imageBytes), uploadOptions);
-
-        // Assert
-        var exists = await blobClient.ExistsAsync();
-        Assert.True(exists.Value);
-
-        var properties = await blobClient.GetPropertiesAsync();
-        Assert.Equal("image/png", properties.Value.ContentType);
-        Assert.Equal(imageBytes.Length, properties.Value.ContentLength);
-    }
-
-    [Fact]
-    public async Task DownloadComicImage_ExistingBlob_DownloadsSuccessfully()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var imageBytes = GenerateTestImageBytes();
-        var blobName = $"{_testComicId}.png";
-        var blobClient = _containerClient.GetBlobClient(blobName);
-        await blobClient.UploadAsync(new BinaryData(imageBytes), overwrite: true);
-
-        // Act
-        var downloadResponse = await blobClient.DownloadContentAsync();
-        var downloadedBytes = downloadResponse.Value.Content.ToArray();
-
-        // Assert
-        Assert.Equal(imageBytes.Length, downloadedBytes.Length);
-        Assert.Equal(imageBytes, downloadedBytes);
-    }
-
-    [Fact]
-    public async Task DeleteComicImage_ExistingBlob_DeletesSuccessfully()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var imageBytes = GenerateTestImageBytes();
-        var blobName = $"{_testComicId}.png";
-        var blobClient = _containerClient.GetBlobClient(blobName);
-        await blobClient.UploadAsync(new BinaryData(imageBytes), overwrite: true);
-
-        // Act
-        await blobClient.DeleteAsync();
-
-        // Assert
-        var exists = await blobClient.ExistsAsync();
-        Assert.False(exists.Value);
-    }
-
-    [Fact]
-    public async Task GetBlobUrl_ExistingBlob_ReturnsValidUrl()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var imageBytes = GenerateTestImageBytes();
-        var blobName = $"{_testComicId}.png";
-        var blobClient = _containerClient.GetBlobClient(blobName);
-        await blobClient.UploadAsync(new BinaryData(imageBytes), overwrite: true);
-
-        // Act
-        var blobUrl = blobClient.Uri.ToString();
-
-        // Assert
-        Assert.NotNull(blobUrl);
-        Assert.Contains("comics", blobUrl);
-        Assert.Contains($"{_testComicId}.png", blobUrl);
-    }
-
-    [Fact]
-    public async Task UploadComicImage_OverwriteExisting_ReplacesBlob()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var originalBytes = GenerateTestImageBytes();
-        var newBytes = GenerateTestImageBytes(size: 2048);
-        var blobName = $"{_testComicId}.png";
-        var blobClient = _containerClient.GetBlobClient(blobName);
-
-        await blobClient.UploadAsync(new BinaryData(originalBytes), overwrite: true);
-
-        // Act
-        await blobClient.UploadAsync(new BinaryData(newBytes), overwrite: true);
-
-        // Assert
-        var properties = await blobClient.GetPropertiesAsync();
-        Assert.Equal(newBytes.Length, properties.Value.ContentLength);
-    }
-
-    [Fact]
-    public async Task ListBlobs_ContainerWithBlobs_ReturnsAllBlobs()
-    {
-        _fixture.EnsureAzuriteAvailable();
-        // Arrange
-        await _containerClient.CreateIfNotExistsAsync();
-        var testBlobs = new List<string>
-        {
-            $"test-list-{Guid.NewGuid()}.png",
-            $"test-list-{Guid.NewGuid()}.png",
-            $"test-list-{Guid.NewGuid()}.png"
-        };
-
-        foreach (var blobName in testBlobs)
-        {
-            var blobClient = _containerClient.GetBlobClient(blobName);
-            await blobClient.UploadAsync(new BinaryData(GenerateTestImageBytes()), overwrite: true);
-        }
-
-        // Act
-        var blobs = new List<string>();
-        await foreach (var blobItem in _containerClient.GetBlobsAsync())
-        {
-            if (blobItem.Name.StartsWith("test-list-"))
-            {
-                blobs.Add(blobItem.Name);
-            }
-        }
-
-        // Assert
-        Assert.True(blobs.Count >= testBlobs.Count);
-
-        // Cleanup
-        foreach (var blobName in testBlobs)
-        {
-            await _containerClient.GetBlobClient(blobName).DeleteIfExistsAsync();
-        }
     }
 
     /// <summary>
@@ -179,65 +27,47 @@ public class BlobStorageTests : IClassFixture<AzuriteFixture>, IDisposable
     /// their first segment (<c>/devstoreaccount1/comics/{blob}</c>); the resolver used to skip
     /// exactly one segment and look up <c>comics/{blob}</c> inside the comics container, so every
     /// local download, existence check and delete 404'd while the JSON said the comic was there.
+    /// A second upload under the same id must replace the first: remastering redraws in place.
     /// </summary>
     [Fact]
-    public async Task BlobStorageService_ResolvesAzuriteSasUrl_ForReadExistsAndDelete()
+    public async Task BlobStorageService_ResolvesAzuriteSasUrl_ForReadOverwriteExistsAndDelete()
     {
         _fixture.EnsureAzuriteAvailable();
-        await _containerClient.CreateIfNotExistsAsync();
-        var service = new PoSeeReview.Api.Storage.BlobStorageService(
+        await _blobServiceClient.GetBlobContainerClient("comics").CreateIfNotExistsAsync();
+        var service = new BlobStorageService(
             _blobServiceClient,
-            Microsoft.Extensions.Options.Options.Create(new PoSeeReview.Api.Storage.AzureStorageOptions()),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<PoSeeReview.Api.Storage.BlobStorageService>.Instance);
-        var imageBytes = GenerateTestImageBytes();
+            Options.Create(new AzureStorageOptions()),
+            NullLogger<BlobStorageService>.Instance);
+        var comicId = $"test-comic-{Guid.NewGuid()}";
 
-        var url = await service.UploadComicImageAsync(_testComicId, imageBytes);
-
+        var url = await service.UploadComicImageAsync(comicId, PngBytes(1024));
         Assert.StartsWith("http", url);
         Assert.True(await service.BlobExistsAsync(url));
 
-        await using var stream = await service.OpenComicImageStreamAsync(url);
-        Assert.NotNull(stream);
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer);
-        Assert.Equal(imageBytes, buffer.ToArray());
+        var redrawn = PngBytes(2048);
+        url = await service.UploadComicImageAsync(comicId, redrawn);
+        Assert.Equal(redrawn, await ReadAsync(service, url));
 
         await service.DeleteBlobAsync(url);
         Assert.False(await service.BlobExistsAsync(url));
     }
 
-    public void Dispose()
+    private static async Task<byte[]> ReadAsync(BlobStorageService service, string url)
     {
-        // Cleanup test blobs
-        try
-        {
-            var blobClient = _containerClient.GetBlobClient($"{_testComicId}.png");
-            blobClient.DeleteIfExists();
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+        await using var stream = await service.OpenComicImageStreamAsync(url);
+        Assert.NotNull(stream);
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        return buffer.ToArray();
     }
 
-    private static byte[] GenerateTestImageBytes(int size = 1024)
+    /// <summary>A PNG signature and random bytes: enough for the service to name it <c>.png</c>.</summary>
+    private static byte[] PngBytes(int size)
     {
-        // Generate a simple test image (PNG header + random data)
         var bytes = new byte[size];
-        // PNG signature
-        bytes[0] = 0x89;
-        bytes[1] = 0x50;
-        bytes[2] = 0x4E;
-        bytes[3] = 0x47;
-        bytes[4] = 0x0D;
-        bytes[5] = 0x0A;
-        bytes[6] = 0x1A;
-        bytes[7] = 0x0A;
-
-        // Fill rest with random data
-        var random = new Random();
-        random.NextBytes(bytes.AsSpan(8));
-
+        Random.Shared.NextBytes(bytes);
+        byte[] signature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        signature.CopyTo(bytes, 0);
         return bytes;
     }
 }

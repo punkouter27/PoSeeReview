@@ -1,12 +1,12 @@
-/* Rows are the shared `.comic-row` (app.css) and the chips are `.chip-toggle`; only the scope
-   group and the medal that fills each row's leading slot live here. */
+/* Rows are the shared `.comic-row` (app.css) and the links are `.link-button`; only the links
+   under the board and the medal that fills each row's leading slot live here. */
 
-.board-scope {
+.board-more {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    /* 3xs keeps the three chips on one row at 320px. */
-    gap: var(--space-3xs);
+    justify-content: center;
+    gap: var(--space-md);
+    margin-block-start: var(--space-md);
 }
 
 /* Medals. Rendered in the row's `Leading` slot, which Blazor scopes to THIS component. */

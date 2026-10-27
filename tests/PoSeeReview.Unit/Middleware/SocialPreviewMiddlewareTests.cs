@@ -136,20 +136,6 @@ public class SocialPreviewMiddlewareTests
     }
 
     [Fact]
-    public async Task Crawler_OnDuelRoute_ServesTheDuelCard()
-    {
-        var (context, body) = NewRequest("/duel/place-1/place-2", CrawlerUserAgent);
-
-        await RunAsync(LiveComic(restaurantName: "Bob's <b>Diner</b>"), context, () => { });
-
-        var html = Encoding.UTF8.GetString(body.ToArray());
-        Assert.Contains("https://poseereview.example/share/duel/place-1/place-2/card.png", html, StringComparison.Ordinal);
-        Assert.Contains("https://poseereview.example/duel/place-1/place-2", html, StringComparison.Ordinal);
-        Assert.Contains("strangeness duel", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("<b>", html, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task Crawler_OnNonComicRoute_FallsThrough()
     {
         var (context, _) = NewRequest("/leaderboard", CrawlerUserAgent);

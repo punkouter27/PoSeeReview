@@ -31,7 +31,7 @@ function tokens() {
  */
 export function burst(origin, { count = 150 } = {}) {
     try {
-        if (!origin?.getBoundingClientRect || !gfx.allows('lite')) return 0;
+        if (!origin?.getBoundingClientRect || !gfx.allows('full')) return 0;
         stop();
 
         const rect = origin.getBoundingClientRect();
@@ -158,7 +158,7 @@ function stopSplat() {
 /** Throws ink from viewport point (x, y). Returns 1 when it ran, 0 otherwise. */
 export function splat(x, y, { count = 46, spread = 1 } = {}) {
     try {
-        if (!gfx.allows('lite')) return 0;
+        if (!gfx.allows('full')) return 0;
         stopSplat();
 
         const canvas = document.createElement('canvas');

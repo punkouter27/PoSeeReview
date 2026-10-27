@@ -1,56 +1,26 @@
 using System.Security.Claims;
-using Microsoft.Extensions.Hosting;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Api.Identity;
 
-public class HttpContextRequestIdentityAccessor(
-    IHttpContextAccessor httpContextAccessor,
-    IHostEnvironment environment) : ICurrentRequestIdentityAccessor
+/// <summary>
+/// The caller's identity, read only from the authenticated principal. Dev and Test get theirs the
+/// same way — <c>FakeAuthHandler</c> turns <c>X-Fake-User</c> into a principal — so there is no
+/// second, header-based path to spoof.
+/// </summary>
+public class HttpContextRequestIdentityAccessor(IHttpContextAccessor httpContextAccessor) : ICurrentRequestIdentityAccessor
 {
-    private const string CanonicalHeader = "X-Dev-User-Id";
-    private const string LegacyHeader = "X-Dev-UserId";
-
     public UserId GetCurrentUserId()
     {
-        var context = httpContextAccessor.HttpContext;
-        if (context == null)
-        {
-            return UserId.Anonymous;
-        }
-
-        // Header-based identity override is a Dev/Test affordance for local tooling and E2E.
-        // NEVER trust a client-supplied header for identity anywhere else — the authenticated
-        // cookie principal is the only source of truth there.
-        if (environment.AllowsFakeAuth())
-        {
-            if (context.Request.Headers.TryGetValue(CanonicalHeader, out var canonicalDevUserId)
-                && !string.IsNullOrWhiteSpace(canonicalDevUserId))
-            {
-                return UserId.From(canonicalDevUserId.ToString());
-            }
-
-            if (context.Request.Headers.TryGetValue(LegacyHeader, out var legacyDevUserId)
-                && !string.IsNullOrWhiteSpace(legacyDevUserId))
-            {
-                return UserId.From(legacyDevUserId.ToString());
-            }
-        }
-
-        return UserId.From(
-            context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? context.User?.Identity?.Name);
+        var user = httpContextAccessor.HttpContext?.User;
+        return user is null
+            ? UserId.Anonymous
+            : UserId.From(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.Identity?.Name);
     }
 
     public string? GetCurrentUserEmail()
     {
-        var context = httpContextAccessor.HttpContext;
-        if (context == null)
-        {
-            return null;
-        }
-
-        return context.User?.FindFirstValue(ClaimTypes.Email)
-            ?? context.User?.FindFirstValue("email");
+        var user = httpContextAccessor.HttpContext?.User;
+        return user?.FindFirstValue(ClaimTypes.Email) ?? user?.FindFirstValue("email");
     }
 }

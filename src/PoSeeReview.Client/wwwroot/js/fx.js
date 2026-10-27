@@ -231,11 +231,11 @@ export const fx = {
     }),
 
     /**
-     * The whole count-up and its landing chord in one call, timed by the audio clock. From `lite`
-     * up the needle is sprung and voices itself instead of ticking; the landing ripples the backdrop.
+     * The whole count-up and its landing chord in one call, timed by the audio clock. At `full`
+     * the needle is sprung and voices itself instead of ticking; the landing ripples the backdrop.
      */
     playScoreRoll: (score, durationMs) => guard(() => {
-        const sprung = durationMs > 0 && gfx.allows('lite');
+        const sprung = durationMs > 0 && gfx.allows('full');
         if (sprung) springScore(score, durationMs);
         audio.scoreRoll(score, durationMs, { ticks: !sprung });
         setTimeout(() => guard(() => {
@@ -369,7 +369,7 @@ export const fx = {
      * drawn underneath the row it passed.
      */
     animateBoardMoves: (container) => guard(() => {
-        if (!container || !gfx.allows('lite')) return;
+        if (!container || !gfx.allows('full')) return;
         const rows = [...container.querySelectorAll('[data-delta]')];
         const bodies = [];
         let voiced = 0;
@@ -455,10 +455,10 @@ export const fx = {
 
     // ── Hot off the press ────────────────────────────────────────────────────────────────
 
-    /** After a share or save, CERTIFIED STRANGE lands on the comic. Lite tier and up. */
+    /** After a share, CERTIFIED STRANGE lands on the comic. Full tier only. */
     stampComic: () => guard(() => {
         const container = document.querySelector('.comic-strip-container');
-        return !!container && gfx.allows('lite') && stampComic(container);
+        return !!container && gfx.allows('full') && stampComic(container);
     }, false),
 
     // ── Route transitions ────────────────────────────────────────────────────────────────

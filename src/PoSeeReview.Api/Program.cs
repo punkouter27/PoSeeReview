@@ -171,7 +171,7 @@ try
             branch => branch.UseHttpsRedirection());
     }
 
-    // Link-preview crawlers on /comic/{placeId} and /duel/{a}/{b} get a real Open Graph document; everyone else
+    // Link-preview crawlers on /comic/{placeId} get a real Open Graph document; everyone else
     // falls through to the SPA. Sits after the HTTPS branch so the canonical URL it emits is
     // https, and before UseRateLimiter/UseAuthentication because a 429 or 401 on a preview fetch
     // unfurls as the same blank card as no tags at all.

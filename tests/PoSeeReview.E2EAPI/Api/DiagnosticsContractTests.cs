@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using PoSeeReview.Api;
 using PoSeeReview.Shared.Dtos;
 using Xunit;
@@ -32,37 +33,23 @@ public class DiagnosticsContractTests(CustomWebApplicationFactory<Program> facto
     }
 
     [Fact]
-    public async Task Diag_IsAnonymous_AndReportsEnvironment()
+    public async Task Diag_IsAnonymous_ReportsEnvironment_AndNeverShowsASecret()
     {
-        var snapshot = await factory.CreateClient().GetFromJsonAsync<DiagnosticsSnapshotDto>("/diag");
+        var body = await factory.CreateClient().GetStringAsync("/diag");
+        var snapshot = JsonSerializer.Deserialize<DiagnosticsSnapshotDto>(body, JsonSerializerOptions.Web);
 
         Assert.NotNull(snapshot);
         Assert.False(string.IsNullOrWhiteSpace(snapshot.Environment));
         Assert.NotEqual(default, snapshot.Timestamp);
-    }
-
-    [Fact]
-    public async Task Diag_MasksSecretValues()
-    {
-        var snapshot = await factory.CreateClient().GetFromJsonAsync<DiagnosticsSnapshotDto>("/diag");
-        Assert.NotNull(snapshot);
-
-        var secretEntries = snapshot.Config
-            .Where(c => SecretKeyFragments.Any(f => c.Key.Contains(f, StringComparison.OrdinalIgnoreCase)))
-            .Where(c => !string.IsNullOrEmpty(c.Value))
-            .ToList();
 
         // A masked value always carries the *** marker; a raw one would not.
-        Assert.All(secretEntries, entry =>
-            Assert.Contains("***", entry.Value!, StringComparison.Ordinal));
-    }
+        Assert.All(
+            snapshot.Config
+                .Where(c => SecretKeyFragments.Any(f => c.Key.Contains(f, StringComparison.OrdinalIgnoreCase)))
+                .Where(c => !string.IsNullOrEmpty(c.Value)),
+            entry => Assert.Contains("***", entry.Value!, StringComparison.Ordinal));
 
-    [Fact]
-    public async Task Diag_NeverEchoesTheConfiguredApiKeyVerbatim()
-    {
-        var body = await factory.CreateClient().GetStringAsync("/diag");
-
-        // The factory injects this value; if masking regressed it would appear in full.
+        // The factory injects these values; if masking regressed they would appear in full.
         Assert.DoesNotContain("test-key-12345", body, StringComparison.Ordinal);
         Assert.DoesNotContain("test-google-maps-key", body, StringComparison.Ordinal);
     }

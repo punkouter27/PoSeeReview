@@ -10,7 +10,7 @@ public sealed class PredrawOptions
 {
     public const string SectionName = "Predraw";
 
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; }
 
     /// <summary>Minimum cached score: only places that will make a good comic are worth drawing unasked.</summary>
     public int MinScore { get; set; } = 40;

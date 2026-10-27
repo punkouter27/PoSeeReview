@@ -83,6 +83,8 @@ ScaffoldingReadMe.txt
 appsettings.Development.json
 appsettings.*.json
 !appsettings.json
+# Feature switches only (the paid background jobs are off everywhere else) — never a secret.
+!appsettings.Production.json
 *.env
 .env
 .env.*
@@ -194,3 +196,6 @@ tests/e2e/playwright-last.json
 
 # Lighthouse CI reports (SCRIPTS/lighthouserc.json)
 .lighthouseci/
+
+# Before/after UI pages (AGENTS.md 4): local review aids, 18 MB of inline images — never committed.
+SCREENSHOTS/

@@ -36,11 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
@@ -53,7 +53,7 @@ jobs:
       - name: Run unit tests
         run: dotnet test tests/PoSeeReview.Unit -c Release
       - run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release -o publish
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: webapp
           path: publish
@@ -69,11 +69,11 @@ jobs:
       name: production
       url: https://app-poseereview.azurewebsites.net
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: webapp
           path: publish
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -94,8 +94,8 @@ jobs:
     env:
       BASE_URL: https://app-poseereview.azurewebsites.net
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -128,7 +128,7 @@ jobs:
       - name: Lighthouse budgets
         run: npx --yes @lhci/cli@0.15.1 autorun --config=SCRIPTS/lighthouserc.json --collect.url="$BASE_URL/login"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse

@@ -131,7 +131,7 @@ const DROP_LAND_MS = 690;   // the 350ms lead plus the first touchdown in map-pi
 const VOICED_PINS = 8;
 
 function dropPins(entry, pins) {
-    if (!gfx.allows('lite') || reducedMotion() || pins.length === 0) return;
+    if (!gfx.allows('full') || reducedMotion() || pins.length === 0) return;
     const centre = entry.origin?.getLngLat() ?? {
         lat: pins.reduce((sum, p) => sum + p.lat, 0) / pins.length,
         lng: pins.reduce((sum, p) => sum + p.lng, 0) / pins.length

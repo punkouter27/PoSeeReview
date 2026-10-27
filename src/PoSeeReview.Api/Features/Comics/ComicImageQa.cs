@@ -16,7 +16,7 @@ public sealed class ImageQaOptions
     public const string SectionName = "ImageQa";
 
     /// <summary>Fraction of freshly drawn comics checked, 0-1. 0 turns the check off.</summary>
-    public double SampleRate { get; set; } = 0.2;
+    public double SampleRate { get; set; }
 
     /// <summary>A vision-capable chat deployment on the scorer's resource.</summary>
     public string Deployment { get; set; } = "gpt-5.4-nano";

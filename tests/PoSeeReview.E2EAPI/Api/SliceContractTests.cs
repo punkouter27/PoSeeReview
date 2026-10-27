@@ -16,7 +16,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 {
     private HttpClient CreateAuthenticatedClient()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateClient(new() { AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Add("X-Fake-User", "slice-contract-user");
         return client;
     }
@@ -66,15 +66,14 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
         Assert.Equal(payload.Restaurants.Count, payload.TotalCount);
     }
 
-    // ── Comics: place ids and the duel card ─────────────────────────────────
+    // ── Comics: place ids and retired routes ────────────────────────────────
 
     [Theory]
-    [InlineData("/share/duel/place-1/place-2/card.png", HttpStatusCode.NotFound)] // well-formed, no comics
-    [InlineData("/share/duel/bad%20id/place-2/card.png", HttpStatusCode.BadRequest)]
-    [InlineData("/share/duel/place-1/bad%3Fid/card.png", HttpStatusCode.BadRequest)]
+    [InlineData("/share/place-1/card.png", HttpStatusCode.NotFound)] // well-formed, no comic
     [InlineData("/share/bad%20id/card.png", HttpStatusCode.BadRequest)]
     [InlineData("/api/comics/bad%20id", HttpStatusCode.BadRequest)]
-    public async Task PlaceIdRoutes_RejectMalformedIds_AndDuelCardNeedsBothComics(string path, HttpStatusCode expected)
+    [InlineData("/duel/place-1/place-2", HttpStatusCode.Redirect)] // retired page, old links land on the board
+    public async Task PlaceIdRoutes_RejectMalformedIds_AndRetiredDuelRedirects(string path, HttpStatusCode expected)
     {
         var response = await CreateAuthenticatedClient().GetAsync(path);
 
@@ -83,31 +82,16 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 
     // ── Takedowns ───────────────────────────────────────────────────────────
 
-    [Fact]
-    public async Task PostTakedown_WithoutApiKey_IsNeverAccepted()
-    {
-        var response = await factory.CreateClient()
-            .PostAsJsonAsync("/api/takedowns", new TakedownRequestDto
-            {
-                PlaceId = "ChIJTakedown123",
-                Region = "US",
-                ContactEmail = "owner@example.com",
-                RequesterName = "Owner",
-                Reason = "We do not consent to this content appearing on your platform."
-            });
-
-        // The key is deliberately absent from every appsettings file, so the filter fails
-        // closed with 503; a configured-but-wrong key would yield 401. Never 2xx.
-        Assert.True(
-            response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.Unauthorized,
-            $"Expected 503 or 401, got {(int)response.StatusCode}");
-    }
-
-    [Fact]
-    public async Task PostTakedown_WithWrongApiKey_IsNeverAccepted()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("definitely-not-the-key")]
+    public async Task PostTakedown_WithoutTheRightApiKey_IsNeverAccepted(string? apiKey)
     {
         var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Api-Key", "definitely-not-the-key");
+        if (apiKey is not null)
+        {
+            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+        }
 
         var response = await client.PostAsJsonAsync("/api/takedowns", new TakedownRequestDto
         {
@@ -118,6 +102,8 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
             Reason = "We do not consent to this content appearing on your platform."
         });
 
+        // The key is deliberately absent from every appsettings file, so the filter fails
+        // closed with 503; a configured-but-wrong key would yield 401. Never 2xx.
         Assert.True(
             response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.Unauthorized,
             $"Expected 503 or 401, got {(int)response.StatusCode}");

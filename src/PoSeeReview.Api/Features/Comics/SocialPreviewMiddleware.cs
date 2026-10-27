@@ -7,10 +7,9 @@ using PoSeeReview.Shared.Ids;
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
-/// Answers link-preview crawlers on <c>/comic/{placeId}</c> and <c>/duel/{a}/{b}</c> with a real
-/// Open Graph document.
+/// Answers link-preview crawlers on <c>/comic/{placeId}</c> with a real Open Graph document.
 /// <para>
-/// Everything else on those routes falls through untouched to the SPA fallback, so a human still
+/// Everything else on that route falls through untouched to the SPA fallback, so a human still
 /// gets the Blazor client. That is the whole reason this is middleware rather than an endpoint:
 /// a mapped endpoint at <c>/comic/{placeId}</c> would out-rank <c>MapFallbackToFile</c> and this
 /// class would then own serving <c>index.html</c> — including reproducing how static web assets
@@ -23,16 +22,18 @@ namespace PoSeeReview.Api.Features.Comics;
 /// </summary>
 internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<SocialPreviewMiddleware> logger)
 {
+    private const string RoutePrefix = "/comic/";
+
     public async Task InvokeAsync(HttpContext context)
     {
-        if (RoutePlaceIds(context.Request) is not { } placeIds
+        if (RoutePlaceId(context.Request) is not { } placeId
             || !SocialCrawlers.IsSocialCrawler(context.Request.Headers.UserAgent.ToString()))
         {
             await next(context);
             return;
         }
 
-        var comics = new List<Comic>(placeIds.Length);
+        Comic? comic = null;
         try
         {
             // Resolved here rather than as InvokeAsync parameters: UseMiddleware injects those
@@ -42,16 +43,13 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
             var comicRepository = context.RequestServices.GetRequiredService<IComicRepository>();
             var moderationGate = context.RequestServices.GetRequiredService<IContentModerationGate>();
 
-            foreach (var placeId in placeIds.Select(PlaceId.From))
+            // A withheld comic's name and narrative must not reach a crawler either. The gate
+            // fails open on a storage error, like every other read of it.
+            if ((await moderationGate.EvaluateAsync(placeId, context.RequestAborted)).IsServable
+                && await comicRepository.GetByPlaceIdAsync(placeId) is { } live
+                && live.ExpiresAt > DateTimeOffset.UtcNow)
             {
-                // A withheld comic's name and narrative must not reach a crawler either. The
-                // gate fails open on a storage error, like every other read of it.
-                if ((await moderationGate.EvaluateAsync(placeId, context.RequestAborted)).IsServable
-                    && await comicRepository.GetByPlaceIdAsync(placeId) is { } comic
-                    && comic.ExpiresAt > DateTimeOffset.UtcNow)
-                {
-                    comics.Add(comic);
-                }
+                comic = live;
             }
         }
         catch (Exception ex)
@@ -61,7 +59,7 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
             logger.LogWarning(ex, "Social preview lookup failed for {Path}", context.Request.Path);
         }
 
-        if (comics.Count != placeIds.Length)
+        if (comic is null)
         {
             logger.LogInformation("No live comic for {Path}; serving the app shell to the crawler", context.Request.Path);
             await next(context);
@@ -69,27 +67,17 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
         }
 
         var origin = $"{context.Request.Scheme}://{context.Request.Host}";
-        var idPath = string.Join('/', placeIds.Select(Uri.EscapeDataString));
+        var idPath = Uri.EscapeDataString(placeId.Value);
 
         // Our own card, not the blob. The blob URL carries a SAS signature that lapses in about
         // a week, so every share older than that unfurled as an empty card; this one is composed
         // on demand from whatever the comic still is.
-        var document = comics is [var single]
-            ? BuildDocument(
-                title: $"{single.RestaurantName} — strangeness {single.StrangenessScore}/100",
-                description: Summarize(single.Narrative),
-                pageUrl: $"{origin}/comic/{idPath}",
-                cardUrl: $"{origin}/share/{idPath}/card.png",
-                imageAlt: $"Strangeness score card for {single.RestaurantName}, drawn from its reviews",
-                linkText: "Open this comic on PoSeeReview")
-            : BuildDocument(
-                title: $"{comics[0].RestaurantName} vs {comics[1].RestaurantName} — strangeness duel",
-                description: $"{comics[0].RestaurantName} scored {comics[0].StrangenessScore}/100 and "
-                    + $"{comics[1].RestaurantName} scored {comics[1].StrangenessScore}/100. Whose reviews are stranger?",
-                pageUrl: $"{origin}/duel/{idPath}",
-                cardUrl: $"{origin}/share/duel/{idPath}/card.png",
-                imageAlt: $"Strangeness duel card: {comics[0].RestaurantName} against {comics[1].RestaurantName}",
-                linkText: "Open this duel on PoSeeReview");
+        var document = BuildDocument(
+            title: $"{comic.RestaurantName} — strangeness {comic.StrangenessScore}/100",
+            description: Summarize(comic.Narrative),
+            pageUrl: $"{origin}{RoutePrefix}{idPath}",
+            cardUrl: $"{origin}/share/{idPath}/card.png",
+            imageAlt: $"Strangeness score card for {comic.RestaurantName}, drawn from its reviews");
 
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "text/html; charset=utf-8";
@@ -101,29 +89,20 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
     }
 
     /// <summary>
-    /// The place ids a preview route names — one after <c>/comic/</c>, two after <c>/duel/</c> —
-    /// or null when this is not such a route. An id that is not shaped like one is not a route.
+    /// The place id after <c>/comic/</c>, or null when this is not that route. An id that is not
+    /// shaped like one is not a route.
     /// </summary>
-    private static string[]? RoutePlaceIds(HttpRequest request)
+    private static PlaceId? RoutePlaceId(HttpRequest request)
     {
-        if (!HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method))
-        {
-            return null;
-        }
-
         var path = request.Path.Value ?? string.Empty;
-        var (prefix, expected) = path.StartsWith("/comic/", StringComparison.OrdinalIgnoreCase) ? ("/comic/", 1)
-            : path.StartsWith("/duel/", StringComparison.OrdinalIgnoreCase) ? ("/duel/", 2)
-            : (string.Empty, 0);
-
-        if (expected == 0)
+        if ((!HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method))
+            || !path.StartsWith(RoutePrefix, StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
-        string[] ids = [.. path[prefix.Length..].Trim('/').Split('/').Select(Uri.UnescapeDataString)];
-
-        return ids.Length == expected && ids.All(PlaceId.IsValid) ? ids : null;
+        var id = Uri.UnescapeDataString(path[RoutePrefix.Length..].Trim('/'));
+        return PlaceId.IsValid(id) ? PlaceId.From(id) : null;
     }
 
     /// <summary>
@@ -131,8 +110,7 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
     /// interpolation here is HTML-encoded. An unescaped quote in a restaurant name would break
     /// out of a <c>content="..."</c> attribute.
     /// </summary>
-    private static string BuildDocument(
-        string title, string description, string pageUrl, string cardUrl, string imageAlt, string linkText)
+    private static string BuildDocument(string title, string description, string pageUrl, string cardUrl, string imageAlt)
     {
         title = Encode(title);
         description = Encode(description);
@@ -164,7 +142,7 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
             <body>
             <h1>{title}</h1>
             <p>{description}</p>
-            <p><a href="{url}">{Encode(linkText)}</a></p>
+            <p><a href="{url}">Open this comic on PoSeeReview</a></p>
             </body>
             </html>
             """;

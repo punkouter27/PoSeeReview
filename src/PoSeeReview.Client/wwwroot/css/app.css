@@ -1545,27 +1545,6 @@
 }
 
 /* ============================================================================================
-   CONTAINER QUERIES (#7)
-   ============================================================================================
-
-   These components respond to the width of the SLOT they are placed in, not the viewport. That
-   is what actually matters: a restaurant card is narrow in a three-column grid on a wide desktop
-   and wide in a single-column phone layout, and a viewport media query gets that exactly
-   backwards. It also means the same card works in the discovery grid, in a leaderboard row, and
-   in a full-width slot without three sets of breakpoints.
-
-   Layered under `utilities` so a page can still opt out.
-   ============================================================================================ */
-
-@layer utilities {
-    /* ── Elevation utility ───────────────────────────────────────────────────────────────────
-       Apply a step as a pair. Reaching for `box-shadow: var(--shadow-md)` on its own is what
-       these exist to replace: it is correct in light mode and invisible in dark, because a black
-       shadow on a near-black surface conveys no height. See the token block for the full note. */
-    .elevation-1 { background: var(--elevation-1-surface); box-shadow: var(--elevation-1-shadow); }
-}
-
-/* ============================================================================================
    REGISTERED CUSTOM PROPERTIES
 
    @property is not decoration here. An unregistered custom property is an untyped token: the
@@ -2091,7 +2070,7 @@
 
     @supports (animation-timeline: view()) {
         @media (prefers-reduced-motion: no-preference) {
-            :root:not([data-fx-tier="off"]) .comic-strip-tilt {
+            :root[data-fx-tier="full"] .comic-strip-tilt {
                 animation: posee-strip-tilt linear both;
                 animation-timeline: view();
             }
@@ -2217,7 +2196,7 @@
        selection scale is never pinned by a finished fall. The 350ms lead rides out the stall of a
        map mounting; lead + the 55% touchdown is DROP_LAND_MS. */
     @media (prefers-reduced-motion: no-preference) {
-        :root:not([data-fx-tier="off"]) .map-pin-face[data-drop] {
+        :root[data-fx-tier="full"] .map-pin-face[data-drop] {
             animation: map-pin-drop 620ms linear calc(350ms + var(--drop-delay, 0ms)) backwards;
         }
     }

@@ -42,18 +42,7 @@ public sealed class ShareCardService(
 
     private const int TextMargin = 48;
 
-    public Task<byte[]?> RenderAsync(Comic comic, CancellationToken cancellationToken = default) =>
-        ComposeAsync([comic], "POSEEREVIEW  ·  STRANGENESS SCORE", cancellationToken);
-
-    /// <summary>Two comics side by side, each with its own name and score, for a shared duel.</summary>
-    public Task<byte[]?> RenderDuelAsync(Comic left, Comic right, CancellationToken cancellationToken = default) =>
-        ComposeAsync([left, right], "POSEEREVIEW  ·  STRANGENESS DUEL", cancellationToken);
-
-    /// <summary>
-    /// One column per comic. The single card and the duel card are the same drawing at two
-    /// widths, so they share every helper and only the scale differs.
-    /// </summary>
-    private async Task<byte[]?> ComposeAsync(Comic[] comics, string wordmark, CancellationToken cancellationToken)
+    public async Task<byte[]?> RenderAsync(Comic comic, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -61,31 +50,12 @@ public sealed class ShareCardService(
             using var canvas = new SKCanvas(card);
             canvas.Clear(BrandDark);
 
-            var isDuel = comics.Length > 1;
-            var scale = isDuel ? 0.75f : 1f;
-            var columns = comics
-                .Select((comic, i) => (Comic: comic, Area: SKRectI.Create(i * CardWidth / comics.Length, 0, CardWidth / comics.Length, CardHeight)))
-                .ToList();
-
-            foreach (var (comic, area) in columns)
-            {
-                await DrawArtworkAsync(canvas, comic, area, cancellationToken);
-            }
-
+            var area = SKRectI.Create(CardWidth, CardHeight);
+            await DrawArtworkAsync(canvas, comic, area, cancellationToken);
             DrawScrim(canvas);
-
-            foreach (var (comic, area) in columns)
-            {
-                DrawScoreBadge(canvas, comic.StrangenessScore, area, scale);
-                DrawName(canvas, comic.RestaurantName, area, scale, isDuel);
-            }
-
-            if (isDuel)
-            {
-                DrawVersus(canvas);
-            }
-
-            DrawWordmark(canvas, wordmark);
+            DrawScoreBadge(canvas, comic.StrangenessScore, area);
+            DrawName(canvas, comic.RestaurantName, area);
+            DrawWordmark(canvas, "POSEEREVIEW  ·  STRANGENESS SCORE");
 
             using var png = card.Encode(SKEncodedImageFormat.Png, 100)
                 ?? throw new InvalidOperationException("The share card could not be encoded.");
@@ -96,7 +66,7 @@ public sealed class ShareCardService(
             // A preview is decoration. Failing to build one returns null so the caller can 404
             // and let the crawler fall back to the text tags, which is a worse card but not a
             // broken page.
-            logger.LogWarning(ex, "Failed to render the share card for {PlaceId}", comics[0].PlaceId);
+            logger.LogWarning(ex, "Failed to render the share card for {PlaceId}", comic.PlaceId);
             return null;
         }
     }
@@ -172,31 +142,31 @@ public sealed class ShareCardService(
         canvas.DrawRect(SKRect.Create(0, CardHeight - 8, CardWidth, 8), paint);
     }
 
-    private static void DrawScoreBadge(SKCanvas canvas, int score, SKRectI area, float scale)
+    private static void DrawScoreBadge(SKCanvas canvas, int score, SKRectI area)
     {
         const int Margin = 40;
-        var radius = 84 * scale;
-        var centre = new SKPoint(area.Right - Margin - radius, Margin + radius);
+        const float Radius = 84;
+        var centre = new SKPoint(area.Right - Margin - Radius, Margin + Radius);
 
-        DrawDisc(canvas, centre, radius, Shade.WithAlpha(200), 6f * scale);
+        DrawDisc(canvas, centre, Radius, Shade.WithAlpha(200), 6f);
 
-        SkiaText.DrawCentred(canvas, score.ToString(), centre.X, centre.Y - (12 * scale), SkiaText.Card, 74 * scale, Accent);
-        SkiaText.DrawCentred(canvas, "/ 100", centre.X, centre.Y + (44 * scale), SkiaText.Card, 20 * scale, OnDarkMuted);
+        SkiaText.DrawCentred(canvas, score.ToString(), centre.X, centre.Y - 12, SkiaText.Card, 74, Accent);
+        SkiaText.DrawCentred(canvas, "/ 100", centre.X, centre.Y + 44, SkiaText.Card, 20, OnDarkMuted);
     }
 
-    private static void DrawName(SKCanvas canvas, string restaurantName, SKRectI area, float scale, bool isDuel)
+    private static void DrawName(SKCanvas canvas, string restaurantName, SKRectI area)
     {
-        // Third-party text of unbounded length. Wrapped to its column, then hard-capped so a
-        // pathological name cannot push the wordmark off the bottom edge.
-        var maxChars = isDuel ? 40 : 70;
+        // Third-party text of unbounded length. Wrapped beside the score badge, then hard-capped
+        // so a pathological name cannot push the wordmark off the bottom edge.
+        const int MaxChars = 70;
         var name = restaurantName.Trim();
-        if (name.Length > maxChars)
+        if (name.Length > MaxChars)
         {
-            name = name[..(maxChars - 1)].TrimEnd() + "…";
+            name = name[..(MaxChars - 1)].TrimEnd() + "…";
         }
 
-        using var font = SkiaText.Font(SkiaText.Card, 52 * scale);
-        var lines = SkiaText.Wrap(name, font, area.Width - (TextMargin * 2) - (isDuel ? 0 : 200));
+        using var font = SkiaText.Font(SkiaText.Card, 52);
+        var lines = SkiaText.Wrap(name, font, area.Width - (TextMargin * 2) - 200);
         DrawBottomAligned(canvas, lines, area.Left + TextMargin, CardHeight - TextMargin - 44, font, OnDark);
     }
 
@@ -204,18 +174,6 @@ public sealed class ShareCardService(
     {
         using var font = SkiaText.Font(SkiaText.Card, 24);
         DrawBottomAligned(canvas, [wordmark], TextMargin, CardHeight - TextMargin - 8, font, Accent);
-    }
-
-    /// <summary>The seam between the two columns of a duel card, and the "VS" that names it.</summary>
-    private static void DrawVersus(SKCanvas canvas)
-    {
-        var centre = new SKPoint(CardWidth / 2f, (CardHeight - ScrimHeight) / 2f);
-
-        using var seam = SkiaText.Paint(Accent);
-        canvas.DrawRect(SKRect.Create(centre.X - 3, 0, 6, CardHeight), seam);
-
-        DrawDisc(canvas, centre, 52, BrandDark, 6f);
-        SkiaText.DrawCentred(canvas, "VS", centre.X, centre.Y, SkiaText.Card, 44, OnDark);
     }
 
     private static void DrawDisc(SKCanvas canvas, SKPoint centre, float radius, SKColor fill, float ringWidth)

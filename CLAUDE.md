@@ -257,9 +257,10 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   the stored scenes and captions, under the generation lock, overwriting the same blob so board and
   Hall of Fame rows follow. One attempt per comic (`RemasterState` Declined/Failed is final); rows
   with no `ImageModel` predate it and are skipped. `Remaster:MaxPerRun` × runs/day is the ceiling.
-  Both background spenders (`Remaster`, `Predraw`) are **off in `appsettings.Development.json`**:
-  local dev talks to production storage, and a laptop must not remaster the live board alongside
-  the deployed app.
+  Every background spender (`Remaster:Enabled`, `Predraw:Enabled`, `ImageQa:SampleRate`) is **off
+  in `appsettings.json` and the option defaults**, and only `appsettings.Production.json` (the one
+  tracked exception to the `appsettings.*.json` ignore) turns it on: local dev talks to production
+  storage, and a laptop, a test host or a new environment must not spend unasked.
 - **Pre-draw.** `ComicPredrawService` runs the normal pipeline once a day for analyses with
   `Predraw:MinScore`, `Predraw:MinDemand` and no live comic, zeroing demand **before** each attempt
   so a refusal is not re-billed nightly.
@@ -341,9 +342,11 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 - **State services.** `DiscoveryState` keeps the last search so Back restores it without a refetch
   (text searches also live in `?q=`); `ToastService` drives the one `<Toast />` in `MainLayout`;
   `ShareService.ShareComicAsync` is the only share path and always uses the short link.
-- **Live board.** `/leaderboard` re-fetches every 60s while the tab is visible. No SignalR.
+- **Live board.** `/leaderboard` re-fetches every 60s while the tab is visible. No SignalR. The
+  default view is the bare top ten with no chips; "Past weeks" (`?view=week`) and the map are
+  links under it, and either one shows a single "Right now" chip back.
 - **Map view.** `MapView` + `js/map-view.js` (its own module, not part of `fx.js`) back discovery —
-  map by default, List remembered in `posee_discovery_layout` — and the live board's toggle.
+  map by default, List remembered in `posee_discovery_layout` — and the live board's map link.
   Discovery's map overlay holds "Search this area" (after a user pan/zoom, zoom ≥ 11; reported by
   `AreaMoved`, which code-driven framing never fires). With results the search bar is compact and
   is the one control strip (query, clear, count, List/Map); its × empties the field only — the brand link (`DiscoveryState.Clear`, which a showing discovery page listens to) is the way back to the landing; its "Near me" searches quietly when the
@@ -356,8 +359,8 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   get no scope attribute) and must never set `transform` — MapLibre positions them with it. A pin
   only selects; the page renders the place's card/row under the map. Pins within ~30m are fanned
   out. No WebGL → `OnUnavailable`, and both pages drop to the list for the visit.
-- **Duel.** `/duel/{a}/{b}` shows `GET /share/duel/{a}/{b}/card.png` (404 if either comic is gone or
-  withheld); crawlers get Open Graph HTML for it from `SocialPreviewMiddleware`.
+- **Duel is gone.** `/duel/{**rest}` is a server-side 302 to `/leaderboard` so links shared before
+  it was retired still land somewhere; there is no duel card or duel preview.
 
 ### Design system (`wwwroot/css/app.css`)
 
@@ -422,7 +425,7 @@ is `lite` until the user picks Full, and the soundtrack, map sounds and ink mote
   pending forever, which once hung the whole discovery search. Reduced motion forces silence as a
   runtime gate that never overwrites the stored preference. Master volume is `0.22 × volume`
   (`posee_audio_volume`). The score count-up is one `playScoreRoll` scheduled on the audio clock;
-  from `lite` up the ring is a damped spring (`springScore` in fx.js writes `--score`, the ring's
+  at `full` the ring is a damped spring (`springScore` in fx.js writes `--score`, the ring's
   `data-score-spring` stops the CSS roll), less damped the stranger, voiced by `audio.needle()`
   instead of ticks. The generation wait is a chord that gains a voice per SSE phase
   (`playPhase`) and must be closed with `endWait` (done / fail sags / abandon) on every exit.
@@ -438,17 +441,18 @@ is `lite` until the user picks Full, and the soundtrack, map sounds and ink mote
 - **"Too normal"** plays a sad trombone (`playFizzle`), not the error cue, and its card droops
   and greys in time with it (`.state-card--fizzle`, ComicView.razor.css).
 - **Share**: a CERTIFIED STRANGE stamp lands on the comic (`stampComic` in fx.js, `.fx-stamp`
-  and its `fx-stamp-slam` keyframes in app.css), `lite` and up; the impact throws ink
+  and its `fx-stamp-slam` keyframes in app.css), `full` only; the impact throws ink
   (`confetti.splat`) with `audio.inkSplash`.
+- **`lite` is the calm tier** and the default: the ink reveal, glass blur and the account sheet's
+  rise. Everything celebratory or springy — the stamp and splat, confetti, the sprung score ring,
+  board springs, pin drops, the strip's scroll tilt — waits for `full`.
 - **Rare comics** (score ≥ 80, `data-rare` on the strip) wear a token-rainbow foil that slides and
   tilts with the page light (`--glass-x/-y`, unitless twins of `--glass-lx/-ly`), `full` only.
 - **Board** moves are damped springs (climbers overshoot, fallers bounce) in `animateBoardMoves`;
   a climb into #1 fires `confetti.js` (2D canvas, tiny inked panels) and `audio.crown`.
-- **Duel** (reachable only from links shared before the Challenge button was removed): CSS only — the card slams, a seam pulses and the winner's half floods once the card has
-  loaded **and** both scores are in, whichever comes last; the winner's motif plays.
 - **Removed (2026-10):** the ink-fluid wait, score particles, halftone print reveal, page curl,
-  duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge and
-  the "Why 54?" score panel (the comic page's one action is Share). If one comes back, it goes behind a
+  duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge,
+  the "Why 54?" score panel (the comic page's one action is Share) and the Duel page with its card. If one comes back, it goes behind a
   `/settings` switch that starts off. Their dead modules were deleted the same month; git history has them.
 - **Map** heat glow is a MapLibre custom layer in MapLibre's own context; it pulses only at `full`.
   New pins drop in nearest-first (`dropPins`; the face falls via `translate`, the button never

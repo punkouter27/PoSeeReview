@@ -50,7 +50,8 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
 - **Screenshot UI changes, before and after.** When a change touches the UI, capture the old and
   new states, annotate what changed, and save it as one self-contained page:
   `SCREENSHOTS/YYMMDD-feature-name.html` (today's date, kebab-case feature). Give the full,
-  absolute path to that file in the reply.
+  absolute path to that file in the reply. The folder is gitignored (the pages embed their images,
+  and committing them grew the repo by megabytes per change): they are local review aids.
 - **Call out big deletions.** If a prompt's changes remove more than 100 lines of code overall
   (net), say so in the reply.
 - **TL;DR any answer over 100 words** with a concise ~20-word summary at the end.

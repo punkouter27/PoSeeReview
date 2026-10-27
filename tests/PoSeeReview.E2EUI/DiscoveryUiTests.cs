@@ -27,19 +27,12 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
 
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Home_RendersHeroAndLocationPrompt(string viewport)
+    public async Task Home_RendersHeroAndLocationPrompt_WithNoErrorBanner(string viewport)
     {
         var page = await HomeAsync(viewport);
 
         await Assertions.Expect(page.Locator(".app-header h1")).ToHaveTextAsync("Turn a restaurant's wildest reviews into a comic");
         await Assertions.Expect(page.Locator(".location-prompt")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
-    }
-
-    [Theory]
-    [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Home_ShowsNoUnhandledErrorBanner(string viewport)
-    {
-        var page = await HomeAsync(viewport);
 
         // The framework's error strip stays display:none unless something threw.
         await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync(new() { Timeout = RenderTimeout });

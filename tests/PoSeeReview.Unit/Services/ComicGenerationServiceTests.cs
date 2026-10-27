@@ -516,96 +516,30 @@ public class ComicGenerationServiceTests
 
     #region PrioritizeReviewsByRating Tests
 
+    /// <summary>
+    /// Every negative review (3 stars and under) goes first, lowest rating then longest text; the
+    /// positives only fill what is left of the analysis window, lowest first.
+    /// </summary>
     [Fact]
-    public void PrioritizeReviewsByRating_Prioritizes_OneStarReviews_First()
+    public void PrioritizeReviewsByRating_PutsNegativesFirst_AndFillsTheWindowWithPositives()
     {
-        // Arrange
         var reviews = new List<Review>
         {
             new() { Rating = 5, Text = "Excellent!" },
-            new() { Rating = 1, Text = "Terrible place, worst experience ever!" },
-            new() { Rating = 3, Text = "Mediocre" },
             new() { Rating = 1, Text = "Awful service!" },
-            new() { Rating = 4, Text = "Pretty good" }
+            new() { Rating = 3, Text = "Mediocre" },
+            new() { Rating = 1, Text = "Terrible place, worst experience ever!" },
+            new() { Rating = 4, Text = "Pretty good" },
+            new() { Rating = 2, Text = "Not good at all" }
         };
 
-        var service = CreateService();
-
-        // Act - Use reflection to call private method
         var method = typeof(ComicGenerationService).GetMethod(
             "PrioritizeReviewsByRating",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var result = (List<Review>)method!.Invoke(service, new object[] { reviews })!;
+        var result = (List<Review>)method!.Invoke(CreateService(), [reviews])!;
 
-        // Assert
-        Assert.Equal(5, result.Count);
-        Assert.Equal(1, result[0].Rating); // First should be 1-star
-        Assert.Equal(1, result[1].Rating); // Second should be 1-star
-        Assert.Equal(3, result[2].Rating); // Third should be 3-star (next negative)
-    }
-
-    [Fact]
-    public void PrioritizeReviewsByRating_Orders_NegativeReviews_Before_Positive()
-    {
-        // Arrange
-        var reviews = new List<Review>
-        {
-            new() { Rating = 5, Text = "Amazing!" },
-            new() { Rating = 2, Text = "Not good at all" },
-            new() { Rating = 4, Text = "Very nice" },
-            new() { Rating = 1, Text = "Disgusting" },
-            new() { Rating = 3, Text = "Just okay" }
-        };
-
-        var service = CreateService();
-
-        // Act
-        var method = typeof(ComicGenerationService).GetMethod(
-            "PrioritizeReviewsByRating",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var result = (List<Review>)method!.Invoke(service, new object[] { reviews })!;
-
-        // Assert
-        var firstPositiveIndex = result.FindIndex(r => r.Rating >= 4);
-        var lastNegativeIndex = result.FindLastIndex(r => r.Rating <= 3);
-
-        // All negative reviews should come before positive reviews
-        if (firstPositiveIndex >= 0 && lastNegativeIndex >= 0)
-        {
-            Assert.True(lastNegativeIndex < firstPositiveIndex,
-                "Negative reviews should all come before positive reviews");
-        }
-    }
-
-    [Fact]
-    public void PrioritizeReviewsByRating_Falls_Back_To_PositiveReviews_When_Insufficient_Negative()
-    {
-        // Arrange - Only 2 negative reviews, need 5 total
-        var reviews = new List<Review>
-        {
-            new() { Rating = 1, Text = "Terrible" },
-            new() { Rating = 2, Text = "Bad" },
-            new() { Rating = 5, Text = "Excellent!" },
-            new() { Rating = 5, Text = "Amazing!" },
-            new() { Rating = 4, Text = "Very good" }
-        };
-
-        var service = CreateService();
-
-        // Act
-        var method = typeof(ComicGenerationService).GetMethod(
-            "PrioritizeReviewsByRating",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var result = (List<Review>)method!.Invoke(service, new object[] { reviews })!;
-
-        // Assert
-        Assert.Equal(5, result.Count);
-        Assert.Equal(2, result.Count(r => r.Rating <= 3)); // 2 negative
-        Assert.Equal(3, result.Count(r => r.Rating >= 4)); // 3 positive (fallback)
-
-        // First two should be negative
-        Assert.True(result[0].Rating <= 3);
-        Assert.True(result[1].Rating <= 3);
+        Assert.Equal([1, 1, 2, 3, 4], result.Select(r => r.Rating));
+        Assert.Equal("Terrible place, worst experience ever!", result[0].Text);
     }
 
     #endregion
