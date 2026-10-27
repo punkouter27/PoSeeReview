@@ -33,11 +33,37 @@ internal static partial class ComicImagePrompt
     private static partial Regex FlaggedTermRegex();
 
     /// <summary>Builds the prompt, blunting flagged terms, and reports which ones it blunted.</summary>
-    public static (string Prompt, List<string> BluntedTerms) Build(IReadOnlyList<string> scenes)
+    /// <param name="filmStills">
+    /// For FLUX: to it "comic strip" means speech balloons, which it fills with misspelled
+    /// lettering whatever the rest of the prompt says. Framed as stills from a silent cartoon,
+    /// with closed mouths and bare walls, it draws none.
+    /// </param>
+    public static (string Prompt, List<string> BluntedTerms) Build(IReadOnlyList<string> scenes, bool filmStills = false)
     {
         var blunted = new List<string>();
         var breakdown = string.Join("\n", scenes.Select((scene, i) => $"{i + 1}. {Blunt(scene, blunted)}"));
         var panelCount = scenes.Count;
+
+        if (filmStills)
+        {
+            var frames = panelCount == 1
+                ? "One wide landscape cartoon illustration, like a still frame from a silent animated short film."
+                : "Two stacked landscape cartoon illustrations, like two still frames from a silent animated short film, separated by a thick black border. The same characters, with matching outfits and visual traits, appear in both frames.";
+
+            return ($"""
+{frames}
+
+Draw each frame exactly as described:
+{breakdown}
+
+Visual style:
+- Bold outlines, vivid colors, modern cartoon illustration (not manga, not realistic)
+- Exaggerated facial expressions and body language carry every emotion
+- Characters react with closed-mouth expressions, eye-rolls, shrugs and pointing; nobody is talking
+- Bare walls in plain solid colors; signs, menus and posters are blank colored shapes
+- Clean empty background space above the characters' heads
+""", blunted);
+        }
 
         var panelLayout = panelCount == 1
             ? "Single-panorama comic strip (one wide scene filling the frame)"

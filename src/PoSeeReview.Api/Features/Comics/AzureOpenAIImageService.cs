@@ -66,7 +66,7 @@ public sealed class AzureOpenAIImageService : IImageGenerationService
             throw new ArgumentException("Panel count must be 1 or 2", nameof(panelScenes));
 
         var stopwatch = Stopwatch.StartNew();
-        var (prompt, bluntedTerms) = ComicImagePrompt.Build(panelScenes);
+        var (prompt, bluntedTerms) = ComicImagePrompt.Build(panelScenes, filmStills: _options.BlackForestLabsRoute is { Length: > 0 });
         if (bluntedTerms.Count > 0)
         {
             _telemetryClient.GetMetric("AzureOpenAI.Image.PromptTermsBlunted").TrackValue(bluntedTerms.Count);
