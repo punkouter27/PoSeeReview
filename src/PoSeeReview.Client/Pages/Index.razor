@@ -237,7 +237,7 @@
             <div class="discovery-split">
                 <MapView Pins="@MapPins" SelectedId="@_selectedPlaceId" Label="Restaurants on a map"
                          Origin="@_me" KeepCamera="@_keepCamera"
-                         OnSelect="SelectPlace" OnAreaMoved="area => _movedTo = area"
+                         OnSelect="SelectPlace" OnAreaMoved="AreaMovedAsync"
                          OnUnavailable="MapUnavailable">
                     <Overlay>
                         @if (_movedTo is { } area)
@@ -416,6 +416,17 @@
     {
         _mapUnavailable = true;
         _layout = ResultsLayout.List;
+    }
+
+    /// <summary>A user pan or zoom. "Search this area" appearing pings, when map sounds are on.</summary>
+    private async Task AreaMovedAsync(MapArea area)
+    {
+        var wasOffered = _movedTo is { Zoom: >= MinSearchZoom };
+        _movedTo = area;
+        if (!wasOffered && area.Zoom >= MinSearchZoom)
+        {
+            await Fx.PlayMapPingAsync();
+        }
     }
 
     /// <summary>Re-runs nearby search at the map's centre, leaving the camera where the user put it.</summary>

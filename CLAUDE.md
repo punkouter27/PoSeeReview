@@ -390,13 +390,13 @@ Read its header comment before adding CSS.
 
 Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-reveal.js`,
 `panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`, `soundtrack.js`,
-`confetti.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
+`confetti.js`, `ink-motes.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
 `map-view.js` is imported by `MapView` and `radzen-theme.js` by `RadzenScope`, both on their own).
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
 **Simplest by default, extras in `/settings`.** Sound is **off** until switched on, the effects tier
-is `lite` until the user picks Full, and the soundtrack is opt-in. Every switch is on the
+is `lite` until the user picks Full, and the soundtrack, map sounds and ink motes are opt-in. Every switch is on the
 `/settings` page (linked from the account menu); nothing else offers one.
 
 - **`gfx-core.js`**: one shared `requestAnimationFrame` loop (never start a private rAF), a 20ms
@@ -410,7 +410,10 @@ is `lite` until the user picks Full, and the soundtrack is opt-in. Every switch 
   context drops back to the CSS background. `startGradient` returns a handle whenever it is given a
   canvas, even below `full`, so it can resume. `.page` stands aside only while
   `:root[data-fx-backdrop="on"]`, set only while the shader is genuinely drawing — every failure path
-  keeps the CSS background.
+  keeps the CSS background. `<body>` stands aside under the same flag: `html` and `body` both set a
+  background, so body's is an ordinary block background painted **above** every z-index -1 layer,
+  and it hid the shader until 2026-10. Past score ~55 the field melts (swirl + drips);
+  `gradient.kick(score)` sends one ripple out when the score lands.
 - **Nothing may throw into .NET.** `FxService` swallows `JSException` and returns a benign default
   (0 handle = not running, except the gradient, above). `SafeAsync<T>` needs its `[DynamicallyAccessedMembers]` annotation or
   the trimmed client fails `IL2091`.
@@ -418,19 +421,27 @@ is `lite` until the user picks Full, and the soundtrack is opt-in. Every switch 
   `unlock()` **races** the resume against a short deadline — Chrome leaves an unhonoured resume
   pending forever, which once hung the whole discovery search. Reduced motion forces silence as a
   runtime gate that never overwrites the stored preference. Master volume is `0.22 × volume`
-  (`posee_audio_volume`). The score count-up is one `playScoreRoll` scheduled on the audio clock.
+  (`posee_audio_volume`). The score count-up is one `playScoreRoll` scheduled on the audio clock;
+  from `lite` up the ring is a damped spring (`springScore` in fx.js writes `--score`, the ring's
+  `data-score-spring` stops the CSS roll), less damped the stranger, voiced by `audio.needle()`
+  instead of ticks. The generation wait is a chord that gains a voice per SSE phase
+  (`playPhase`) and must be closed with `endWait` (done / fail sags / abandon) on every exit.
   `signature(placeId, score)` seeds a per-restaurant motif (seed by place id, never name);
   `panel-scrub.js` replays its notes as panels cross mid-screen.
 - **Haptics** follow the sound preference and can be switched off on their own, never on on their
-  own. Three fixed patterns (tap / confirm / error). Sound, haptics, music, volume and the tier all
-  live on `/settings`.
+  own. Three fixed patterns (tap / confirm / error). Sound, haptics, music, map sounds, volume, the
+  tier and ink motes all live on `/settings`.
 - **Ink development** (`comic-reveal.js`): a freshly drawn comic develops top-down via a
   `mask-image` driven by the registered `--comic-reveal` property (initial value 1 = fully visible).
   **Every exit path must clear `data-comic-reveal`**, which is why `ComicStrip.DisposeAsync`
   finishes the reveal first.
-- **"Too normal"** plays a sad trombone (`playFizzle`), not the error cue.
+- **"Too normal"** plays a sad trombone (`playFizzle`), not the error cue, and its card droops
+  and greys in time with it (`.state-card--fizzle`, ComicView.razor.css).
 - **Share**: a CERTIFIED STRANGE stamp lands on the comic (`stampComic` in fx.js, `.fx-stamp`
-  and its `fx-stamp-slam` keyframes in app.css), `lite` and up.
+  and its `fx-stamp-slam` keyframes in app.css), `lite` and up; the impact throws ink
+  (`confetti.splat`) with `audio.inkSplash`.
+- **Rare comics** (score ≥ 80, `data-rare` on the strip) wear a token-rainbow foil that slides and
+  tilts with the page light (`--glass-x/-y`, unitless twins of `--glass-lx/-ly`), `full` only.
 - **Board** moves are damped springs (climbers overshoot, fallers bounce) in `animateBoardMoves`;
   a climb into #1 fires `confetti.js` (2D canvas, tiny inked panels) and `audio.crown`.
 - **Duel** (reachable only from links shared before the Challenge button was removed): CSS only — the card slams, a seam pulses and the winner's half floods once the card has
@@ -438,8 +449,17 @@ is `lite` until the user picks Full, and the soundtrack is opt-in. Every switch 
 - **Removed (2026-10):** the ink-fluid wait, score particles, halftone print reveal, page curl,
   duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge and
   the "Why 54?" score panel (the comic page's one action is Share). If one comes back, it goes behind a
-  `/settings` switch that starts off.
+  `/settings` switch that starts off. Their dead modules were deleted the same month; git history has them.
 - **Map** heat glow is a MapLibre custom layer in MapLibre's own context; it pulses only at `full`.
+  New pins drop in nearest-first (`dropPins`; the face falls via `translate`, the button never
+  moves) and the first eight pluck where they land. **Map sounds** (`posee_map_sounds`, opt-in):
+  wind from camera speed, a ping when "Search this area" appears, a hum from the drawn places.
+- **Ink motes** (`ink-motes.js`, `posee_gpu_motes`, opt-in, `full`, WebGPU only — no fallback, the
+  switch is hidden without it): a compute pass advances a curl-noise particle field and a render
+  pass draws it from the same storage buffer, inserted right after `.fx-backdrop` so it stacks
+  over the field and under the page. A GPU validation error or lost device stops it.
+- **Account menu sheet** takes a glass surface (82% opaque — it floats over live text); under
+  40rem it rises with `@starting-style` and its scrim blurs in.
 - **Liquid glass** (`glass.js`): a generated lens-edge displacement map applied as an SVG backdrop
   filter, keyed off `:root[data-glass="liquid"]`, which is set only on Chromium at `full` — other
   engines parse `backdrop-filter: url()` and then draw no backdrop. One specular light for the page

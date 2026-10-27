@@ -47,8 +47,54 @@
     font-variant-numeric: tabular-nums;
 }
 
+.stepper-pips {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.stepper-pip {
+    position: relative;
+    width: 0.625rem;
+    height: 0.625rem;
+    border: 2px solid var(--color-border-strong);
+    border-radius: 50%;
+}
+
+.stepper-pip[data-state="done"],
+.stepper-pip[data-state="active"] {
+    border-color: var(--color-comic-ink);
+    background: var(--color-brand);
+}
+
+/* The dot that just inked: lands oversized and settles, throwing a ring off as it does. */
+.stepper-pip[data-state="active"] {
+    animation: pip-splat 520ms var(--ease-out) both;
+}
+
+.stepper-pip[data-state="active"]::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border: 2px solid var(--color-brand);
+    border-radius: 50%;
+    animation: pip-ring 700ms var(--ease-out) both;
+}
+
+@keyframes pip-splat {
+    0%   { scale: 0.2; }
+    55%  { scale: 1.45; }
+    100% { scale: 1; }
+}
+
+@keyframes pip-ring {
+    from { scale: 1; opacity: 0.9; }
+    to   { scale: 2.6; opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .stepper-message {
+    .stepper-message,
+    .stepper-pip[data-state="active"],
+    .stepper-pip[data-state="active"]::after {
         animation: none;
     }
 

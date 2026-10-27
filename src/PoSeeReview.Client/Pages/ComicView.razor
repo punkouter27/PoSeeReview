@@ -32,7 +32,9 @@
     }
     else if (_error != null)
     {
-        <StateCard Class="error-container" Icon="@_errorIcon" Title="@_errorTitle" Heading1="true" Alert="true">
+        @* "Too normal" droops and drains in time with the sad trombone, then perks back up. *@
+        <StateCard Class="@(_fizzle ? "error-container state-card--fizzle" : "error-container")"
+                   Icon="@_errorIcon" Title="@_errorTitle" Heading1="true" Alert="true">
             <ChildContent>@_error</ChildContent>
             <Actions>
                 @* A 429 that says "wait about a minute" needs somewhere to wait a minute and try
@@ -199,6 +201,14 @@
 
     /// <summary>Pipeline stage the server last reported, as an index into the step arrays.</summary>
     private int _activeStepIndex;
+
+    /// <summary>The last phase given its sound; the first event of a wait is index 0 too.</summary>
+    private int _voicedPhase = -1;
+
+    /// <summary>The failure was "too normal to draw", which deflates rather than alarms.</summary>
+    private bool _fizzle;
+
+    private int _motesHandle;
 
     private bool _scoreLanded;
 
@@ -369,6 +379,14 @@
         // After the motif, so the loop enters on its own rather than under it.
         await Fx.StartSoundtrackAsync(_comic?.PlaceId ?? PlaceId, score);
         Layout.MainLayout.RaiseScoreChanged(score);
+        await Fx.StopMotesAsync(_motesHandle);
+        _motesHandle = await Fx.StartMotesAsync(score);
+        if (_disposed)
+        {
+            await Fx.StopMotesAsync(_motesHandle);
+            return;
+        }
+
         StateHasChanged();
     }
 
@@ -382,8 +400,13 @@
     {
         _disposed = true;
 
-        // The soundtrack would otherwise follow the user to the next route.
+        // The soundtrack, the wait's chord and the motes would otherwise follow the user to the next route.
         await Fx.StopSoundtrackAsync();
+        await Fx.StopMotesAsync(_motesHandle);
+        if (_isGenerating)
+        {
+            await Fx.EndWaitAsync(FxWaitOutcome.Abandon);
+        }
     }
 
     private async Task LoadComic(bool forceRegenerate)
@@ -393,7 +416,9 @@
         _error = null;
         _errorIcon = DefaultErrorIcon;
         _canRetry = false;
+        _fizzle = false;
         _activeStepIndex = 0;
+        _voicedPhase = -1;
         _storyCaptions = null;
         _storyScore = null;
         StateHasChanged();
@@ -416,6 +441,12 @@
                 }
 
                 _activeStepIndex = index;
+                if (index != _voicedPhase)
+                {
+                    _voicedPhase = index;
+                    _ = Fx.PlayPhaseAsync(index, _comicSteps.Length);
+                }
+
                 if (evt.Captions is { Count: > 0 })
                 {
                     _storyCaptions = evt.Captions;
@@ -463,6 +494,7 @@
             if (tooNormal)
             {
                 _errorIcon = "😌";
+                _fizzle = true;
             }
 
             (_errorTitle, _error) = ex.StatusCode switch
@@ -514,6 +546,8 @@
 
             if (!_disposed)
             {
+                await Fx.EndWaitAsync(_error is null ? FxWaitOutcome.Done : FxWaitOutcome.Fail);
+
                 // "Too normal" is an answer, not a malfunction: it deflates rather than alarms.
                 if (_error is not null)
                 {

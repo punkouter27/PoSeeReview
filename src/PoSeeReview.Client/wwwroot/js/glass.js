@@ -16,7 +16,8 @@
 // THE LIGHT is one pair of custom properties on <html>, `--glass-lx` / `--glass-ly`, read by a
 // `background-attachment: fixed` gradient on every pane — so a single light sits in the
 // viewport and every pane it passes over picks it up, like one lamp over a table of glasses.
-// Writes are coalesced to one per frame on the shared loop.
+// Writes are coalesced to one per frame on the shared loop. `--glass-x` / `--glass-y` carry the
+// same light as unitless 0..1 numbers for the rare comic's foil (app.css, `[data-rare]`).
 
 import { gfx } from './gfx-core.js';
 
@@ -102,6 +103,10 @@ function queueLight(x, y) {
         const root = document.documentElement.style;
         root.setProperty('--glass-lx', `${(value[0] * 100).toFixed(1)}%`);
         root.setProperty('--glass-ly', `${(value[1] * 100).toFixed(1)}%`);
+        // The same light as plain numbers (0..1), for rules that need to calc() an angle from
+        // it: the rare comic's foil tilts toward it.
+        root.setProperty('--glass-x', value[0].toFixed(3));
+        root.setProperty('--glass-y', value[1].toFixed(3));
     });
 }
 

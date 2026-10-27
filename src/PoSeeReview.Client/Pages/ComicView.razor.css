@@ -207,6 +207,33 @@
     }
 }
 
+/* The sprung needle (fx.js springScore) writes --score itself; the CSS roll stands aside. */
+.strangeness-ring-wrap[data-score-spring] {
+    animation: none;
+}
+
+/* ── "Too normal to draw" ─────────────────────────────────────────────────────────────────────
+   The card sags a notch on each of the trombone's three notes (0.26s apart), slumps and drains
+   to grey through the final slide, then perks back up. Hinged at its top-left corner, like a sign
+   that lost a nail. 2.6s, timed against audio.fizzle(). */
+@media (prefers-reduced-motion: no-preference) {
+    :root:not([data-fx-tier="off"]) .comic-view ::deep .state-card--fizzle {
+        transform-origin: 8% 0;
+        animation: fizzle-droop 2.6s var(--ease-out) both;
+    }
+}
+
+@keyframes fizzle-droop {
+    0%   { rotate: 0deg; translate: 0 0; filter: none; }
+    10%  { rotate: 1.2deg; translate: 0 2px; }
+    20%  { rotate: 2.4deg; translate: 0 4px; }
+    30%  { rotate: 3.6deg; translate: 0 6px; filter: saturate(0.7); }
+    68%  { rotate: 7deg; translate: 0 18px; filter: saturate(0) brightness(0.96); }
+    80%  { rotate: -1.5deg; translate: 0 -4px; filter: saturate(0.6); }
+    90%  { rotate: 0.6deg; translate: 0 1px; }
+    100% { rotate: 0deg; translate: 0 0; filter: none; }
+}
+
 
 /* ── Narrative + disclosure ──────────────────────────────────────────────────────────────── */
 

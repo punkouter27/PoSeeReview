@@ -36,13 +36,21 @@ uniform float uAmbient;
 uniform vec2  uPointer;    // 0..1, origin bottom-left, eased
 uniform float uScroll;     // 0..1 down the page, eased
 uniform float uLevel;      // 0..1 audio level, eased
+uniform float uKick;       // 1 when a score lands, decaying to 0
+uniform float uKickAge;    // seconds since it landed
 `;
 
 const BACKDROP_GLSL = `
+// An integer hash of the cell. The float one it replaced (fract(p * 123.34)...) tore the field into
+// vertical seams on some GPUs (Adreno via D3D11): the compiler reassociated the arithmetic, so a
+// cell and its neighbour rounded differently, and near a whole number fract() flipped 0.999 to
+// 0.001. Integer maths has no rounding to drift.
 float posee_hash(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
+    uvec2 q = uvec2(ivec2(floor(p)) + 32768);
+    uint h = (q.x * 1597334677u) ^ (q.y * 3812015801u);
+    h = (h ^ (h >> 16u)) * 2246822519u;
+    h ^= h >> 13u;
+    return float(h) * (1.0 / 4294967295.0);
 }
 
 float posee_valueNoise(vec2 p) {
@@ -152,7 +160,9 @@ float posee_height(vec2 p, PoseeScene s) {
 `;
 
 const FRAGMENT_SHADER = `#version 300 es
+// highp int: the hash is 32-bit integer maths, which a 16-bit mediump int would wrap.
 precision mediump float;
+precision highp int;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -164,9 +174,25 @@ void main() {
     // Correct for aspect so the noise cells stay round on a wide viewport. This is the space the
     // glass pass also works in, which is what lets a pane refract into the scene around it.
     PoseeScene s = posee_scene();
+
+    // Past ~55 the page itself starts to run: a slow swirl about the centre and drips that pull
+    // the lower half down. A 20 never melts; a 95 visibly does.
+    vec2 c = uv - 0.5;
+    float r = length(c * vec2(s.aspect, 1.0));
+    float melt = smoothstep(0.55, 1.0, uStrange);
+    float swirl = melt * 0.35 * sin(uTime * 0.4 + r * 5.0);
+    uv = 0.5 + mat2(cos(swirl), -sin(swirl), sin(swirl), cos(swirl)) * c;
+    uv.y += melt * 0.035 * sin(uv.x * 9.0 + uTime * 0.9) * (1.0 - uv.y);
+
+    // The score landing sends one ripple out from the middle of the page, harder the stranger.
+    float band = r - uKickAge * 0.75;
+    float ring = uKick * exp(-band * band * 90.0);
+    uv += (c / max(r, 1e-3)) * ring * 0.03 * (0.4 + uStrange);
+
     vec2 p = uv * vec2(s.aspect, 1.0);
 
     vec3 color = posee_backdrop(p, s);
+    color += uColorC * ring * 0.18;
 
     // Vignette keeps the centre of the page readable; content sits on top of this.
     float vignette = smoothstep(1.25, 0.25, length(uv - 0.5) * 1.4);
@@ -287,7 +313,8 @@ export function start(canvas, options = {}) {
         targetPointer: [0.5, 0.5],
         scroll: 0,
         targetScroll: 0,
-        audioLevel: 0
+        audioLevel: 0,
+        kickAt: -Infinity
     };
 
     canvas.addEventListener('webglcontextlost', onContextLost);
@@ -316,7 +343,7 @@ function resume() {
 
     s.uniforms = Object.fromEntries(
         ['Time', 'Resolution', 'Strange', 'ColorA', 'ColorB', 'ColorC', 'KeyLight', 'Ambient',
-            'Pointer', 'Scroll', 'Level']
+            'Pointer', 'Scroll', 'Level', 'Kick', 'KickAge']
             .map((name) => [name, gl.getUniformLocation(s.program, `u${name}`)]));
 
     // WebGL2 requires a bound VAO even when every vertex is generated from gl_VertexID.
@@ -378,6 +405,9 @@ function draw(now) {
     gl.uniform2fv(u.Pointer, s.pointer);
     gl.uniform1f(u.Scroll, s.scroll);
     gl.uniform1f(u.Level, s.audioLevel);
+    const kickAge = (now - s.kickAt) / 1000;
+    gl.uniform1f(u.Kick, kickAge < KICK_SECONDS ? 1 - kickAge / KICK_SECONDS : 0);
+    gl.uniform1f(u.KickAge, Math.min(kickAge, KICK_SECONDS));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);
 
@@ -434,6 +464,15 @@ export function setScore(id, score) {
     if (scene) {
         scene.targetStrange = clamp01((score ?? 0) / 100);
     }
+}
+
+const KICK_SECONDS = 1.6;
+
+/** The score just landed: one ripple out from the centre. Retunes to the score too. */
+export function kick(score) {
+    if (!scene) return;
+    if (typeof score === 'number') scene.targetStrange = clamp01(score / 100);
+    scene.kickAt = performance.now();
 }
 
 /**

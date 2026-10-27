@@ -19,6 +19,7 @@ import * as comicReveal from './comic-reveal.js';
 import * as viewTransitions from './view-transitions.js';
 import * as confetti from './confetti.js';
 import * as glass from './glass.js';
+import * as motes from './ink-motes.js';
 import { soundtrack } from './soundtrack.js';
 
 function guard(fn, fallback = null) {
@@ -92,10 +93,63 @@ function stampComic(container) {
     setTimeout(() => el.remove(), 3000);
     host.appendChild(el);
     setTimeout(() => guard(() => {
+        // Ink thrown off the impact, from wherever the comic is on screen by then.
+        const rect = container.getBoundingClientRect();
+        confetti.splat(rect.left + rect.width / 2, rect.top + rect.height / 2, { spread: Math.max(0.6, rect.width / 640) });
         audio.pressClunk();
+        audio.inkSplash();
         haptics.confirm();
     }), STAMP_IMPACT_MS);
     return true;
+}
+
+// The score needle: a damped spring instead of a CSS ease. Stranger places are less damped, so
+// they overshoot harder and wobble longer — a 30 settles almost at once, a 92 swings past the
+// top, dips and rings. Peak time is the roll's duration, so the landing chord (scheduled on
+// the same figure) lands on the overshoot. The ring is found by class: the page renders it in
+// the same pass that asks for the roll, so it is waited for a few frames.
+const RING_SELECTOR = '.strangeness-ring-wrap';
+
+function springScore(score, durationMs) {
+    const target = Math.min(100, Math.max(0, score));
+    const zeta = 0.7 - (target / 100) * 0.35;
+    const omegaD = Math.PI / (durationMs / 1000);
+    const omegaN = omegaD / Math.sqrt(1 - zeta * zeta);
+    const decay = zeta * omegaN;
+    const settleS = Math.log(200) / decay;
+    const sine = zeta / Math.sqrt(1 - zeta * zeta);
+    const response = (t) => 1 - Math.exp(-decay * t) * (Math.cos(omegaD * t) + sine * Math.sin(omegaD * t));
+
+    let ring = null;
+    let waited = 0;
+    let t0 = 0;
+    let previous = 0;
+    let needle = null;
+    const stop = gfx.addTask('score-spring', (now, elapsed) => {
+        if (!ring) {
+            ring = document.querySelector(RING_SELECTOR);
+            if (!ring) {
+                if (++waited > 30) stop();
+                return;
+            }
+            ring.dataset.scoreSpring = '';
+            t0 = now;
+            needle = audio.needle();
+        }
+        const t = (now - t0) / 1000;
+        if (!ring.isConnected || t >= settleS) {
+            ring.style.removeProperty('--score');
+            delete ring.dataset.scoreSpring;
+            needle?.stop();
+            stop();
+            return;
+        }
+        const value = target * response(t);
+        ring.style.setProperty('--score', String(Math.round(Math.min(100, Math.max(0, value)))));
+        const speed = Math.abs(value - previous) / Math.max(1e-3, (elapsed || 16.7) / 1000);
+        previous = value;
+        needle?.update(value / 100, speed / Math.max(1, target * omegaN));
+    });
 }
 
 // At most this many rows of a reshuffled board make a sound; the rest only move.
@@ -176,11 +230,47 @@ export const fx = {
         }
     }),
 
-    /** The whole count-up and its landing chord in one call, timed by the audio clock. */
+    /**
+     * The whole count-up and its landing chord in one call, timed by the audio clock. From `lite`
+     * up the needle is sprung and voices itself instead of ticking; the landing ripples the backdrop.
+     */
     playScoreRoll: (score, durationMs) => guard(() => {
-        audio.scoreRoll(score, durationMs);
-        setTimeout(() => guard(() => haptics.confirm()), Math.max(0, durationMs ?? 0));
+        const sprung = durationMs > 0 && gfx.allows('lite');
+        if (sprung) springScore(score, durationMs);
+        audio.scoreRoll(score, durationMs, { ticks: !sprung });
+        setTimeout(() => guard(() => {
+            haptics.confirm();
+            gradient.kick(score);
+        }), Math.max(0, durationMs ?? 0));
     }),
+
+    // ── The generation wait ──────────────────────────────────────────────────────────────
+    /** A pipeline phase reached: one more voice in the wait bed, its texture, a light tap. */
+    playPhase: (index, total) => guard(() => {
+        audio.waitPhase(index, total);
+        haptics.tap();
+    }),
+    /** 'done' (the score roll resolves it), 'fail' (it sags) or 'abandon'. */
+    endWait: (outcome) => guard(() => audio.endWait(outcome)),
+
+    /** A map pin landing; called by map-view.js through this surface. */
+    playPinDrop: (clientX, rank, score) => guard(() => audio.pinDrop(clientX, rank, score)),
+
+    // ── Map sounds (opt-in) ──────────────────────────────────────────────────────────────
+    mapSoundsEnabled: () => guard(() => audio.mapSoundsEnabled(), false),
+    /** From the settings page's click, so the context can unlock on the same gesture. */
+    setMapSoundsEnabled: (enabled) => guardAsync(async () => {
+        const applied = audio.setMapSounds(enabled);
+        if (applied) {
+            await audio.unlock();
+            audio.mapPing();
+        }
+        return applied;
+    }, false),
+    mapWind: (speed) => guard(() => audio.mapWind(speed)),
+    mapHum: (count, meanScore) => guard(() => audio.mapHum(count, meanScore)),
+    mapHumStop: () => guard(() => audio.mapHumStop()),
+    playMapPing: () => guard(() => audio.mapPing()),
     playShareStinger: () => guard(() => {
         audio.shareStinger();
         haptics.confirm();
@@ -227,6 +317,12 @@ export const fx = {
     startGradient: (canvas, score) => guard(() => gradient.start(canvas, { score, level: audio.level }), 0),
     setGradientScore: (id, score) => guard(() => gradient.setScore(id, score)),
     stopGradient: (id) => guard(() => gradient.stop(id)),
+
+    // ── Ink motes (WebGPU, opt-in) ───────────────────────────────────────────────────────
+    motesDescribe: () => guard(() => motes.describe(), { supported: false, enabled: false, explicit: false }),
+    setMotesEnabled: (enabled) => guard(() => motes.setEnabled(enabled), false),
+    startMotes: (score) => guard(() => motes.start(score), 0),
+    stopMotes: (id) => guard(() => motes.stop(id)),
 
     // ── Ink development ──────────────────────────────────────────────────────────────────
 

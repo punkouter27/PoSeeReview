@@ -64,6 +64,16 @@
                 @(_music ? "On" : "Off")
             </button>
         </div>
+
+        <div class="settings-row">
+            <span class="settings-label">Map sounds</span>
+            <button type="button" class="chip-toggle @(_mapSounds ? "chip-toggle--active" : "")"
+                    aria-pressed="@(_mapSounds ? "true" : "false")" disabled="@(!_sound)"
+                    data-testid="settings-map-sounds" @onclick="ToggleMapSoundsAsync">
+                @(_mapSounds ? "On" : "Off")
+            </button>
+        </div>
+        <p class="settings-note">Map sounds add wind as you drag, a ping when you can search an area, and a low hum from the drawn places.</p>
     </section>
 
     <section class="settings-group glass" aria-labelledby="settings-effects">
@@ -97,9 +107,23 @@
             }
             else
             {
-                <text>Full adds the animated backdrop and liquid glass, and uses more battery.</text>
+                <text>Full adds the animated backdrop, liquid glass and the rare-comic foil, and uses more battery.</text>
             }
         </p>
+
+        @* WebGPU only; not offered where the browser has none. *@
+        @if (_motes.Supported)
+        {
+            <div class="settings-row">
+                <span class="settings-label">Ink motes</span>
+                <button type="button" class="chip-toggle @(_motes.Enabled ? "chip-toggle--active" : "")"
+                        aria-pressed="@(_motes.Enabled ? "true" : "false")" disabled="@(_caps.Tier != FxTier.Full)"
+                        data-testid="settings-motes" @onclick="ToggleMotesAsync">
+                    @(_motes.Enabled ? "On" : "Off")
+                </button>
+            </div>
+            <p class="settings-note">Drifting ink behind a comic, drawn on the GPU. Needs Full effects.</p>
+        }
     </section>
 </PageShell>
 
@@ -116,6 +140,8 @@
     private bool _sound;
     private FxToggleState _haptics;
     private bool _music;
+    private bool _mapSounds;
+    private FxToggleState _motes;
     private int _volume = 100;
 
     // After render: every value is read from JS, which prerender does not have.
@@ -130,6 +156,8 @@
         _sound = await Fx.IsAudioEnabledAsync();
         _haptics = await Fx.GetHapticsAsync();
         _music = await Fx.IsSoundtrackEnabledAsync();
+        _mapSounds = await Fx.IsMapSoundsEnabledAsync();
+        _motes = await Fx.GetMotesAsync();
         _volume = (int)Math.Round(await Fx.GetVolumeAsync() * 100);
         _theme = await JS.InvokeAsync<string>("poseeTheme.get");
         StateHasChanged();
@@ -155,6 +183,14 @@
     }
 
     private async Task ToggleMusicAsync() => _music = await Fx.SetSoundtrackEnabledAsync(!_music);
+
+    private async Task ToggleMapSoundsAsync() => _mapSounds = await Fx.SetMapSoundsEnabledAsync(!_mapSounds);
+
+    private async Task ToggleMotesAsync()
+    {
+        await Fx.SetMotesEnabledAsync(!_motes.Enabled);
+        _motes = await Fx.GetMotesAsync();
+    }
 
     private Task ApplyVolumeAsync() => Fx.SetVolumeAsync(_volume / 100.0);
 

@@ -14,6 +14,7 @@ import { gfx } from './gfx-core.js';
 
 const STORAGE_KEY = 'posee_audio_enabled';
 const VOLUME_KEY = 'posee_audio_volume';
+const MAP_SOUNDS_KEY = 'posee_map_sounds';
 
 // Headroom: several voices can overlap during the score reveal, and summing oscillators at unity
 // gain clips hard. The user's volume scales this, never replaces it.
@@ -34,6 +35,7 @@ const state = {
     enabled: true,     // The stored preference. on() is what is actually in force.
     silenced: false,   // Reduced motion. A runtime gate: it never rewrites the preference.
     volume: 1,
+    mapSounds: false,  // Opt-in even with sound on: wind, sonar and hum on the map.
     unlocked: false,
     // Guards against a burst of identical sounds (a fast count-up) stacking into clipping.
     lastPlayedAt: new Map()
@@ -391,6 +393,108 @@ function motif(seed, score = 50, { delay = 0, pan = null } = {}) {
     }
 }
 
+/** Fades a gain to silence, then stops and disconnects every node of a long-running voice. */
+function release(gain, nodes, seconds = 0.3) {
+    const ctx = state.ctx;
+    const t0 = ctx.currentTime;
+    gain.gain.cancelScheduledValues(t0);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + seconds);
+    setTimeout(() => {
+        for (const node of nodes) {
+            try { node.stop?.(); } catch { /* never started, or already stopped */ }
+            try { node.disconnect(); } catch { /* already torn down */ }
+        }
+    }, seconds * 1000 + 60);
+}
+
+// ── The generation wait ──────────────────────────────────────────────────────────────────
+//
+// Ten seconds, most of it the image call. Each pipeline phase adds one voice to a soft chord
+// and opens its filter a little, with a one-shot texture for what that phase is doing (a page
+// turning, a thought, a pencil, lettering, a stamp). The bed never resolves on its own: the
+// score roll that follows a finished comic is the resolution, and a failure sags it.
+
+const WAIT_ROOT = 110;                 // A2
+const WAIT_CHORD = [0, 7, 12, 16, 19]; // root, fifth, octave, major tenth, twelfth
+const WAIT_MAX_MS = 90_000;            // A stream that never ends must not hum forever.
+let wait = null;
+
+function waitTexture(index) {
+    const at = (s) => s + Math.random() * 0.03;
+    switch (index) {
+        case 0: // pages turning
+            noise({ duration: 0.16, peak: 0.12, filterHz: 2600, filterType: 'bandpass', pan: -0.3, send: 0.3 });
+            noise({ duration: 0.14, peak: 0.09, filterHz: 3200, filterType: 'bandpass', delay: at(0.2), pan: 0.3, send: 0.3 });
+            break;
+        case 1: // a thought
+            voice({ type: 'sine', freq: 880, attack: 0.004, decay: 0.08, peak: 0.12, pan: -0.2, send: 0.4 });
+            voice({ type: 'sine', freq: 1318.51, attack: 0.004, decay: 0.16, peak: 0.1, delay: 0.09, pan: 0.2, send: 0.45 });
+            break;
+        case 2: // pencil on paper
+            for (let i = 0; i < 6; i++) {
+                noise({ duration: 0.03 + Math.random() * 0.03, peak: 0.08, filterHz: 4200, filterType: 'highpass',
+                    delay: at(i * 0.09), pan: (Math.random() - 0.5) * 0.6, send: 0.12 });
+            }
+            break;
+        case 3: // lettering
+            for (let i = 0; i < 4; i++) {
+                voice({ type: 'square', freq: 1900 + i * 60, attack: 0.001, decay: 0.018, peak: 0.05, delay: at(i * 0.11), pan: -0.3 + i * 0.2, send: 0.1 });
+            }
+            break;
+        default: // the press
+            voice({ type: 'sine', startFreq: 140, endFreq: 60, attack: 0.002, decay: 0.2, peak: 0.3, send: 0.2 });
+            noise({ duration: 0.1, peak: 0.1, filterHz: 1200, send: 0.2 });
+    }
+}
+
+function addWaitVoice(index) {
+    const ctx = state.ctx;
+    const osc = ctx.createOscillator();
+    osc.type = index === 0 ? 'sine' : 'triangle';
+    osc.frequency.value = WAIT_ROOT * Math.pow(SEMITONE, WAIT_CHORD[index % WAIT_CHORD.length]);
+    osc.detune.value = (Math.random() - 0.5) * 10;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.5 / (1 + index * 0.4), ctx.currentTime + 0.8);
+    osc.connect(gain);
+    gain.connect(wait.filter);
+    osc.start();
+    wait.nodes.push(osc, gain);
+    wait.oscillators.push(osc);
+}
+
+function endWaitBed(outcome) {
+    if (!wait) return;
+    const bed = wait;
+    wait = null;
+    clearTimeout(bed.timer);
+    if (!state.ctx) return;
+    // A failure sags a whole tone before it goes; success and abandonment just let go.
+    if (outcome === 'fail') {
+        for (const osc of bed.oscillators) {
+            osc.detune.setTargetAtTime(osc.detune.value - 200, state.ctx.currentTime, 0.18);
+        }
+    }
+    release(bed.gain, [...bed.nodes, bed.filter, bed.gain, bed.output.node], outcome === 'abandon' ? 0.15 : 0.6);
+    setTimeout(() => bed.output.dispose(), 800);
+}
+
+// ── Map sounds (opt-in) ──────────────────────────────────────────────────────────────────
+
+let wind = null;
+let hum = null;
+
+function readStoredMapSounds() {
+    try {
+        return localStorage.getItem(MAP_SOUNDS_KEY) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+const mapAudible = () => state.mapSounds && canPlay();
+
 export const audio = {
     /**
      * Reads the stored preferences. Does NOT create a context — that needs a user gesture.
@@ -399,6 +503,7 @@ export const audio = {
     init() {
         state.enabled = readStoredEnabled();
         state.volume = readStoredVolume();
+        state.mapSounds = readStoredMapSounds();
         state.silenced = gfx.describe().reducedMotion;
         return { enabled: on(), unlocked: state.unlocked };
     },
@@ -545,12 +650,13 @@ export const audio = {
      * landing chord, all placed on the context clock so they stay evenly spaced whatever the main
      * thread is doing.
      */
-    scoreRoll(score, durationMs) {
+    scoreRoll(score, durationMs, { ticks: withTicks = true } = {}) {
         if (!canPlay() || throttled('roll', 300)) return;
 
         const seconds = Math.max(0, Math.min(5000, durationMs ?? 0)) / 1000;
         // One tick per ~60ms and never more than the number has values: a 3 does not rattle.
-        const ticks = Math.max(0, Math.min(24, Math.round(seconds / 0.06), Math.floor(score)));
+        // A sprung needle voices itself (see needle()), so it gets the chord without the ticks.
+        const ticks = withTicks ? Math.max(0, Math.min(24, Math.round(seconds / 0.06), Math.floor(score))) : 0;
 
         for (let i = 0; i < ticks; i++) {
             const progress = (i + 1) / (ticks + 1);
@@ -902,6 +1008,213 @@ export const audio = {
             voice({ type: 'triangle', freq: freq * 2, attack: 0.008, decay: last ? 0.6 : 0.09, peak: 0.05, delay: i * 0.085, pan: -pan * 0.5, send: 0.4 });
         });
         noise({ duration: 0.9, peak: 0.05, filterHz: 7000, filterType: 'highpass', delay: 0.34, pan, send: 0.6 });
+    },
+
+    /** One pipeline phase reached: adds its voice to the wait bed and plays its texture. */
+    waitPhase(index, total) {
+        if (!canPlay()) return;
+        if (!wait) {
+            const ctx = state.ctx;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 280;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.16;
+            const output = makeOutput(0, 0.5);
+            filter.connect(gain);
+            gain.connect(output.node);
+            wait = { filter, gain, output, nodes: [], oscillators: [], voices: 0, timer: 0 };
+            wait.timer = setTimeout(() => endWaitBed('abandon'), WAIT_MAX_MS);
+        }
+        // A skipped phase still adds its voice, so the chord always matches the progress.
+        const target = Math.min(Math.max(0, index) + 1, WAIT_CHORD.length);
+        while (wait.voices < target) addWaitVoice(wait.voices++);
+        const progress = (index + 1) / Math.max(1, total ?? WAIT_CHORD.length);
+        wait.filter.frequency.setTargetAtTime(280 + progress * 1500, state.ctx.currentTime, 0.4);
+        if (!throttled(`wait${index}`, 250)) waitTexture(index);
+    },
+
+    /** 'done' lets the bed go under the score roll, 'fail' sags it, 'abandon' cuts it short. */
+    endWait(outcome) {
+        endWaitBed(outcome);
+    },
+
+    /**
+     * A continuous voice for the sprung score needle: pitch follows where the needle is, loudness
+     * follows how fast it moves, so the overshoot and wobble are heard as well as seen. Null when
+     * nothing can sound. update(position 0..1, speed 0..1); stop() lets it go.
+     */
+    needle() {
+        if (!canPlay()) return null;
+        const ctx = state.ctx;
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 160;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1400;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001;
+        const output = makeOutput(0, 0.22);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(output.node);
+        osc.start();
+        let stopped = false;
+        return {
+            update(position, speed) {
+                if (stopped) return;
+                const t = ctx.currentTime;
+                osc.frequency.setTargetAtTime(160 + Math.max(0, position) * 540, t, 0.012);
+                gain.gain.setTargetAtTime(Math.max(0.0001, Math.min(1, speed) * 0.16), t, 0.02);
+                if (output.node.pan) output.node.pan.setTargetAtTime((position - 0.5) * 0.8, t, 0.03);
+            },
+            stop() {
+                if (stopped) return;
+                stopped = true;
+                release(gain, [osc, filter, gain], 0.12);
+                setTimeout(() => output.dispose(), 300);
+            }
+        };
+    },
+
+    /**
+     * A map pin landing: a pluck panned to where it fell. Pitch climbs with the order the pins
+     * land in; a drawn (scored) pin rings brighter than an undrawn one.
+     */
+    pinDrop(clientX, rank, score) {
+        if (!canPlay() || throttled(`pin${rank}`, 80)) return;
+        const pan = panForClientX(clientX);
+        const scored = typeof score === 'number';
+        const freq = PENTATONIC[rank % PENTATONIC.length] * (rank >= PENTATONIC.length ? 2 : 1) / 2;
+        voice({ type: scored ? 'triangle' : 'sine', freq, attack: 0.002, decay: scored ? 0.22 : 0.12, peak: scored ? 0.14 : 0.08, pan, send: 0.2 });
+        noise({ duration: 0.035, peak: 0.08, filterHz: 700, pan, send: 0.05 });
+    },
+
+    /** Ink thrown off the rubber stamp: a wet splat, then droplets pattering down around it. */
+    inkSplash() {
+        if (!canPlay() || throttled('inkSplash', 500)) return;
+        noise({ duration: 0.16, peak: 0.16, filterHz: 900, send: 0.15 });
+        let at = 0.04;
+        for (let i = 0; i < 7; i++) {
+            at += 0.03 + Math.random() * 0.06;
+            noise({ duration: 0.02 + Math.random() * 0.03, peak: 0.05 + Math.random() * 0.05,
+                filterHz: 2400 + Math.random() * 2600, filterType: 'bandpass',
+                delay: at, pan: (Math.random() - 0.5) * 1.4, send: 0.25 });
+        }
+    },
+
+    // ── Map sounds (opt-in, `posee_map_sounds`) ──────────────────────────────────────────
+
+    mapSoundsEnabled: () => state.mapSounds,
+
+    setMapSounds(enabled) {
+        state.mapSounds = !!enabled;
+        try {
+            localStorage.setItem(MAP_SOUNDS_KEY, String(state.mapSounds));
+        } catch {
+            // Session-only preference.
+        }
+        if (!state.mapSounds) this.mapHumStop();
+        return state.mapSounds;
+    },
+
+    /**
+     * Air past the camera while the user drags or zooms: a looped noise source whose level and
+     * brightness follow the speed (CSS px per second). Falls silent on its own when the updates
+     * stop, and is torn down after a couple of idle seconds.
+     */
+    mapWind(speed) {
+        if (!mapAudible()) return;
+        const ctx = state.ctx;
+        if (!wind) {
+            const source = ctx.createBufferSource();
+            source.buffer = noiseBuffer(2);
+            source.loop = true;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.Q.value = 0.9;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.0001;
+            const output = makeOutput(0, 0.25);
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(output.node);
+            source.start();
+            wind = { source, filter, gain, output, idle: 0 };
+        }
+        const t = ctx.currentTime;
+        const pace = Math.min(1, Math.max(0, speed) / 2500);
+        wind.filter.frequency.setTargetAtTime(300 + pace * 2200, t, 0.05);
+        wind.gain.gain.setTargetAtTime(Math.max(0.0001, pace * 0.14), t, 0.04);
+        wind.gain.gain.setTargetAtTime(0.0001, t + 0.12, 0.15);
+        clearTimeout(wind.idle);
+        wind.idle = setTimeout(() => {
+            const w = wind;
+            wind = null;
+            if (!w) return;
+            release(w.gain, [w.source, w.filter, w.gain], 0.1);
+            setTimeout(() => w.output.dispose(), 300);
+        }, 2000);
+    },
+
+    /** "Search this area" offering itself: a low sonar ping with a long, detuned return. */
+    mapPing() {
+        if (!mapAudible() || throttled('mapPing', 1200)) return;
+        voice({ type: 'sine', freq: 659.25, attack: 0.003, decay: 0.22, peak: 0.2, send: 0.5 });
+        voice({ type: 'sine', freq: 659.25, attack: 0.005, decay: 0.7, peak: 0.06, delay: 0.34, detune: -18, send: 0.8 });
+    },
+
+    /**
+     * The heat under the pins, heard: two detuned low sines whose pitch rises with the drawn
+     * places' mean strangeness and whose level rises with how many there are. Barely there.
+     */
+    mapHum(count, meanScore) {
+        if (!mapAudible() || !(count > 0)) {
+            this.mapHumStop();
+            return;
+        }
+        const ctx = state.ctx;
+        const t = ctx.currentTime;
+        const freq = 55 * Math.pow(SEMITONE, Math.min(100, Math.max(0, meanScore)) / 100 * 12);
+        const level = Math.min(0.09, 0.03 + count * 0.004);
+        if (!hum) {
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, t);
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 420;
+            const output = makeOutput(0, 0.4);
+            const a = ctx.createOscillator();
+            const b = ctx.createOscillator();
+            b.detune.value = 9;
+            const lfo = ctx.createOscillator();
+            lfo.frequency.value = 0.18;
+            const depth = ctx.createGain();
+            depth.gain.value = 0.35;
+            lfo.connect(depth);
+            const swell = ctx.createGain();
+            swell.gain.value = 1;
+            depth.connect(swell.gain);
+            a.connect(swell);
+            b.connect(swell);
+            swell.connect(filter);
+            filter.connect(gain);
+            gain.connect(output.node);
+            a.start(); b.start(); lfo.start();
+            hum = { a, b, gain, output, nodes: [a, b, lfo, depth, swell, filter, gain] };
+        }
+        hum.a.frequency.setTargetAtTime(freq, t, 0.4);
+        hum.b.frequency.setTargetAtTime(freq * 1.5, t, 0.4);
+        hum.gain.gain.setTargetAtTime(level, t, 0.6);
+    },
+
+    mapHumStop() {
+        if (!hum || !state.ctx) return;
+        const h = hum;
+        hum = null;
+        release(h.gain, h.nodes, 0.8);
+        setTimeout(() => h.output.dispose(), 1000);
     },
 
     /**

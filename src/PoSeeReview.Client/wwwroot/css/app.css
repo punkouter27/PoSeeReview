@@ -531,6 +531,14 @@
         color: var(--color-text-primary);
     }
 
+    /* With both set, <body>'s background is not propagated to the canvas: it paints as an
+       ordinary block background, ABOVE every z-index -1 layer — which hid the fixed backdrop
+       shader (and the ink motes) under a flat fill. <html> stays the ground beneath them; body
+       stands aside only while gradient.js confirms the backdrop is drawing. */
+    :root[data-fx-backdrop="on"] body {
+        background-color: transparent;
+    }
+
     /* :where() keeps specificity at zero as well, so even a same-layer page rule wins easily. */
     :where(a) {
         color: var(--color-brand-ink);
@@ -852,6 +860,66 @@
 
         .popover-menu::backdrop {
             background: var(--surface-inverse-veil);
+        }
+    }
+
+    /* Glass sheets. The menu floats over live text, so it keeps most of its surface (the glass
+       panels' 55% tint would let the page read through the menu's own labels) and blurs what
+       is left. On a phone the sheet rises, and its scrim blurs in behind it as it does. */
+    @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        :root:not([data-fx-tier="off"]) .popover-menu {
+            background:
+                radial-gradient(circle at var(--glass-lx, 30%) var(--glass-ly, 12%), var(--glass-light), transparent 40%) fixed,
+                color-mix(in srgb, var(--elevation-3-surface) 82%, transparent);
+            border-color: var(--glass-edge);
+            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+            backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+        }
+
+        :root[data-glass="liquid"] .popover-menu {
+            -webkit-backdrop-filter: url(#posee-liquid-glass) blur(var(--glass-blur)) saturate(165%);
+            backdrop-filter: url(#posee-liquid-glass) blur(var(--glass-blur)) saturate(165%);
+        }
+
+        @media (max-width: 40rem) {
+            :root:not([data-fx-tier="off"]) .popover-menu:popover-open::backdrop {
+                -webkit-backdrop-filter: blur(6px);
+                backdrop-filter: blur(6px);
+            }
+        }
+    }
+
+    @media (max-width: 40rem) and (prefers-reduced-motion: no-preference) {
+        .popover-menu {
+            translate: 0 100%;
+            transition:
+                translate var(--duration-slow) var(--ease-out),
+                overlay var(--duration-slow) allow-discrete,
+                display var(--duration-slow) allow-discrete;
+        }
+
+        .popover-menu:popover-open {
+            translate: 0 0;
+        }
+
+        .popover-menu::backdrop {
+            transition:
+                backdrop-filter var(--duration-slow) var(--ease-out),
+                background-color var(--duration-slow) var(--ease-out),
+                overlay var(--duration-slow) allow-discrete,
+                display var(--duration-slow) allow-discrete;
+        }
+
+        @starting-style {
+            .popover-menu:popover-open {
+                translate: 0 100%;
+            }
+
+            .popover-menu:popover-open::backdrop {
+                -webkit-backdrop-filter: blur(0);
+                backdrop-filter: blur(0);
+                background-color: transparent;
+            }
         }
     }
 
@@ -2144,6 +2212,16 @@
         box-shadow: 0 0 0 3px var(--color-brand), var(--shadow-sm);
     }
 
+    /* New results drop in nearest-first (map-view.js dropPins sets --drop-delay and clears
+       data-drop on animationend). `backwards`: hidden before its turn, untouched after, so the
+       selection scale is never pinned by a finished fall. The 350ms lead rides out the stall of a
+       map mounting; lead + the 55% touchdown is DROP_LAND_MS. */
+    @media (prefers-reduced-motion: no-preference) {
+        :root:not([data-fx-tier="off"]) .map-pin-face[data-drop] {
+            animation: map-pin-drop 620ms linear calc(350ms + var(--drop-delay, 0ms)) backwards;
+        }
+    }
+
     /* Page controls laid over the map ("search this area", "near me"). Kept clear of the zoom
        buttons top-right; the strip itself lets drags through to the map. */
     .map-view-overlay {
@@ -2184,6 +2262,62 @@
     .map-view .maplibregl-ctrl-group {
         background: var(--color-card);
         box-shadow: var(--shadow-sm);
+    }
+}
+
+@keyframes map-pin-drop {
+    0%   { translate: 0 -3rem; opacity: 0; animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+    55%  { translate: 0 0; opacity: 1; scale: 1.12 0.84; animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
+    72%  { translate: 0 -0.5rem; scale: 0.95 1.06; animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+    86%  { translate: 0 0; scale: 1.04 0.96; }
+    100% { translate: 0 0; scale: 1; }
+}
+
+/* ============================================================================================
+   RARE COMICS (ComicStrip `data-rare`, score 80+) and INK MOTES (js/ink-motes.js)
+   ============================================================================================ */
+
+@layer shared {
+    /* A holographic foil over a top comic. The rainbow is the app's own tokens, slid along by the
+       page's one light (js/glass.js), and a glare sits where that light is; the strip tilts a
+       few degrees toward it. `rotate` rather than `transform`: the container's entrance animation
+       owns its transform, and the individual property composes with it. Full tier only. */
+    :root[data-fx-tier="full"] .comic-strip-container[data-rare] {
+        rotate: calc(0.5 - var(--glass-y, 0.5)) calc(var(--glass-x, 0.5) - 0.5) 0 7deg;
+        transition: rotate var(--duration-base) var(--ease-out);
+    }
+
+    :root[data-fx-tier="full"] .comic-strip-container[data-rare]::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        border-radius: inherit;
+        pointer-events: none;
+        background:
+            radial-gradient(circle at var(--glass-lx, 30%) var(--glass-ly, 12%), var(--glass-light), transparent 30%) fixed,
+            repeating-linear-gradient(115deg,
+                var(--color-brand) 0%, var(--color-accent) 7%, var(--color-success) 14%,
+                var(--color-brand-alt) 21%, var(--color-danger) 28%, var(--color-brand) 35%);
+        background-size: 100% 100%, 300% 300%;
+        background-position: 0 0, calc(var(--glass-x, 0.5) * 100%) calc(var(--glass-y, 0.5) * 100%);
+        mix-blend-mode: color-dodge;
+        opacity: 0.28;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        :root[data-fx-tier="full"] .comic-strip-container[data-rare] {
+            rotate: none;
+        }
+    }
+
+    .fx-motes {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
     }
 }
 

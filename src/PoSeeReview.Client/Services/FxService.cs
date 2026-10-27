@@ -25,6 +25,19 @@ public enum FxTier
 public readonly record struct FxCapabilities(
     FxTier Tier, bool ReducedMotion, bool WebGl2, bool AutoDowngraded, bool Haptics);
 
+/// <summary>How a generation wait ended, which decides how its sound bed lets go.</summary>
+public enum FxWaitOutcome
+{
+    /// <summary>The comic arrived; the score roll that follows is the resolution.</summary>
+    Done,
+
+    /// <summary>It failed; the bed sags before the error or fizzle cue.</summary>
+    Fail,
+
+    /// <summary>The page went away mid-wait.</summary>
+    Abandon
+}
+
 /// <param name="Supported">Whether the underlying API exists on this device at all.</param>
 /// <param name="Enabled">Whether it is actually active right now.</param>
 /// <param name="Explicit">The user pinned it, rather than inheriting the audio preference.</param>
@@ -217,6 +230,30 @@ public sealed class FxService(IJSRuntime js)
     /// </summary>
     public Task PlayFizzleAsync() => SafeVoidAsync("poseeFx.playFizzle");
 
+    // ── The generation wait ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A pipeline phase reached: one more voice joins the wait's chord, with a texture for what
+    /// the phase is doing. Ten seconds of a paid call used to be silent.
+    /// </summary>
+    public Task PlayPhaseAsync(int index, int total) => SafeVoidAsync("poseeFx.playPhase", index, total);
+
+    /// <summary>Must follow every wait that called <see cref="PlayPhaseAsync"/>, or the chord hangs on.</summary>
+    public Task EndWaitAsync(FxWaitOutcome outcome) =>
+        SafeVoidAsync("poseeFx.endWait", outcome.ToString().ToLowerInvariant());
+
+    // ── Map sounds ───────────────────────────────────────────────────────────────────────
+
+    /// <summary>Wind, sonar and hum on the map. Opt-in even with sound on.</summary>
+    public Task<bool> IsMapSoundsEnabledAsync() => SafeAsync("poseeFx.mapSoundsEnabled", false);
+
+    /// <summary>Call from the click itself: switching it on may be what unlocks the audio.</summary>
+    public Task<bool> SetMapSoundsEnabledAsync(bool enabled) =>
+        SafeAsync("poseeFx.setMapSoundsEnabled", false, enabled);
+
+    /// <summary>"Search this area" just offered itself: a sonar ping, when map sounds are on.</summary>
+    public Task PlayMapPingAsync() => SafeVoidAsync("poseeFx.playMapPing");
+
     // ── Soundtrack ───────────────────────────────────────────────────────────────────────
 
     /// <summary>The comic's generated loop is opt-in, unlike every other sound.</summary>
@@ -258,6 +295,24 @@ public sealed class FxService(IJSRuntime js)
 
     public Task StopGradientAsync(int handle) =>
         handle == 0 ? Task.CompletedTask : SafeVoidAsync("poseeFx.stopGradient", handle);
+
+    // ── Ink motes (WebGPU) ───────────────────────────────────────────────────────────────
+
+    /// <summary>Supported is WebGPU's presence; the switch is not offered without it.</summary>
+    public Task<FxToggleState> GetMotesAsync() =>
+        SafeAsync("poseeFx.motesDescribe", default(FxToggleState));
+
+    public Task<bool> SetMotesEnabledAsync(bool enabled) =>
+        SafeAsync("poseeFx.setMotesEnabled", false, enabled);
+
+    /// <summary>
+    /// Ink motes behind the comic, thicker the stranger it is. 0 unless switched on, supported
+    /// and at the Full tier. Must be stopped when the comic leaves the screen.
+    /// </summary>
+    public Task<int> StartMotesAsync(int score) => SafeAsync("poseeFx.startMotes", 0, score);
+
+    public Task StopMotesAsync(int handle) =>
+        handle == 0 ? Task.CompletedTask : SafeVoidAsync("poseeFx.stopMotes", handle);
 
     // ── Ink development ──────────────────────────────────────────────────────────────────
 

@@ -117,8 +117,41 @@ function renderPins(entry, pins) {
         const marker = new window.maplibregl.Marker({ element: el, anchor: 'bottom', offset: offsets.get(pin.id) })
             .setLngLat([pin.lng, pin.lat])
             .addTo(entry.map);
-        entry.markers.set(pin.id, { marker, el });
+        entry.markers.set(pin.id, { marker, el, face });
     }
+    dropPins(entry, pins);
+}
+
+// New results drop in nearest-first (from "you are here", else the middle of the results), and
+// the first few land with a pluck panned to where they fell. The face falls, never the button:
+// MapLibre owns the button's transform. The fall itself is `map-pin-drop` in app.css.
+const DROP_STAGGER_MS = 40;
+const DROP_MAX_MS = 900;
+const DROP_LAND_MS = 690;   // the 350ms lead plus the first touchdown in map-pin-drop
+const VOICED_PINS = 8;
+
+function dropPins(entry, pins) {
+    if (!gfx.allows('lite') || reducedMotion() || pins.length === 0) return;
+    const centre = entry.origin?.getLngLat() ?? {
+        lat: pins.reduce((sum, p) => sum + p.lat, 0) / pins.length,
+        lng: pins.reduce((sum, p) => sum + p.lng, 0) / pins.length
+    };
+    [...pins]
+        .sort((a, b) => metresApart(centre, a) - metresApart(centre, b))
+        .forEach((pin, rank) => {
+            const face = entry.markers.get(pin.id)?.face;
+            if (!face) return;
+            const delay = Math.min(DROP_MAX_MS, rank * DROP_STAGGER_MS);
+            face.style.setProperty('--drop-delay', `${delay}ms`);
+            face.dataset.drop = '';
+            face.addEventListener('animationend', () => delete face.dataset.drop, { once: true });
+            if (rank >= VOICED_PINS) return;
+            setTimeout(() => {
+                if (!face.isConnected) return;
+                const rect = face.getBoundingClientRect();
+                window.poseeFx?.playPinDrop?.(rect.left + rect.width / 2, rank, pin.score);
+            }, delay + DROP_LAND_MS);
+        });
 }
 
 // A tap brings the place to the middle, at street level if the view was wider. The flight is a
@@ -184,6 +217,23 @@ function frame(entry, pins) {
 function watchUserMoves(entry) {
     entry.map.on('movestart', (event) => {
         if (event.originalEvent) entry.userMoving = true;
+    });
+    // Map sounds: the camera's speed while the user moves it, in CSS px per second (a zoom step
+    // counts as 400px). The audio side ignores it unless map sounds are on.
+    entry.map.on('move', (event) => {
+        if (!event.originalEvent) {
+            entry.lastMove = null;
+            return;
+        }
+        const now = performance.now();
+        const previous = entry.lastMove;
+        entry.lastMove = { centre: entry.map.getCenter(), zoom: entry.map.getZoom(), at: now };
+        if (!previous || now - previous.at > 200 || now === previous.at) return;
+        const canvas = entry.map.getCanvas();
+        const was = entry.map.project(previous.centre);
+        const travelled = Math.hypot(was.x - canvas.clientWidth / 2, was.y - canvas.clientHeight / 2)
+            + Math.abs(entry.lastMove.zoom - previous.zoom) * 400;
+        window.poseeFx?.mapWind?.(travelled / ((now - previous.at) / 1000));
     });
     entry.map.on('moveend', () => {
         if (!entry.userMoving) return;
@@ -425,7 +475,19 @@ function setHeatPins(entry, pins) {
     heat.scored = scored;
     fillHeatAttributes(heat);
     syncPulse(entry);
+    syncHum(entry);
     entry.map.triggerRepaint();
+}
+
+// Map sounds: the glow, heard — while the map is on screen and has drawn places.
+function syncHum(entry) {
+    const { scored, onScreen } = entry.heat;
+    if (onScreen && scored.length > 0) {
+        const mean = scored.reduce((sum, p) => sum + p.score, 0) / scored.length;
+        window.poseeFx?.mapHum?.(scored.length, mean);
+    } else {
+        window.poseeFx?.mapHumStop?.();
+    }
 }
 
 function fillHeatAttributes(heat) {
@@ -497,6 +559,7 @@ function startHeat(entry, host, pins) {
     const visibility = new IntersectionObserver((records) => {
         heat.onScreen = records[records.length - 1].isIntersecting;
         syncPulse(entry);
+        syncHum(entry);
     });
     visibility.observe(host);
     const stopTier = gfx.onTierChanged(() => {
@@ -508,6 +571,7 @@ function startHeat(entry, host, pins) {
         stopTier();
         heat.stopPulse?.();
         heat.stopPulse = null;
+        window.poseeFx?.mapHumStop?.();
     };
     setHeatPins(entry, pins);
 }

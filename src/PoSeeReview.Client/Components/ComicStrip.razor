@@ -11,7 +11,9 @@
     for good; the scroll-driven tilt needs an element whose transform nobody else owns.
 *@
 <div class="comic-strip-tilt">
-    <div @ref="_container" class="comic-strip-container" data-panels="@PanelCount">
+    @* data-rare: a holographic foil over the strip that tilts toward the light (app.css). *@
+    <div @ref="_container" class="comic-strip-container" data-panels="@PanelCount"
+         data-rare="@(StrangenessScore >= RareScore ? "true" : null)">
         <img src="@ImageUrl"
              alt="@AltText(RestaurantName, Captions, Scenes)"
              class="comic-strip-image"
@@ -76,6 +78,9 @@
     /// <summary>Strangeness, which picks the scale the panel notes are drawn from.</summary>
     [Parameter]
     public int StrangenessScore { get; set; }
+
+    /// <summary>From here up the strip is a "rare card" and wears the foil.</summary>
+    private const int RareScore = 80;
 
     /// <summary>
     /// Develop the strip top-down as it arrives, rather than showing it whole. For a comic the
