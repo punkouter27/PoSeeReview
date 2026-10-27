@@ -163,7 +163,10 @@ button in **both** Development and Test — every E2E UI test clicks it.
 - `AzureAd:ClientId` / `AllowedTenants` stay in appsettings.json (public identifiers);
   `AzureAd:ClientSecret` is Key Vault only.
 - `Ai:ImageProvider` (the **draft** painter: `AzureOpenAI` = gpt-image-1-mini default, `Gemini`,
-  or `Local` — Development only, refused at startup elsewhere), `Ai:RemasterProvider` (the premium
+  or `Local` — Development only, refused at startup elsewhere; while the subscription has no
+  `gpt-image` quota, `appsettings.Development.json` points the Azure painter at `FLUX.1-Kontext-pro`
+  with `AzureOpenAI:BlackForestLabsRoute`, which uses Azure's `/providers/blackforestlabs/v1/{route}`
+  API — FLUX returns no token usage, so its cost is not tracked), `Ai:RemasterProvider` (the premium
   painter for popular comics, `Gemini` default; the same value as the draft painter disables
   remastering) and `Ai:ChatProvider` (`AzureOpenAI` default, `Ollama` for free local runs) are
   chosen separately, so an image-model experiment is not also a scorer experiment. An unparseable

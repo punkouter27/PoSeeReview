@@ -59,6 +59,13 @@ public class AzureOpenAIOptions
     /// </summary>
     public string ImageDeployment { get; set; } = "gpt-image-1-mini";
 
+    /// <summary>
+    /// Set when <see cref="ImageDeployment"/> is a Black Forest Labs FLUX model (e.g.
+    /// <c>flux-kontext-pro</c>): Azure serves those on <c>/providers/blackforestlabs/v1/{route}</c>,
+    /// not the OpenAI images path, and they take an aspect ratio instead of a size and quality.
+    /// </summary>
+    public string? BlackForestLabsRoute { get; set; }
+
     /// <summary><c>low</c>, <c>medium</c> or <c>high</c>. Price scales with it roughly 4x per step.</summary>
     public string ImageQuality { get; set; } = "low";
 }

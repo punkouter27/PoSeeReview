@@ -72,21 +72,34 @@ public sealed class AzureOpenAIImageService : IImageGenerationService
             _telemetryClient.GetMetric("AzureOpenAI.Image.PromptTermsBlunted").TrackValue(bluntedTerms.Count);
         }
 
-        var body = new
-        {
-            prompt,
-            n = 1,
-            // Each keeps the layout's panels landscape.
-            size = panelCount == 1 ? "1536x1024" : "1024x1536",
-            quality = _options.ImageQuality,
-            // JPEG only for the transfer: the overlay decodes and re-encodes it anyway.
-            output_format = "jpeg"
-        };
+        // Each shape keeps the layout's panels landscape. JPEG only for the transfer: the overlay
+        // decodes and re-encodes it anyway.
+        var endpoint = _options.Endpoint.TrimEnd('/');
+        var (url, body) = _options.BlackForestLabsRoute is { Length: > 0 } route
+            ? ($"{endpoint}/providers/blackforestlabs/v1/{route}?api-version=preview",
+                (object)new
+                {
+                    model = _options.ImageDeployment,
+                    prompt,
+                    n = 1,
+                    aspect_ratio = panelCount == 1 ? "3:2" : "2:3",
+                    output_format = "jpeg"
+                })
+            : ($"{endpoint}/openai/deployments/{_options.ImageDeployment}/images/generations?api-version={ApiVersion}",
+                new
+                {
+                    prompt,
+                    n = 1,
+                    size = panelCount == 1 ? "1536x1024" : "1024x1536",
+                    quality = _options.ImageQuality,
+                    output_format = "jpeg"
+                });
 
-        var url = $"{_options.Endpoint.TrimEnd('/')}/openai/deployments/{_options.ImageDeployment}/images/generations?api-version={ApiVersion}";
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Headers.Add("api-key", _options.ApiKey);
         request.Content = JsonContent.Create(body);
+        // Buffered so it carries a Content-Length: the FLUX provider route rejects a chunked body.
+        await request.Content.LoadIntoBufferAsync(cancellationToken);
 
         using var response = await _httpClientFactory.CreateClient("AzureOpenAIImageApi").SendAsync(request, cancellationToken);
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
