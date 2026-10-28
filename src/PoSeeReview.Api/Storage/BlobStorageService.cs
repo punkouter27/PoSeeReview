@@ -218,7 +218,7 @@ public class BlobStorageService : IBlobStorageService
             var startsOn = DateTimeOffset.UtcNow.AddMinutes(-15); // clock-skew buffer
             var expiresOn = DateTimeOffset.UtcNow.Add(UserDelegationSasDuration);
 
-            var userDelegationKey = await _blobServiceClient.GetUserDelegationKeyAsync(startsOn, expiresOn);
+            var userDelegationKey = await _blobServiceClient.GetUserDelegationKeyAsync(startsOn, expiresOn, CancellationToken.None);
 
             var sasBuilder = new BlobSasBuilder
             {
