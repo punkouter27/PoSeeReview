@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
-    <PackageVersion Include="MinVer" Version="6.0.0" />
+    <PackageVersion Include="MinVer" Version="8.0.0" />
     <!-- Azure SDKs -->
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
