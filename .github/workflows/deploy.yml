@@ -122,7 +122,7 @@ jobs:
         run: |
           base="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
           for attempt in $(seq 1 60); do
-            commit=$(curl -s -D - -o /dev/null --max-time 30 "$base/health/live" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-commit" {print $2}')
+            commit=$(curl -s -D - -o /dev/null --max-time 30 "$base/health/live" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-commit" {print $2}' || true)
             [ "$commit" = "$GITHUB_SHA" ] && { echo "/health/live serves $GITHUB_SHA (attempt $attempt)"; break; }
             [ "$attempt" = "60" ] && { echo "::error::/health/live still serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1; }
             sleep 15
