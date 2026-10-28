@@ -18,7 +18,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: app-poseereview
+  AZURE_WEBAPP_NAME: app-poseereview2
   AZURE_RESOURCE_GROUP: PoSeeReview
   API_PROJECT_PATH: src/PoSeeReview.Api/PoSeeReview.Api.csproj
 
@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: https://app-poseereview.azurewebsites.net
+      url: https://app-poseereview2.azurewebsites.net
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -92,7 +92,7 @@ jobs:
     needs: deploy
     timeout-minutes: 10
     env:
-      BASE_URL: https://app-poseereview.azurewebsites.net
+      BASE_URL: https://app-poseereview2.azurewebsites.net
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

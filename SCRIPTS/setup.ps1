@@ -125,13 +125,13 @@ if (-not $SkipAzureCli) {
                 Write-Ok "Logged into Azure as: $accountName"
 
                 # Verify Key Vault access
-                Write-Step "Verifying Key Vault access (kv-poshared)..."
-                $kvCheck = az keyvault secret list --vault-name kv-poshared 2>&1
+                Write-Step "Verifying Key Vault access (kv-poshared2)..."
+                $kvCheck = az keyvault secret list --vault-name kv-poshared2 2>&1
                 if ($LASTEXITCODE -ne 0) {
-                    Write-Warn "Cannot access Key Vault 'kv-poshared'. Ensure your account has 'Key Vault Secrets User' role."
+                    Write-Warn "Cannot access Key Vault 'kv-poshared2'. Ensure your account has 'Key Vault Secrets User' role."
                     Write-Warn "Run: az role assignment create --role 'Key Vault Secrets User' --assignee $(az account show --query id -o tsv) --scope /subscriptions/$(az account show --query id -o tsv)/resourceGroups/Punkouter26"
                 } else {
-                    Write-Ok "Key Vault 'kv-poshared' is accessible"
+                    Write-Ok "Key Vault 'kv-poshared2' is accessible"
                 }
             }
         }

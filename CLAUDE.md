@@ -64,16 +64,16 @@ segment rather than skipping a fixed one.
 ### Deploy & smoke
 
 `git push origin master` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
-`build` (test-quota check + unit tests + publish) → `deploy` (App Service `app-poseereview`, RG
+`build` (test-quota check + unit tests + publish) → `deploy` (App Service `app-poseereview2`, RG
 `PoSeeReview`) → `smoke`. Integration and E2E suites run locally only. Infra under `infra/` is
 applied by hand — see [infra/README.md](infra/README.md).
 
 ```powershell
-$env:BASE_URL = "https://app-poseereview.azurewebsites.net"; node SCRIPTS/post-deploy-smoke.mjs
+$env:BASE_URL = "https://app-poseereview2.azurewebsites.net"; node SCRIPTS/post-deploy-smoke.mjs
 ```
 
 `SCRIPTS/setup.ps1` is the first-run bootstrap (WinGet/Docker/Azure CLI checks).
-`SCRIPTS/rotate-google-key.ps1` copies a new Google Maps key from the clipboard into kv-poshared
+`SCRIPTS/rotate-google-key.ps1` copies a new Google Maps key from the clipboard into kv-poshared2
 (`GoogleMaps--ApiKey` and `PoSeeReview--GoogleMaps--ApiKey`).
 `SCRIPTS/ui-check.mjs` (`$env:BASE_URL=…; node SCRIPTS/ui-check.mjs`) is a Playwright regression
 pass over a live app — it performs **one real, paid** comic generation.
@@ -153,7 +153,7 @@ button in **both** Development and Test — every E2E UI test clicks it.
   assembly also carries a `YYMMDD` build stamp (HEAD commit date, `StampBuildDate` in
   `Directory.Build.targets`): `BuildStamp.razor` shows it bottom-right in both layouts and
   `/diag` reports it as `buildStamp`.
-- Key Vault `kv-poshared` (RG `PoShared`), secrets prefix-scoped `PoSeeReview--` via
+- Key Vault `kv-poshared2` (RG `PoShared`), secrets prefix-scoped `PoSeeReview--` via
   `PrefixKeyVaultSecretManager`, `DefaultAzureCredential` throughout. The Bicep only grants read
   access to it; it never creates or writes a vault.
 - Azure storage access is **Managed Identity only** (`AzureStorage:TableEndpoint`/`BlobEndpoint`).

@@ -1,7 +1,7 @@
 // Cost, outage and needs-a-human alerts for the live app.
 //
 // Standalone rather than a module of main.bicep: main.bicep names resources from a resourceToken,
-// while the live app is app-poseereview in RG PoSeeReview and its telemetry lands in the SHARED
+// while the live app is app-poseereview2 in RG PoSeeReview and its telemetry lands in the SHARED
 // App Insights component in RG PoShared. Deploy into the app's resource group:
 //
 //   az deployment group create -g PoSeeReview -f infra/alerts.bicep -p alertEmail=<address>
@@ -14,7 +14,7 @@
 param alertEmail string
 
 @description('The App Service that serves the app.')
-param siteName string = 'app-poseereview'
+param siteName string = 'app-poseereview2'
 
 @description('Shared Application Insights component the app reports into.')
 param appInsightsId string = resourceId('PoShared', 'Microsoft.Insights/components', 'poappideinsights8f9c9a4e')

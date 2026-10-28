@@ -8,7 +8,7 @@ param location string
 @description('Tags to apply to resources')
 param tags object
 
-@description('App Service name (e.g. app-poseereview)')
+@description('App Service name (e.g. app-poseereview2)')
 param appName string
 
 @description('App Service Plan SKU — F1 free tier per NET_RULES 5.2')

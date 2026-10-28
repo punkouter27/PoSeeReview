@@ -1,14 +1,14 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Rotate the Google Maps API key into kv-poshared.
+    Rotate the Google Maps API key into kv-poshared2.
 
 .DESCRIPTION
     Workflow:
       1. Open Google Cloud Console → APIs & Services → Credentials
          (project: posereview-490223) → click "PoSeeReview-Maps-Key" → "Show key" → "Copy".
       2. Run this script. It reads the value from your clipboard, validates the
-         shape (AIza + 35 chars), and writes it to BOTH secrets in kv-poshared:
+         shape (AIza + 35 chars), and writes it to BOTH secrets in kv-poshared2:
            - GoogleMaps--ApiKey             (shared, first pass)
            - PoSeeReview--GoogleMaps--ApiKey (app-prefixed, second pass wins)
       3. The script then clears the clipboard so the value doesn't sit there
@@ -21,7 +21,7 @@
       - The value is never echoed, never logged, and never written to a file
         by this script. The only places it lives after the run are:
           * the Google Cloud Console (source of truth)
-          * kv-poshared (Azure-side mirror)
+          * kv-poshared2 (Azure-side mirror)
       - Validation is shape-only (regex on the visible key). The script
         deliberately does not log the value, even on success.
 
@@ -35,7 +35,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$VaultName = 'kv-poshared'
+    [string]$VaultName = 'kv-poshared2'
 )
 
 $ErrorActionPreference = 'Stop'

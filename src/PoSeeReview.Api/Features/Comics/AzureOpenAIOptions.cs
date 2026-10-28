@@ -22,7 +22,7 @@ public class AzureOpenAIOptions
 
     /// <summary>
     /// Deployment name for the GPT model. PoSeeReview uses the single shared
-    /// <c>gpt-5.4-nano</c> deployment in <c>po-aiservices-shared</c>
+    /// <c>gpt-5.4-nano</c> deployment in <c>po-aiservices-shared2</c>
     /// (verified 2026-06-14 — only deployment in the resource).
     /// </summary>
     public string DeploymentName { get; set; } = "gpt-5.4-nano";

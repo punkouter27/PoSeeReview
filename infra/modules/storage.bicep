@@ -55,7 +55,7 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01'
       corsRules: [
         {
           allowedOrigins: [
-            'https://app-poseereview.azurewebsites.net'
+            'https://app-poseereview2.azurewebsites.net'
           ]
           allowedMethods: [
             'GET'

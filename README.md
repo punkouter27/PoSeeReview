@@ -201,7 +201,7 @@ dotnet watch --project src/PoSeeReview.Api --launch-profile https
 After a deploy (push to `master`), the live URL is:
 
 ```powershell
-az webapp show --name app-poseereview --resource-group PoSeeReview --query defaultHostName -o tsv
+az webapp show --name app-poseereview2 --resource-group PoSeeReview --query defaultHostName -o tsv
 ```
 
 The same post-deploy checks CI runs (Blazor render tree, `/health`) can be run by hand:

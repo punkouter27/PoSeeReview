@@ -26,9 +26,9 @@ namespace PoSeeReview.Api.HostedServices;
 /// <c>AzureOpenAI:DeploymentName</c> is checked against a known-good set in every
 /// environment. In Dev/Test the mismatch is a warning (so local iteration isn't blocked
 /// when the upstream team is mid-migration), in Production it throws. This is what
-/// caught the 2026-06-15 incident where the app-prefixed mirror in kv-poshared was
+/// caught the 2026-06-15 incident where the app-prefixed mirror in kv-poshared2 was
 /// silently set to <c>gpt-4o</c> (a model that does not exist in
-/// <c>po-aiservices-shared</c>).
+/// <c>po-aiservices-shared2</c>).
 /// </para>
 /// </summary>
 public sealed class StartupSecretValidator(
@@ -54,7 +54,7 @@ public sealed class StartupSecretValidator(
             LogLevel.Warning,
             new EventId(9003, "DeploymentDrift"),
             "AzureOpenAI:DeploymentName is '{Deployment}' which is not in the known-good set. " +
-            "This will fail in Production. Check both kv-poshared secrets: 'AzureOpenAI--DeploymentName' " +
+            "This will fail in Production. Check both kv-poshared2 secrets: 'AzureOpenAI--DeploymentName' " +
             "(shared) and 'PoSeeReview--AzureOpenAI--DeploymentName' (app-prefixed, wins).");
 
     private static readonly Action<ILogger, string, Exception?> CapNotAppliedWarn =
@@ -67,7 +67,7 @@ public sealed class StartupSecretValidator(
             "reaches the wire.");
 
     /// <summary>
-    /// Known-good deployment names in <c>po-aiservices-shared</c> (PoShared RG, East US).
+    /// Known-good deployment names in <c>po-aiservices-shared2</c> (PoShared RG, East US).
     /// Update this set when a new deployment is provisioned. The validator warns (Dev/Test)
     /// or throws (Production) if the configured value is not in this set.
     /// Verified 2026-06-14 via <c>az cognitiveservices account deployment list</c>:
@@ -92,7 +92,7 @@ public sealed class StartupSecretValidator(
         {
             throw new InvalidOperationException(
                 "StartupSecretValidator: required configuration key 'GoogleMaps:ApiKey' is missing. " +
-                "kv-poshared must contain a non-empty secret named either 'GoogleMaps--ApiKey' (shared) " +
+                "kv-poshared2 must contain a non-empty secret named either 'GoogleMaps--ApiKey' (shared) " +
                 "or 'PoSeeReview--GoogleMaps--ApiKey' (app-prefixed). Refusing to start.");
         }
 
@@ -171,8 +171,8 @@ public sealed class StartupSecretValidator(
         //   enough to show up in Serilog at the next deploy.
         // - Production: THROW, because DeploymentNotFound means every comic generation 5xx's.
         //
-        // 2026-06-15 incident: the app-prefixed mirror in kv-poshared was set to "gpt-4o"
-        // (a model that does not exist in po-aiservices-shared). The previous drift guard
+        // 2026-06-15 incident: the app-prefixed mirror in kv-poshared2 was set to "gpt-4o"
+        // (a model that does not exist in po-aiservices-shared2). The previous drift guard
         // only ran in non-Dev and only checked a hard-coded constant, so the bug was silent
         // for ~6 weeks. The new set-based check is strict enough to catch that case.
         //
@@ -194,8 +194,8 @@ public sealed class StartupSecretValidator(
             {
                 throw new InvalidOperationException(
                     $"StartupSecretValidator: AzureOpenAI:DeploymentName is '{configuredDeployment}', " +
-                    $"which is not in the known-good set {knownGood} for po-aiservices-shared. " +
-                    "Update BOTH kv-poshared secrets: 'AzureOpenAI--DeploymentName' (shared) and " +
+                    $"which is not in the known-good set {knownGood} for po-aiservices-shared2. " +
+                    "Update BOTH kv-poshared2 secrets: 'AzureOpenAI--DeploymentName' (shared) and " +
                     "'PoSeeReview--AzureOpenAI--DeploymentName' (app-prefixed — this one wins). " +
                     "If the value is correct, add it to KnownGoodDeployments in StartupSecretValidator.cs " +
                     "and update the comment with the verification command output.");

@@ -4,7 +4,7 @@ using Azure.Security.KeyVault.Secrets;
 namespace PoSeeReview.Api.Configuration;
 
 /// <summary>
-/// Loads only PoSeeReview-specific secrets from the shared Key Vault (kv-poshared).
+/// Loads only PoSeeReview-specific secrets from the shared Key Vault (kv-poshared2).
 /// Registered AFTER SharedKeyVaultSecretManager so app-specific secrets always override shared ones.
 /// Secret "PoSeeReview--GoogleMaps--ApiKey" → config key "GoogleMaps:ApiKey".
 /// </summary>

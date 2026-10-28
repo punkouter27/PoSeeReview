@@ -7,7 +7,7 @@
 // The former /diag secret-masking check was removed: /diag sits behind the unsupported-user-agent
 // guard, so an anonymous scripted fetch always gets a 400 and the check could never pass here.
 //
-// Usage: BASE_URL=https://app-poseereview.azurewebsites.net node SCRIPTS/post-deploy-smoke.mjs
+// Usage: BASE_URL=https://app-poseereview2.azurewebsites.net node SCRIPTS/post-deploy-smoke.mjs
 //
 // Anonymous only: every endpoint touched here is AllowAnonymous, so the script needs no
 // credentials and must never be given any.

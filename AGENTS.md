@@ -35,7 +35,7 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
   or upgrades a dependency, adds or renames a configuration key, or adds or changes a major
   endpoint, update README.md (and `DOCS/` once it exists) **in the same change**.
 - **No `dotnet user-secrets`.** Non-secret config goes in `appsettings*.json`; real secrets go in
-  Key Vault `kv-poshared` under the `PoSeeReview--` prefix. The one existing exception is
+  Key Vault `kv-poshared2` under the `PoSeeReview--` prefix. The one existing exception is
   `Takedowns:ApiKey` for local dev — it is a live credential, so it must never land in an
   appsettings file that is committed.
 - **Automate everything you can.** Run the commands yourself, and script the steps that repeat.

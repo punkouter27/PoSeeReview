@@ -71,10 +71,10 @@ module storage './modules/storage.bicep' = {
   }
 }
 
-// Secrets live in the shared vault kv-poshared (RG PoShared) under the PoSeeReview-- prefix; this
+// Secrets live in the shared vault kv-poshared2 (RG PoShared) under the PoSeeReview-- prefix; this
 // template never creates or writes a vault, it only grants the app's identity read access.
 @description('Shared Key Vault the app reads its secrets from.')
-param sharedKeyVaultName string = 'kv-poshared'
+param sharedKeyVaultName string = 'kv-poshared2'
 
 @description('Resource group holding the shared Key Vault.')
 param sharedResourceGroupName string = 'PoShared'

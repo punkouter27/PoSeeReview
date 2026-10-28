@@ -7,7 +7,7 @@ namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
 /// Azure AI Foundry backend for strangeness analysis, using the <c>gpt-5.4-nano</c> deployment
-/// in <c>po-aiservices-shared</c>. The call itself is <see cref="OpenAiWireChat"/>; transient
+/// in <c>po-aiservices-shared2</c>. The call itself is <see cref="OpenAiWireChat"/>; transient
 /// failures are retried by the SDK's own pipeline, so there is no second retry policy here.
 /// </summary>
 public class AzureOpenAIChatService : IChatCompletionService

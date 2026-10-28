@@ -4,7 +4,7 @@ using Azure.Security.KeyVault.Secrets;
 namespace PoSeeReview.Api.Configuration;
 
 /// <summary>
-/// Loads shared secrets from the Key Vault (kv-poshared) — those NOT prefixed with any Po-app name.
+/// Loads shared secrets from the Key Vault (kv-poshared2) — those NOT prefixed with any Po-app name.
 /// Registered BEFORE PrefixKeyVaultSecretManager so app-specific secrets always take priority.
 /// Example shared secrets: "AzureOpenAI--ApiKey", "ConnectionStrings--AzureTableStorage".
 /// </summary>
@@ -12,7 +12,7 @@ public sealed class SharedKeyVaultSecretManager : KeyVaultSecretManager
 {
     /// <summary>
     /// Allowlist of shared-secret roots (the segment before the first "--") that PoSeeReview
-    /// actually consumes. Least privilege: unrelated shared secrets in kv-poshared
+    /// actually consumes. Least privilege: unrelated shared secrets in kv-poshared2
     /// (AzureFace, AzureSpeech, AzureMaps, AzureAI, GoogleVision, ExternalAuth, AzureAd, …)
     /// are never loaded into this app's configuration, shrinking the blast radius and keeping
     /// the diagnostics snapshot to keys this app legitimately uses.

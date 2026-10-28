@@ -1,7 +1,7 @@
 # Azure infrastructure
 
 Bicep for PoSeeReview. **Applied by hand, never by CI** — `.github/workflows/deploy.yml` only
-publishes the app package to the existing App Service `app-poseereview` (RG `PoSeeReview`).
+publishes the app package to the existing App Service `app-poseereview2` (RG `PoSeeReview`).
 
 | File | What it is |
 |---|---|
@@ -15,11 +15,11 @@ publishes the app package to the existing App Service `app-poseereview` (RG `PoS
 
 ## Secrets
 
-Secrets live in the shared vault **`kv-poshared`** (RG `PoShared`) under the `PoSeeReview--` prefix.
+Secrets live in the shared vault **`kv-poshared2`** (RG `PoShared`) under the `PoSeeReview--` prefix.
 The templates never create or write a vault; they only grant the app's identity read access.
 
 ```powershell
-az keyvault secret set --vault-name kv-poshared --name "PoSeeReview--GoogleMaps--ApiKey" --value "<key>"
+az keyvault secret set --vault-name kv-poshared2 --name "PoSeeReview--GoogleMaps--ApiKey" --value "<key>"
 ```
 
 ## Provision
