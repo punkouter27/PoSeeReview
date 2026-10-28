@@ -48,6 +48,11 @@ foreach ($rg in $DeployResourceGroups) {
     az role assignment create --assignee-object-id $spId --assignee-principal-type ServicePrincipal --role Contributor --scope "/subscriptions/$Sub/resourceGroups/$rg" -o none; Step "deploy: Contributor @ $rg"
 }
 
+foreach ($g in $DeployRoles) {   # only repos whose CI applies subscription-scope Bicep set these
+    $role, $scope = $g -split '\|', 2
+    az role assignment create --assignee-object-id $spId --assignee-principal-type ServicePrincipal --role $role --scope "/subscriptions/$Sub$scope" -o none; Step "deploy: $role @ $(if ($scope) { $scope } else { 'subscription' })"
+}
+
 # 3. What the workflow reads. Variables, not secrets: none of these is a secret.
 foreach ($v in @{ AZURE_CLIENT_ID = $appId; AZURE_TENANT_ID = $Tenant; AZURE_SUBSCRIPTION_ID = $Sub; AZURE_WEBAPP_NAME = $App }.GetEnumerator()) {
     gh variable set $v.Key -R "punkouter27/$Repo" --body $v.Value; Step "github var $($v.Key)"
