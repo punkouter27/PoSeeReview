@@ -1,0 +1,18 @@
+# Keeps the NuGet packages (all named in Directory.Packages.props) and the pinned GitHub Actions in the workflows up to date.
+# One pull request a week for each, with the small updates grouped, so they are easy to review together.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

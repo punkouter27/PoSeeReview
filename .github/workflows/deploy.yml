@@ -18,7 +18,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: app-poseereview2
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
   AZURE_RESOURCE_GROUP: PoSeeReview
   API_PROJECT_PATH: src/PoSeeReview.Api/PoSeeReview.Api.csproj
 
@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: https://app-poseereview2.azurewebsites.net
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -75,9 +75,9 @@ jobs:
           path: publish
       - uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       # The startup command (two runtimeconfig.json files defeat auto-detection) is pinned by
       # appCommandLine in infra/modules/appservice.bicep, and a site setting survives deploys.
       - uses: azure/webapps-deploy@v3
@@ -86,13 +86,27 @@ jobs:
           resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
           package: publish
 
+      # Same gate in every Po web repo: the process is up (/health/live) and its dependencies answer (/health).
+      - name: Health gate (/health/live, /health)
+        shell: bash
+        run: |
+          base="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          for path in /health/live /health; do
+            for attempt in $(seq 1 60); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$base$path" || echo 000)
+              [ "$code" = "200" ] && { echo "$path -> 200 (attempt $attempt)"; break; }
+              [ "$attempt" = "60" ] && { echo "::error::$path never returned 200 (last: $code)"; exit 1; }
+              sleep 15
+            done
+          done
+
   smoke:
     name: Post-deploy smoke
     runs-on: ubuntu-latest
     needs: deploy
     timeout-minutes: 10
     env:
-      BASE_URL: https://app-poseereview2.azurewebsites.net
+      BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
