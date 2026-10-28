@@ -14,6 +14,8 @@ on:
     paths-ignore:
       - '**.md'
       - 'infra/**'
+  # Pull requests (Dependabot's too) get the build and tests; only a push to master deploys.
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -89,9 +91,25 @@ jobs:
             exit 1
           fi
 
+      # Same pair in every Po web repo: keep the live build, and put it back if anything fails once the
+      # new package is live (see "Roll back to the previous build" at the end of this job).
+      - name: Back up the live site
+        id: backup
+        run: |
+          token=$(az account get-access-token --query accessToken -o tsv)
+          if curl -fsS --max-time 300 -H "Authorization: Bearer $token" -o previous.zip \
+               "https://${{ vars.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/zip/site/wwwroot/" && [ -s previous.zip ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "Backed up $(du -h previous.zip | cut -f1) of the live site."
+          else
+            echo "::warning title=No backup::Could not download the live site, so this deploy cannot be rolled back."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # The startup command (two runtimeconfig.json files defeat auto-detection) is pinned by
       # appCommandLine in infra/modules/appservice.bicep, and a site setting survives deploys.
       - uses: azure/webapps-deploy@v3
+        id: deploy
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
@@ -115,6 +133,13 @@ jobs:
             sleep 15
           done
           echo "::error::/health never returned 200 (last: $code)"; exit 1
+
+      - name: Roll back to the previous build
+        if: failure() && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
+        run: |
+          az webapp deploy -g "${{ github.event.repository.name }}" -n "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --src-path previous.zip --type zip --clean true
+          echo "::error title=Rolled back::${{ github.sha }} failed after it went live; the previous build is live again."
 
   smoke:
     name: Post-deploy smoke
