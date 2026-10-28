@@ -30,6 +30,8 @@ public class DiagnosticsContractTests(CustomWebApplicationFactory<Program> facto
         // Deny-by-default must not apply: an unauthenticated probe never sees 401/403.
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        // The deploy reads this header to confirm the new build is the one answering.
+        Assert.True(response.Headers.Contains("X-Commit"));
     }
 
     [Fact]

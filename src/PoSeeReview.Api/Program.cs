@@ -130,10 +130,14 @@ try
         app.UseHsts();
     }
 
+    // X-Commit lets the deploy confirm which build is answering (`curl -sI /health/live`).
+    var commit = PoPlatform.Version.Split('+') is [_, var sha] ? sha : "unknown";
+
     // No script/style CSP: Blazor WASM needs wasm-unsafe-eval and the client has inline bits.
     app.Use((context, next) =>
     {
         var headers = context.Response.Headers;
+        headers["X-Commit"] = commit;
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         headers.ContentSecurityPolicy = "frame-ancestors 'none'";

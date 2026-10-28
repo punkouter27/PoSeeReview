@@ -1,4 +1,9 @@
 using System.Net;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PoSeeReview.Api;
 using Xunit;
 
@@ -11,6 +16,60 @@ namespace PoSeeReview.E2EAPI.Api;
 public class AuthorizationContractTests(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
+    // Every route a signed-out caller may reach. A new public route fails this test until it is
+    // added here on purpose. Static files and the Blazor host are public by design and are
+    // identified by their metadata, not listed.
+    private static readonly string[] AnonymousAllowList =
+    [
+        "/api/takedowns/",
+        "/api/{**segments}",
+        "/auth/login/fake",
+        "/auth/login/microsoft",
+        "/auth/logout",
+        "/auth/me",
+        "/diag/",
+        "/diag/mock-status",
+        "/duel/{**rest}",
+        "/health",
+        "/health/live",
+        "/health/ready",
+        "/openapi/{documentName}.json",
+        "/s/{code}",
+        "/scalar/favicon.svg",
+        "/scalar/scalar.aspnetcore.js",
+        "/scalar/scalar.js",
+        "/scalar/{documentName?}",
+        "/share/{placeId}/card.png",
+        "/{*path:nonfile}",
+    ];
+
+    [Fact]
+    public void Anonymous_surface_is_exactly_the_allow_list()
+    {
+        var anonymous = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+            .Where(e => !IsHostOrStaticAsset(e))
+            .Select(e => "/" + e.RoutePattern.RawText!.TrimStart('/'))
+            .Distinct()
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(AnonymousAllowList, anonymous);
+    }
+
+    [Fact]
+    public void Every_other_endpoint_requires_a_signed_in_user()
+    {
+        var policy = factory.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
+
+        Assert.NotNull(policy);
+        Assert.Contains(policy.Requirements, r => r is DenyAnonymousAuthorizationRequirement);
+    }
+
+    private static bool IsHostOrStaticAsset(RouteEndpoint endpoint) =>
+        endpoint.RoutePattern.RawText!.TrimStart('/').StartsWith("_framework", StringComparison.Ordinal)
+        || endpoint.Metadata.Any(m => m.GetType().Name is "StaticAssetDescriptor" or "ComponentTypeMetadata" or "RootComponentMetadata");
+
     [Theory]
     [InlineData("/api/comics/ChIJTest123")]
     [InlineData("/api/restaurants/nearby?latitude=47.6&longitude=-122.3")]
