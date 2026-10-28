@@ -4,6 +4,7 @@ $Repo = 'PoSeeReview'; $Branch = 'master'; $ResourceGroup = 'PoSeeReview'; $App 
 $Identity = 'system'          # 'system', or the name of a user-assigned identity in PoShared
 $KeyVaultAccess = $true
 $DeployResourceGroups = @('PoSeeReview')
+$MonthlyBudgetUsd = 5            # resource-group budget; alerts email at 50%, 100% and a 100% forecast
 $AppRoles = @(                  # role | scope under the subscription ('' = the subscription itself)
     'Storage Table Data Contributor|/resourceGroups/PoSeeReview/providers/Microsoft.Storage/storageAccounts/stposeereview2'
     'Storage Blob Data Contributor|/resourceGroups/PoSeeReview/providers/Microsoft.Storage/storageAccounts/stposeereview2'
@@ -51,3 +52,14 @@ foreach ($rg in $DeployResourceGroups) {
 foreach ($v in @{ AZURE_CLIENT_ID = $appId; AZURE_TENANT_ID = $Tenant; AZURE_SUBSCRIPTION_ID = $Sub; AZURE_WEBAPP_NAME = $App }.GetEnumerator()) {
     gh variable set $v.Key -R "punkouter27/$Repo" --body $v.Value; Step "github var $($v.Key)"
 }
+
+# 4. A monthly budget on the resource group that emails at 50% and 100% spent and at a 100% forecast.
+$notify = @{}
+foreach ($t in @('Actual', 50), @('Actual', 100), @('Forecasted', 100)) {
+    $notify["$($t[0])$($t[1])"] = @{ enabled = $true; operator = 'GreaterThan'; threshold = $t[1]; thresholdType = $t[0]; contactEmails = @('punkouter27@gmail.com') }
+}
+$f = Join-Path $env:TEMP "budget-$Repo.json"
+@{ properties = @{ category = 'Cost'; amount = $MonthlyBudgetUsd; timeGrain = 'Monthly'; notifications = $notify
+    timePeriod = @{ startDate = '2026-10-01T00:00:00Z'; endDate = '2031-12-31T00:00:00Z' } } } | ConvertTo-Json -Depth 6 -Compress | Set-Content $f
+az rest --method put --body "@$f" -o none --url "https://management.azure.com/subscriptions/$Sub/resourceGroups/$ResourceGroup/providers/Microsoft.Consumption/budgets/po-monthly?api-version=2023-05-01"
+$code = $LASTEXITCODE; Remove-Item $f; $LASTEXITCODE = $code; Step "budget: `$$MonthlyBudgetUsd/month on $ResourceGroup"
