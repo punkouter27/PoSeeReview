@@ -60,7 +60,7 @@
     <!-- Admin pages only (/moderation, /diagnostics). Its theme is fetched into the `vendor` layer
          on those pages, never linked; see js/radzen-theme.js. -->
     <PackageVersion Include="Radzen.Blazor" Version="12.0.6" />
-    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
   </ItemGroup>
 </Project>
