@@ -23,7 +23,7 @@
     <!-- Explicit pin: Microsoft.AspNetCore.OpenApi 10.0.x pulls Microsoft.OpenApi 2.0.0, which
          carries a high-severity advisory (GHSA-v5pm-xwqc-g5wc). CentralPackageTransitivePinning
          lifts the transitive reference to this fixed version. -->
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="3.11.0" />
     <!-- Resilience -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <!-- Logging -->
