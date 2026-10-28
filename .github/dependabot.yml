@@ -6,6 +6,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Microsoft.AspNetCore.OpenApi 10 needs Microsoft.OpenApi 2.x; 3.x fails restore (NU1608). Lift with .NET 11.
+      - dependency-name: Microsoft.OpenApi
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
