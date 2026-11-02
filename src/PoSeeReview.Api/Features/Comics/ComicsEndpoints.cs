@@ -30,6 +30,12 @@ internal static class ComicsEndpoints
         group.MapGet("/budget", GetBudget);
         group.MapGet("/cached", GetCachedPlaceIds);
         group.MapGet("/{placeId}/image", DownloadComicImage).AddEndpointFilter(RefuseWithheld);
+
+        // The audio comic: GET is the free cached script (404 until rendered), POST renders it
+        // (paid, so on the limiter), /audio/file is the WAV.
+        group.MapGet("/{placeId}/audio", GetAudioComic).AddEndpointFilter(RefuseWithheld);
+        group.MapPost("/{placeId}/audio", RenderAudioComic).AddEndpointFilter(RefuseWithheld).RequireRateLimiting("comics-post");
+        group.MapGet("/{placeId}/audio/file", GetAudioComicFile).AddEndpointFilter(RefuseWithheld);
         group.MapGet("/{placeId}", GetCachedComic).AddEndpointFilter(RefuseWithheld);
 
         // The duel page is gone; links shared before it was retired land on the board instead of a 404.
@@ -456,6 +462,57 @@ internal static class ComicsEndpoints
     /// app's bandwidth instead of the CDN-adjacent blob URL, for no user-visible gain.
     /// </para>
     /// </summary>
+    private static async Task<IResult> GetAudioComic(
+        string placeId, IComicGenerationService comics, AudioComicService audio, HttpContext http) =>
+        await comics.GetCachedComicAsync(PlaceId.From(placeId), http.RequestAborted) is { } comic
+        && await audio.GetCachedAsync(comic, http.RequestAborted) is { } manifest
+            ? Results.Ok(manifest)
+            : Results.NotFound();
+
+    private static async Task<IResult> RenderAudioComic(
+        string placeId, IComicGenerationService comics, AudioComicService audio, HttpContext http)
+    {
+        if (!audio.IsAvailable)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Audio comics are not available", detail: "This deployment has no Azure OpenAI voice configured.");
+        }
+
+        if (await comics.GetCachedComicAsync(PlaceId.From(placeId), http.RequestAborted) is not { } comic)
+        {
+            return Results.NotFound();
+        }
+
+        try
+        {
+            return Results.Ok(await audio.RenderAsync(comic, http.RequestAborted));
+        }
+        catch (VoiceDeclinedException ex)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status422UnprocessableEntity,
+                title: "The voices refused this one", detail: ex.Message, type: "voice_declined");
+        }
+        catch (HttpRequestException ex)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status502BadGateway,
+                title: "The voices are unavailable", detail: ex.Message);
+        }
+    }
+
+    private static async Task<IResult> GetAudioComicFile(
+        string placeId, IComicGenerationService comics, AudioComicService audio, HttpContext http)
+    {
+        if (await comics.GetCachedComicAsync(PlaceId.From(placeId), http.RequestAborted) is not { } comic
+            || await audio.ReadAudioAsync(comic, http.RequestAborted) is not { } wav)
+        {
+            return Results.NotFound();
+        }
+
+        // Range processing so a scrub does not re-download the whole recording.
+        http.Response.Headers.CacheControl = "private, max-age=3600";
+        return Results.File(wav, "audio/wav", enableRangeProcessing: true);
+    }
+
     private static async Task<IResult> DownloadComicImage(
         string placeId,
         IComicGenerationService comicGenerationService,

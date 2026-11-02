@@ -161,6 +161,13 @@ public sealed class ComicRemasterService(
             await comics.UpsertAsync(comic);
             telemetry.GetMetric("Comics.Remaster.Failed", "State").TrackValue(1, comic.RemasterState.ToString());
             logger.LogWarning(ex, "Remaster of {PlaceId} did not complete ({State})", comic.PlaceId.Value, comic.RemasterState);
+            if (ex is ImageDeclinedException declined)
+            {
+                // The draft stays up, but a refusal is never silent: queue and owner alert.
+                await gate.FlagForReviewAsync(comic.PlaceId,
+                    ModerationCategories.Describe(ModerationCategories.ImageDeclined, $"remaster: {(declined.Reason.Length > 280 ? declined.Reason[..280] : declined.Reason)}"),
+                    cancellationToken);
+            }
             return false;
         }
 

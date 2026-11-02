@@ -52,4 +52,17 @@ public sealed class ModerationOptions
 
     /// <summary>Chat deployment that writes the moderation queue's AI triage. Judgement, so not the nano.</summary>
     public string TriageDeployment { get; set; } = "gpt-5.4-mini";
+
+    /// <summary>
+    /// ntfy topic that hears about everything that hid, blocked, refused or softened a comic
+    /// (<see cref="OwnerAlerts"/>). A topic name is its own password on ntfy, so it lives in Key
+    /// Vault (<c>PoSeeReview--Moderation--AlertNtfyTopic</c>). Empty turns alerts off.
+    /// </summary>
+    public string AlertNtfyTopic { get; set; } = string.Empty;
+
+    /// <summary>The ntfy server the topic lives on.</summary>
+    public string AlertNtfyServer { get; set; } = "https://ntfy.sh";
+
+    /// <summary>The app's public origin, so an alert opens the comic or the queue. Empty sends no link.</summary>
+    public string AlertLinkBase { get; set; } = string.Empty;
 }

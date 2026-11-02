@@ -1,0 +1,94 @@
+@* Live frame-budget readout for /diagnostics: frame time over the last minute against the 20ms
+   budget, the effects tier under it, and the WebGPU device. Sampled twice a second over
+   [JSImport] (FxService.ReadFrameStats), which reads the numbers into a span instead of JSON. *@
+@implements IDisposable
+@using PoSeeReview.Client.Services
+@inject FxService Fx
+
+<section class="frame-budget" aria-labelledby="frame-budget-title">
+    <h2 id="frame-budget-title" class="frame-budget-title">Frame time, last minute</h2>
+    @if (_latest is not { } now)
+    {
+        <p class="frame-budget-note">Waiting for the graphics loop…</p>
+    }
+    else
+    {
+        <svg class="frame-budget-chart" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img"
+             aria-label="Frame time @now.FrameMs.ToString("F1") ms against a @BudgetMs ms budget">
+            <line class="frame-budget-limit" x1="0" x2="@Width" y1="@Y(BudgetMs)" y2="@Y(BudgetMs)" />
+            <polyline class="frame-budget-line" points="@Points()" />
+        </svg>
+        <div class="frame-budget-axis" aria-hidden="true"><span>@MaxMs ms</span><span>@BudgetMs ms budget</span><span>0</span></div>
+
+        <div class="frame-budget-tiers" aria-label="Effects tier over time">
+            @foreach (var sample in _samples)
+            {
+                <span class="frame-budget-tier" data-tier="@sample.Tier.ToString().ToLowerInvariant()"></span>
+            }
+        </div>
+        <p class="frame-budget-key" aria-hidden="true">
+            <span data-tier="full">Full</span> <span data-tier="lite">Lite</span> <span data-tier="off">Off</span>
+        </p>
+
+        <div class="frame-budget-stats">
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">FPS</div><div class="frame-budget-stat-value">@now.Fps.ToString("F0")</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">Frame / CPU</div><div class="frame-budget-stat-value">@now.FrameMs.ToString("F1") / @now.CpuMs.ToString("F1") ms</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">Worst frame</div><div class="frame-budget-stat-value">@now.WorstFrameMs.ToString("F0") ms</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">Dropped</div><div class="frame-budget-stat-value">@now.DroppedFrames of @now.SampledFrames</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">Tier</div><div class="frame-budget-stat-value">@now.Tier@(now.AutoDowngraded ? " (auto-lowered)" : "")</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">Loop tasks</div><div class="frame-budget-stat-value">@now.ActiveTasks</div></div>
+            <div class="frame-budget-stat"><div class="frame-budget-stat-name">WebGPU (ink motes)</div><div class="frame-budget-stat-value">@now.Gpu</div></div>
+        </div>
+    }
+</section>
+
+@code {
+    private const int Width = 240;
+    private const int Height = 60;
+    private const int BudgetMs = 20;
+    private const int MaxMs = 50;
+    private const int Capacity = 120;   // 60s at two samples a second
+
+    private readonly Queue<FxFrameStats> _samples = new();
+    private FxFrameStats? _latest;
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+            {
+                if (Fx.ReadFrameStats() is not { } sample)
+                {
+                    continue;
+                }
+
+                _latest = sample;
+                _samples.Enqueue(sample);
+                if (_samples.Count > Capacity)
+                {
+                    _samples.Dequeue();
+                }
+
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page left.
+        }
+    }
+
+    private static double Y(double ms) => Height - Math.Clamp(ms, 0, MaxMs) / MaxMs * Height;
+
+    private string Points() => string.Join(' ', _samples.Select((s, i) =>
+        FormattableString.Invariant($"{(double)i / (Capacity - 1) * Width:F1},{Y(s.FrameMs):F1}")));
+
+    public void Dispose()
+    {
+        _stop.Cancel();
+        _stop.Dispose();
+    }
+}

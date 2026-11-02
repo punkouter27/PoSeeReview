@@ -20,6 +20,7 @@ import * as viewTransitions from './view-transitions.js';
 import * as confetti from './confetti.js';
 import * as glass from './glass.js';
 import * as motes from './ink-motes.js';
+import * as inkFx from './ink-fx.js';
 import { soundtrack } from './soundtrack.js';
 
 function guard(fn, fallback = null) {
@@ -155,6 +156,61 @@ function springScore(score, durationMs) {
 // At most this many rows of a reshuffled board make a sound; the rest only move.
 const MAX_VOICED_MOVES = 4;
 
+// The heat haze behind the ring of the comic on screen; one at a time.
+let stopHeat = null;
+function startHeat(score) {
+    stopHeat?.();
+    stopHeat = inkFx.heat(document.querySelector(RING_SELECTOR), score);
+}
+
+/** The ring's centre in 0..1 viewport units, where the motes burst from; null off the comic page. */
+function ringOrigin() {
+    const rect = document.querySelector(RING_SELECTOR)?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return null;
+    return {
+        x: (rect.left + rect.width / 2) / (window.innerWidth || 1),
+        y: (rect.top + rect.height / 2) / (window.innerHeight || 1)
+    };
+}
+
+// ── [JSImport] surface ───────────────────────────────────────────────────────────────────────
+// FxInterop.cs binds these by name through JSHost.ImportAsync('fx', '/js/fx.js') — the same URL
+// index.html loads, so it is this module instance and nothing initialises twice. Plain
+// arguments cross without JSON, and fillStats writes straight into a .NET Span<double>.
+
+const TIER_INDEX = { off: 0, lite: 1, full: 2 };
+const MOTES_INDEX = { unsupported: 0, idle: 1, starting: 2, running: 3, lost: 4 };
+
+/** Writes the frame-budget readout into `view` (a MemoryView over a .NET Span<double>); returns the count. */
+export function fillStats(view) {
+    return guard(() => {
+        const s = gfx.stats();
+        const values = new Float64Array([
+            s.fps ?? 0, s.frameMs ?? 0, s.cpuMs ?? 0, s.worstFrameMs ?? 0,
+            s.droppedFrames ?? 0, s.sampledFrames ?? 0, s.activeTasks ?? 0,
+            TIER_INDEX[s.tier] ?? 0, s.autoDowngraded ? 1 : 0, MOTES_INDEX[motes.status()] ?? 0
+        ]);
+        const count = Math.min(values.length, view.length);
+        view.set(values.subarray(0, count));
+        return count;
+    }, 0);
+}
+
+export function tapAt(clientX) {
+    guard(() => {
+        audio.tapAt(clientX);
+        haptics.tap();
+    });
+}
+
+export function tapCached(clientX, cached) {
+    guard(() => {
+        if (cached) audio.tapCached(clientX);
+        else audio.tapUncached(clientX);
+        haptics.tap();
+    });
+}
+
 export const fx = {
     // ── Capability + tier ────────────────────────────────────────────────────────────────
     describe: () => guard(() => ({
@@ -212,7 +268,7 @@ export const fx = {
     /** "Too normal to draw": a deflating sad trombone. A joke about the place, not an error. */
     playFizzle: () => guard(() => audio.fizzle()),
     /** The map flying to a tapped pin; called by map-view.js through this surface. */
-    playMapFly: (clientX) => guard(() => audio.whoosh(clientX)),
+    playMapFly: (clientX, clientY) => guard(() => audio.whoosh(clientX, clientY)),
 
     /**
      * Tap on a card, voiced by whether the comic already exists.
@@ -241,6 +297,7 @@ export const fx = {
         setTimeout(() => guard(() => {
             haptics.confirm();
             gradient.kick(score);
+            if (score > inkFx.HEAT_FROM) startHeat(score);
         }), Math.max(0, durationMs ?? 0));
     }),
 
@@ -254,7 +311,7 @@ export const fx = {
     endWait: (outcome) => guard(() => audio.endWait(outcome)),
 
     /** A map pin landing; called by map-view.js through this surface. */
-    playPinDrop: (clientX, rank, score) => guard(() => audio.pinDrop(clientX, rank, score)),
+    playPinDrop: (clientX, rank, score, clientY) => guard(() => audio.pinDrop(clientX, rank, score, clientY)),
 
     // ── Map sounds (opt-in) ──────────────────────────────────────────────────────────────
     mapSoundsEnabled: () => guard(() => audio.mapSoundsEnabled(), false),
@@ -321,7 +378,8 @@ export const fx = {
     // ── Ink motes (WebGPU, opt-in) ───────────────────────────────────────────────────────
     motesDescribe: () => guard(() => motes.describe(), { supported: false, enabled: false, explicit: false }),
     setMotesEnabled: (enabled) => guard(() => motes.setEnabled(enabled), false),
-    startMotes: (score) => guard(() => motes.start(score), 0),
+    /** Started as the score lands, so the motes burst out of the ring. */
+    startMotes: (score) => guard(() => motes.start(score, ringOrigin()), 0),
     stopMotes: (id) => guard(() => motes.stop(id)),
 
     // ── Ink development ──────────────────────────────────────────────────────────────────
@@ -355,6 +413,8 @@ export const fx = {
         panels: panels ?? 2,
         onPanel: (index, total) => {
             audio.panelNote(seed, score ?? 50, index, total);
+            // Ink bleeds along the gutter the reader just scrolled across.
+            if (index > 0) inkFx.bleed(container, index / total);
         }
     }), 0),
 

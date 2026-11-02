@@ -296,6 +296,29 @@ function panForClientX(clientX) {
     return Math.max(-0.85, Math.min(0.85, normalised));
 }
 
+/**
+ * Where a sound sits in the scene, from a screen point: left/right is pan; distance from the
+ * middle of the screen pushes it back (quieter, wetter); higher on screen is a little brighter.
+ * Without a y it is just the pan.
+ */
+function positional(clientX, clientY) {
+    const pan = panForClientX(clientX ?? window.innerWidth / 2);
+    if (typeof clientY !== 'number') return { pan, gain: 1, send: 0, bright: 1 };
+    const ny = (clientY / (window.innerHeight || 1)) * 2 - 1;
+    const distance = Math.min(1, Math.hypot(pan, ny) / Math.SQRT2);
+    return { pan, gain: 1 - distance * 0.45, send: distance * 0.35, bright: 1 - ny * 0.12 };
+}
+
+/**
+ * A small, stable variation per control: the same button always sounds the same, neighbouring
+ * ones differ by up to ±35 cents and ±15% decay, plus a hair of random so a repeated tap is not a
+ * machine. Keyed off the tap's x in 48px columns — the one coordinate Blazor hands over.
+ */
+function tapVariation(clientX) {
+    const random = seededRandom(hashString(`tap${Math.round((clientX ?? 0) / 48)}`));
+    return { detune: (random() - 0.5) * 70 + (Math.random() - 0.5) * 10, decay: 0.85 + random() * 0.3 };
+}
+
 // A pentatonic set, so any combination of these is consonant. The score count-up plays notes in
 // effectively random order; on a diatonic scale that produces semitone clashes.
 const PENTATONIC = [523.25, 587.33, 698.46, 783.99, 932.33]; // C5 D5 F5 G5 A#5
@@ -699,9 +722,10 @@ export const audio = {
      */
     tapAt(clientX) {
         if (!canPlay() || throttled('tap', 40)) return;
+        const v = tapVariation(clientX);
         voice({
-            type: 'triangle', freq: 660, attack: 0.002, decay: 0.05, peak: 0.35,
-            pan: panForClientX(clientX), send: 0.14
+            type: 'triangle', freq: 660, attack: 0.002, decay: 0.05 * v.decay, peak: 0.35,
+            detune: v.detune, pan: panForClientX(clientX), send: 0.14
         });
     },
 
@@ -776,16 +800,18 @@ export const audio = {
     tapCached(clientX) {
         if (!canPlay() || throttled('tap', 40)) return;
         const pan = panForClientX(clientX);
-        voice({ type: 'triangle', freq: 880, attack: 0.002, decay: 0.05, peak: 0.3, pan, send: 0.14 });
-        voice({ type: 'sine', freq: 1318.51, attack: 0.002, decay: 0.09, peak: 0.16, delay: 0.035, pan, send: 0.2 });
+        const { detune, decay } = tapVariation(clientX);
+        voice({ type: 'triangle', freq: 880, attack: 0.002, decay: 0.05 * decay, peak: 0.3, detune, pan, send: 0.14 });
+        voice({ type: 'sine', freq: 1318.51, attack: 0.002, decay: 0.09 * decay, peak: 0.16, delay: 0.035, detune, pan, send: 0.2 });
     },
 
     /** @see tapCached */
     tapUncached(clientX) {
         if (!canPlay() || throttled('tap', 40)) return;
         const pan = panForClientX(clientX);
-        voice({ type: 'triangle', freq: 494, attack: 0.003, decay: 0.07, peak: 0.3, pan, send: 0.16 });
-        voice({ type: 'sine', freq: 659.25, attack: 0.004, decay: 0.42, peak: 0.11, delay: 0.05, pan, send: 0.34 });
+        const { detune, decay } = tapVariation(clientX);
+        voice({ type: 'triangle', freq: 494, attack: 0.003, decay: 0.07 * decay, peak: 0.3, detune, pan, send: 0.16 });
+        voice({ type: 'sine', freq: 659.25, attack: 0.004, decay: 0.42 * decay, peak: 0.11, delay: 0.05, detune, pan, send: 0.34 });
     },
 
     /**
@@ -864,10 +890,37 @@ export const audio = {
     rankMove(delta, clientX, delay = 0) {
         if (!canPlay() || !delta) return;
         const climbed = delta > 0;
+        const pan = panForClientX(clientX);
         voice({
             type: 'sine', startFreq: climbed ? 440 : 587.33, endFreq: climbed ? 587.33 : 440,
-            attack: 0.004, decay: 0.12, peak: 0.07, delay, pan: panForClientX(clientX), send: 0.22
+            attack: 0.004, decay: 0.12, peak: 0.07, delay, pan, send: 0.22
         });
+
+        // Air moving with the row: the sweep's range and length grow with how far it travelled,
+        // rising for a climb and falling for a drop.
+        const ctx = state.ctx;
+        const t0 = ctx.currentTime + delay;
+        const span = Math.min(6, Math.abs(delta));
+        const length = 0.18 + span * 0.05;
+        const low = 500;
+        const high = 900 + span * 450;
+        const source = ctx.createBufferSource();
+        source.buffer = noiseBuffer(length);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.Q.value = 2.2;
+        filter.frequency.setValueAtTime(climbed ? low : high, t0);
+        filter.frequency.exponentialRampToValueAtTime(climbed ? high : low, t0 + length);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.05 + span * 0.012, t0 + length * 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + length);
+        const output = makeOutput(pan, 0.25);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(output.node);
+        source.start(t0);
+        source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); output.dispose(); };
     },
 
     /** Confirmation for something added to a collection. Two rising ticks, deliberately small. */
@@ -963,8 +1016,9 @@ export const audio = {
     },
 
     /** The map flying to a pin: air moving past, panned to where the pin was tapped. */
-    whoosh(clientX) {
+    whoosh(clientX, clientY) {
         if (!canPlay() || throttled('whoosh', 300)) return;
+        const place = positional(clientX, clientY);
         const ctx = state.ctx;
         const t0 = ctx.currentTime;
         const source = ctx.createBufferSource();
@@ -973,13 +1027,13 @@ export const audio = {
         filter.type = 'bandpass';
         filter.Q.value = 1.4;
         filter.frequency.setValueAtTime(400, t0);
-        filter.frequency.exponentialRampToValueAtTime(2600, t0 + 0.3);
+        filter.frequency.exponentialRampToValueAtTime(2600 * place.bright, t0 + 0.3);
         filter.frequency.exponentialRampToValueAtTime(500, t0 + 0.7);
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(0.0001, t0);
-        gain.gain.exponentialRampToValueAtTime(0.16, t0 + 0.28);
+        gain.gain.exponentialRampToValueAtTime(0.16 * place.gain, t0 + 0.28);
         gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
-        const output = makeOutput(panForClientX(clientX ?? window.innerWidth / 2), 0.3);
+        const output = makeOutput(place.pan, 0.3 + place.send);
         source.connect(filter);
         filter.connect(gain);
         gain.connect(output.node);
@@ -1080,13 +1134,14 @@ export const audio = {
      * A map pin landing: a pluck panned to where it fell. Pitch climbs with the order the pins
      * land in; a drawn (scored) pin rings brighter than an undrawn one.
      */
-    pinDrop(clientX, rank, score) {
+    pinDrop(clientX, rank, score, clientY) {
         if (!canPlay() || throttled(`pin${rank}`, 80)) return;
-        const pan = panForClientX(clientX);
+        // Placed in the scene: a pin at the map's edge lands further away than one in the middle.
+        const { pan, gain, send, bright } = positional(clientX, clientY);
         const scored = typeof score === 'number';
-        const freq = PENTATONIC[rank % PENTATONIC.length] * (rank >= PENTATONIC.length ? 2 : 1) / 2;
-        voice({ type: scored ? 'triangle' : 'sine', freq, attack: 0.002, decay: scored ? 0.22 : 0.12, peak: scored ? 0.14 : 0.08, pan, send: 0.2 });
-        noise({ duration: 0.035, peak: 0.08, filterHz: 700, pan, send: 0.05 });
+        const freq = PENTATONIC[rank % PENTATONIC.length] * (rank >= PENTATONIC.length ? 2 : 1) / 2 * bright;
+        voice({ type: scored ? 'triangle' : 'sine', freq, attack: 0.002, decay: scored ? 0.22 : 0.12, peak: (scored ? 0.14 : 0.08) * gain, pan, send: 0.2 + send });
+        noise({ duration: 0.035, peak: 0.08 * gain, filterHz: 700 * bright, pan, send: 0.05 + send });
     },
 
     /** Ink thrown off the rubber stamp: a wet splat, then droplets pattering down around it. */

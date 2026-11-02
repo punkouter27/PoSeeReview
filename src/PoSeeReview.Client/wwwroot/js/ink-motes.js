@@ -22,6 +22,7 @@ struct Params {
     pointer: vec2f, count: u32, size: f32,
     color: vec4f,
     resolution: vec2f, pad: vec2f,
+    burst: vec4f,
 };
 @group(0) @binding(0) var<storage, read_write> motes: array<Mote>;
 @group(0) @binding(1) var<uniform> params: Params;
@@ -62,6 +63,11 @@ fn advance(@builtin(global_invocation_id) id: vec3u) {
     let r2 = dot(away, away);
     acc += away / sqrt(r2 + 1e-5) * 0.04 / (r2 + 0.004);
 
+    // The score landing: a decaying shove outward from the ring.
+    let out = (m.pos - params.burst.xy) * scale;
+    let d = length(out) + 1e-4;
+    acc += out / d * params.burst.z * 9.0 / (d + 0.08);
+
     m.vel = m.vel * exp(-2.5 * params.dt) + acc * params.dt;
     m.pos = fract(m.pos + m.vel * params.dt * 0.08 + 1.0);
     motes[i] = m;
@@ -74,6 +80,7 @@ struct Params {
     pointer: vec2f, count: u32, size: f32,
     color: vec4f,
     resolution: vec2f, pad: vec2f,
+    burst: vec4f,
 };
 @group(0) @binding(0) var<storage, read> motes: array<Mote>;
 @group(0) @binding(1) var<uniform> params: Params;
@@ -122,6 +129,14 @@ export function describe() {
     return { supported: supported(), enabled: supported() && readEnabled(), explicit: readEnabled() };
 }
 
+/** For the diagnostics readout: unsupported, idle, starting, running, or lost (last stop was a GPU fault). */
+let lastFault = false;
+export function status() {
+    if (!supported()) return 'unsupported';
+    if (!instance) return lastFault ? 'lost' : 'idle';
+    return instance.task ? 'running' : 'starting';
+}
+
 export function setEnabled(enabled) {
     try {
         localStorage.setItem(STORAGE_KEY, String(!!enabled));
@@ -138,8 +153,12 @@ function readColor() {
     return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 0.45];
 }
 
-/** Returns a handle at once (0 = not allowed here); the GPU comes up asynchronously behind it. */
-export function start(score) {
+/**
+ * Returns a handle at once (0 = not allowed here); the GPU comes up asynchronously behind it.
+ * `origin` ({x, y} in 0..1 viewport units), when given, packs a third of the motes there and
+ * throws them outward — the score ring landing.
+ */
+export function start(score, origin = null) {
     if (!supported() || !readEnabled() || !gfx.allows('full')) return 0;
     stop(instance?.handle);
 
@@ -158,6 +177,7 @@ export function start(score) {
         strange,
         count: Math.round(1200 + strange * 3600),
         pointer: [0.5, 0.5],
+        origin,
         color: readColor(),
         stopped: false,
         device: null,
@@ -176,8 +196,10 @@ export function start(score) {
         window.removeEventListener('pointermove', onPointer);
     };
 
+    lastFault = false;
     boot(self).catch((error) => {
         console.warn('[ink-motes] WebGPU unavailable', error);
+        lastFault = true;
         stop(self.handle);
     });
     return self.handle;
@@ -192,10 +214,14 @@ async function boot(self) {
         return;
     }
     self.device = device;
-    device.lost.then(() => stop(self.handle));
+    device.lost.then((info) => {
+        if (info?.reason !== 'destroyed') lastFault = true;
+        stop(self.handle);
+    });
     // Validation errors never throw; without this a broken pipeline is an invisible loop.
     device.addEventListener('uncapturederror', (event) => {
         console.warn('[ink-motes] GPU error; stopping', event.error?.message);
+        lastFault = true;
         stop(self.handle);
     });
 
@@ -205,16 +231,19 @@ async function boot(self) {
 
     const seed = new Float32Array(self.count * 4);
     for (let i = 0; i < self.count; i++) {
-        seed[i * 4] = Math.random();
-        seed[i * 4 + 1] = Math.random();
+        const near = self.origin && i % 3 === 0;
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 0.04;
+        seed[i * 4] = near ? self.origin.x + Math.cos(angle) * radius : Math.random();
+        seed[i * 4 + 1] = near ? self.origin.y + Math.sin(angle) * radius : Math.random();
     }
     const motes = device.createBuffer({ size: seed.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     device.queue.writeBuffer(motes, 0, seed);
 
-    const paramsData = new ArrayBuffer(64);
+    const paramsData = new ArrayBuffer(80);
     const f32 = new Float32Array(paramsData);
     const u32 = new Uint32Array(paramsData);
-    const params = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const params = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
     const compute = device.createComputePipeline({
         layout: 'auto',
@@ -266,6 +295,8 @@ async function boot(self) {
         f32[7] = (1.0 + self.strange * 1.2) * dpr;
         f32.set(self.color, 8);
         f32.set([width, height], 12);
+        const burst = self.origin ? Math.exp(-((now - started) / 1000) * 3.5) : 0;
+        f32.set([self.origin?.x ?? 0.5, self.origin?.y ?? 0.5, burst, 0], 16);
         device.queue.writeBuffer(params, 0, paramsData);
 
         const encoder = device.createCommandEncoder();

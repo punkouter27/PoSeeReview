@@ -11,6 +11,8 @@ namespace PoSeeReview.Client.Services;
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(NearbyRestaurantsResponse))]
 [JsonSerializable(typeof(ComicDto))]
+[JsonSerializable(typeof(AudioComicDto))]
+[JsonSerializable(typeof(AudioComicLineDto))]
 [JsonSerializable(typeof(ScoreBreakdownDto))]
 [JsonSerializable(typeof(ComicSourceDto))]
 [JsonSerializable(typeof(ComicGenerationEventDto))]

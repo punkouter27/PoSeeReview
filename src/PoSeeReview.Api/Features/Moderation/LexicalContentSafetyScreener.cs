@@ -50,7 +50,7 @@ public sealed partial class LexicalContentSafetyScreener(
     [GeneratedRegex(
         @"\b(food[\s-]?poison(ing|ed)?|salmonella|e\.?\s?coli|norovirus|rats?|roach(es)?|vermin|maggots?|" +
         @"health\s+(code|department|inspector)|shut\s+down|closed\s+by|arrested|convicted|lawsuit|sued|" +
-        @"theft|racist|racism|overdose)\b",
+        @"theft|racist|racism|overdose|rape|kill\s+(yourself|himself|herself))\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 200)]
     private static partial Regex AllegationPattern();
@@ -61,10 +61,12 @@ public sealed partial class LexicalContentSafetyScreener(
     /// Kept deliberately narrow. Every term added here is a comic the app will refuse to draw,
     /// so the bar is "there is no sentence about a restaurant where this belongs", not "this
     /// word is unpleasant" — unpleasant is the entire premise of the product.
+    /// "rape" and "kill yourself" moved to the flag list: reviews use both as hyperbole ("highway
+    /// rape" prices), so they publish and reach the owner instead of refusing the comic.
     /// </para>
     /// </summary>
     [GeneratedRegex(
-        @"\b(child\s+(porn|abuse|sexual)|underage\s+(sex|nude)|bestiality|rape|kill\s+(yourself|himself|herself)|" +
+        @"\b(child\s+(porn|abuse|sexual)|underage\s+(sex|nude)|bestiality|" +
         @"suicide\s+(method|instructions))\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 200)]

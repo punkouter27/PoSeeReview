@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using InteropException = System.Runtime.InteropServices.JavaScript.JSException;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -37,6 +38,15 @@ public enum FxWaitOutcome
     /// <summary>The page went away mid-wait.</summary>
     Abandon
 }
+
+/// <summary>The ink-motes WebGPU device, as /diagnostics shows it. Order matches fx.js MOTES_INDEX.</summary>
+public enum FxGpuState { Unsupported, Idle, Starting, Running, Lost }
+
+/// <summary>One frame-budget sample from gfx-core.js, read over [JSImport] into a span.</summary>
+public readonly record struct FxFrameStats(
+    double Fps, double FrameMs, double CpuMs, double WorstFrameMs,
+    int DroppedFrames, int SampledFrames, int ActiveTasks,
+    FxTier Tier, bool AutoDowngraded, FxGpuState Gpu);
 
 /// <param name="Supported">Whether the underlying API exists on this device at all.</param>
 /// <param name="Enabled">Whether it is actually active right now.</param>
@@ -175,7 +185,60 @@ public sealed class FxService(IJSRuntime js)
     /// handler already receives <see cref="Microsoft.AspNetCore.Components.Web.MouseEventArgs"/>,
     /// so no per-item <see cref="ElementReference"/> is needed.
     /// </summary>
-    public Task PlayTapAtAsync(double clientX) => SafeVoidAsync("poseeFx.playTapAt", clientX);
+    public Task PlayTapAtAsync(double clientX)
+    {
+        // [JSImport] when bound: one number across, no JSON. Same never-throw rule as SafeAsync.
+        if (OperatingSystem.IsBrowser() && FxInterop.Ready)
+        {
+            try
+            {
+                FxInterop.TapAt(clientX);
+                return Task.CompletedTask;
+            }
+            catch (InteropException) { }
+        }
+
+        BindInterop();
+        return SafeVoidAsync("poseeFx.playTapAt", clientX);
+    }
+
+    /// <summary>Starts the [JSImport] bind in the background; the IJSRuntime path serves until it lands.</summary>
+    private static void BindInterop()
+    {
+        if (OperatingSystem.IsBrowser())
+        {
+            _ = FxInterop.EnsureAsync();
+        }
+    }
+
+    /// <summary>
+    /// The frame-budget readout, written by JS straight into a stack buffer (no JSON). Null until
+    /// the [JSImport] binding is up, or off the browser.
+    /// </summary>
+    public FxFrameStats? ReadFrameStats()
+    {
+        if (!OperatingSystem.IsBrowser() || !FxInterop.Ready)
+        {
+            BindInterop();
+            return null;
+        }
+
+        Span<double> v = stackalloc double[FxInterop.StatCount];
+        int written;
+        try
+        {
+            written = FxInterop.FillStats(v);
+        }
+        catch (InteropException)
+        {
+            return null;
+        }
+
+        return written < FxInterop.StatCount ? null : new FxFrameStats(
+            v[0], v[1], v[2], v[3], (int)v[4], (int)v[5], (int)v[6],
+            (FxTier)(int)v[7], v[8] > 0, (FxGpuState)(int)v[9]);
+    }
+
     /// <summary>
     /// A search leaving — location request or text search. A ping and a delayed, quieter echo of
     /// it: the gap is what distinguishes "a request is outstanding" from "a button was pressed",
@@ -203,8 +266,21 @@ public sealed class FxService(IJSRuntime js)
     /// consequences, and until now they made exactly the same click.
     /// </para>
     /// </summary>
-    public Task PlayTapAtAsync(double clientX, bool cached) =>
-        SafeVoidAsync("poseeFx.playTapCached", clientX, cached);
+    public Task PlayTapAtAsync(double clientX, bool cached)
+    {
+        if (OperatingSystem.IsBrowser() && FxInterop.Ready)
+        {
+            try
+            {
+                FxInterop.TapCached(clientX, cached);
+                return Task.CompletedTask;
+            }
+            catch (InteropException) { }
+        }
+
+        BindInterop();
+        return SafeVoidAsync("poseeFx.playTapCached", clientX, cached);
+    }
 
     public Task PlayShareStingerAsync() => SafeVoidAsync("poseeFx.playShareStinger");
     public Task PlayErrorAsync() => SafeVoidAsync("poseeFx.playError");

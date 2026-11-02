@@ -139,6 +139,31 @@ public class ApiClient
         return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.ComicDto, cancellationToken);
     }
 
+    /// <summary>The comic's audio, if it has been recorded already (free). Null on a 404.</summary>
+    public async Task<AudioComicDto?> GetAudioComicAsync(string placeId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.GetAsync($"/api/comics/{placeId}/audio", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, "Audio lookup failed", cancellationToken);
+        return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.AudioComicDto, cancellationToken);
+    }
+
+    /// <summary>
+    /// Records the comic's audio (paid, a few seconds). A refusal surfaces with its reason: the
+    /// owner wants every refusal visible.
+    /// </summary>
+    public async Task<AudioComicDto> RecordAudioComicAsync(string placeId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync($"/api/comics/{placeId}/audio", null, cancellationToken);
+        await EnsureSuccessAsync(response, "Recording the audio failed", cancellationToken, "Please try again in a moment.");
+        return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.AudioComicDto, cancellationToken)
+            ?? throw new InvalidOperationException("Audio response was null");
+    }
+
     /// <summary>
     /// Searches for restaurants by location query (city name or ZIP code).
     /// </summary>

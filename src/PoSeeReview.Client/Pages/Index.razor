@@ -197,6 +197,7 @@
                card is the same card the list shows, so the tap that opens (or pays for) a comic is
                still the card's own button. The picked place moves to the top of the cards. *@
             <div class="discovery-split">
+                <SectionBoundary Message="The map couldn't be shown.">
                 <MapView Pins="@MapPins" SelectedId="@_selectedPlaceId" Label="Restaurants on a map"
                          Origin="@_me" KeepCamera="@_keepCamera"
                          OnSelect="SelectPlace" OnAreaMoved="AreaMovedAsync"
@@ -218,6 +219,7 @@
                         }
                     </Overlay>
                 </MapView>
+                </SectionBoundary>
                 <section class="results-pane" aria-labelledby="pane-title">
                     <div class="nearest-head">
                         <h2 id="pane-title" class="comic-rows-heading">@PaneTitle</h2>

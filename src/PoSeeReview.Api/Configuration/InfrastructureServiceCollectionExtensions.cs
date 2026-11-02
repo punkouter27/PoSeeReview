@@ -217,6 +217,9 @@ public static class InfrastructureServiceCollectionExtensions
         // given a few seconds and then the lexical verdict stands.
         services.AddHttpClient(AzureContentSafetyScreener.HttpClientName)
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(4));
+        services.AddSingleton<OwnerAlerts>();
+        services.AddHttpClient(OwnerAlerts.HttpClientName)
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(5));
         services.AddScoped<ModerationTriageService>();
         services.AddScoped<IAnalysisRepository, AnalysisRepository>();
         services.AddModerationAuthorization(configuration);
@@ -321,6 +324,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IComicTextOverlayService, ComicTextOverlayService>();
         services.AddScoped<ShareCardService>();
         services.AddScoped<IComicGenerationService, ComicGenerationService>();
+        services.AddScoped<AudioComicService>();
+        // One attempt per line, no resilience handler: a re-sent speech request is billed again.
+        services.AddHttpClient(AudioComicService.HttpClientName)
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(45));
         services.AddScoped<ILiveComicLookup, LiveComicLookup>();
         services.AddScoped<ILeaderboardService, LeaderboardService>();
 

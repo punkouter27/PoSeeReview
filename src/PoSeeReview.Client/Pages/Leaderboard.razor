@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject FxService Fx
 @inject BoardMemoryService BoardMemory
+@inject IJSRuntime JS
 
 <PageTitle>Hall of Fame - PoSeeReview</PageTitle>
 
@@ -21,15 +22,30 @@
            Class="leaderboard-container">
 
     <Header>
-        @* The live list is the page; the archive and the map are side trips from the links under
-           it, so the header only offers the way back. No refresh button: the board re-reads itself
-           every 60 seconds. *@
-        @if (!IsView(BoardScope.Live, BoardLayout.List))
-        {
-            <button type="button" class="chip-toggle" @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.List)">
-                <span aria-hidden="true">←</span> Right now
-            </button>
-        }
+        @* Every view of the board behind one control: a native popover that slides in from the
+           side on a desktop and rises as a bottom sheet on a phone (.popover-menu--drawer). Each
+           item also closes it (popovertargetaction="hide"). No refresh button: the board re-reads
+           itself every 60 seconds. *@
+        <button type="button" class="chip-toggle board-views-toggle" popovertarget="board-views"
+                aria-label="@($"Board view: {CurrentViewLabel}. Change view")">
+            <span aria-hidden="true">☰</span> @CurrentViewLabel
+        </button>
+        <div id="board-views" class="popover-menu popover-menu--drawer" popover>
+            <p class="popover-menu-title">Show the board</p>
+            @foreach (var (scope, layout, label, icon) in Views)
+            {
+                if (layout == BoardLayout.Map && (BoardPins.Count == 0 || _mapUnavailable))
+                {
+                    continue;
+                }
+                <button type="button" class="popover-menu-item@(IsView(scope, layout) ? " active" : "")"
+                        aria-current="@(IsView(scope, layout) ? "true" : null)"
+                        popovertarget="board-views" popovertargetaction="hide"
+                        @onclick="() => ShowAsync(scope, layout)">
+                    <span aria-hidden="true">@icon</span> @label
+                </button>
+            }
+        </div>
     </Header>
 
     <ChildContent>
@@ -37,6 +53,7 @@
        change. aria-busy stays; the short status line below is what gets announced. *@
     <p class="visually-hidden" role="status">@_boardStatus</p>
     <div id="@LeaderboardResultsId" aria-busy="@(isLoading ? "true" : "false")">
+    <SectionBoundary Message="The board couldn't be shown.">
     @if (isLoading && (_scope == BoardScope.Weekly
                        ? _archive is null
                        : leaderboardEntries == null || leaderboardEntries.Count == 0))
@@ -164,18 +181,16 @@
             }
         </ol>
     }
-    @* Under the live list even when it is empty: the archive outlives the comics on the board. *@
-    @if (IsView(BoardScope.Live, BoardLayout.List) && !isLoading && errorMessage is null)
+    </SectionBoundary>
+    @* Long lists only: the archive's weeks, or a live board past one screen of rows. *@
+    @if (!isLoading && errorMessage is null && _layout == BoardLayout.List
+         && (_scope == BoardScope.Weekly ? _archive is { Weeks.Count: > 0 } : leaderboardEntries is { Count: > LongBoard }))
     {
-        <nav class="board-more" aria-label="More of the Hall of Fame">
-            <button type="button" class="link-button" @onclick="() => ShowAsync(BoardScope.Weekly, BoardLayout.List)">Past weeks</button>
-            @* Only once some entry carries coordinates: rows written before they were stored have
-               none, and a map of nothing is a broken-looking page. *@
-            @if (BoardPins.Count > 0 && !_mapUnavailable)
-            {
-                <button type="button" class="link-button" @onclick="() => ShowAsync(BoardScope.Live, BoardLayout.Map)">See them on a map</button>
-            }
-        </nav>
+        <div class="board-more">
+            <button type="button" class="link-button" @onclick="BackToTopAsync">
+                <span aria-hidden="true">↑</span> Back to top
+            </button>
+        </div>
     }
     </div>
     </ChildContent>
@@ -205,6 +220,31 @@
     private BoardLayout _layout = BoardLayout.List;
     private string? _selectedPlaceId;
     private bool _mapUnavailable;
+
+    /// <summary>The views the drawer offers, in order. The map is skipped when no row has coordinates.</summary>
+    private static readonly (BoardScope Scope, BoardLayout Layout, string Label, string Icon)[] Views =
+    [
+        (BoardScope.Live, BoardLayout.List, "Right now", "🔥"),
+        (BoardScope.Weekly, BoardLayout.List, "Past weeks", "📚"),
+        (BoardScope.Live, BoardLayout.Map, "On a map", "🗺️"),
+    ];
+
+    private string CurrentViewLabel => Views.FirstOrDefault(v => IsView(v.Scope, v.Layout)).Label ?? Views[0].Label;
+
+    /// <summary>A live board longer than this gets a Back to top at its foot.</summary>
+    private const int LongBoard = 5;
+
+    private async Task BackToTopAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("scrollTo", 0, 0);
+        }
+        catch (JSException)
+        {
+            // Scrolling is a convenience; the page is still usable where it is.
+        }
+    }
 
     /// <summary>Live entries that carry a location; the pin shows the score, the label the rank too.</summary>
     private List<MapPin> BoardPins =>

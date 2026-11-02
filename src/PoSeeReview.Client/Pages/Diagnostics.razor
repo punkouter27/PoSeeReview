@@ -29,7 +29,7 @@ else
     <ChildContent>
     @* One tab strip instead of five stacked sections: on a phone the page was 2.3 screens of
        collapsed and expanded panels. Client render mode keeps every tab in the DOM, so a hidden
-       tab still answers a selector. Frame-budget numbers are in the console: poseeFx.stats(). *@
+       tab still answers a selector. The Graphics tab is the live frame budget (FrameBudget). *@
     <RadzenScope>
         <RadzenTabs RenderMode="TabRenderMode.Client" class="diagnostics-tabs">
             <Tabs>
@@ -126,6 +126,9 @@ else
                     </div>
                     </RadzenTabsItem>
                 }
+                <RadzenTabsItem Text="Graphics">
+                    <FrameBudget />
+                </RadzenTabsItem>
             </Tabs>
         </RadzenTabs>
     </RadzenScope>

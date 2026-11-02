@@ -129,6 +129,7 @@ const DROP_STAGGER_MS = 40;
 const DROP_MAX_MS = 900;
 const DROP_LAND_MS = 690;   // the 350ms lead plus the first touchdown in map-pin-drop
 const VOICED_PINS = 8;
+const HALFTONE_BELOW_ZOOM = 11;
 
 function dropPins(entry, pins) {
     if (!gfx.allows('full') || reducedMotion() || pins.length === 0) return;
@@ -149,7 +150,7 @@ function dropPins(entry, pins) {
             setTimeout(() => {
                 if (!face.isConnected) return;
                 const rect = face.getBoundingClientRect();
-                window.poseeFx?.playPinDrop?.(rect.left + rect.width / 2, rank, pin.score);
+                window.poseeFx?.playPinDrop?.(rect.left + rect.width / 2, rank, pin.score, rect.top + rect.height / 2);
             }, delay + DROP_LAND_MS);
         });
 }
@@ -166,7 +167,7 @@ function flyToPin(entry, pin, el, event) {
             return;
         }
         const rect = el.getBoundingClientRect();
-        window.poseeFx?.playMapFly?.(event.clientX || rect.left + rect.width / 2);
+        window.poseeFx?.playMapFly?.(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
         entry.map.flyTo({ center, zoom, curve: 1.6, speed: 1.3, essential: true });
     } catch {
         // The selection already happened; a camera that cannot move is not an error.
@@ -215,6 +216,10 @@ function frame(entry, pins) {
 // the code makes — fitBounds, jumpTo — carry no originalEvent; drags, wheel, keyboard and the
 // zoom buttons all do.
 function watchUserMoves(entry) {
+    // Zoomed out past street level the pins print as halftone newsprint (app.css).
+    const markZoom = () => entry.map.getContainer().toggleAttribute('data-halftone', entry.map.getZoom() < HALFTONE_BELOW_ZOOM);
+    markZoom();
+    entry.map.on('zoomend', markZoom);
     entry.map.on('movestart', (event) => {
         if (event.originalEvent) entry.userMoving = true;
     });

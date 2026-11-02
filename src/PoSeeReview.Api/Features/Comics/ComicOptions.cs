@@ -50,4 +50,31 @@ public class ComicOptions
     /// </para>
     /// </summary>
     public int PromptVersion { get; set; } = 1;
+
+    /// <summary>
+    /// What happens to review text before the scorer sees it. <see cref="ReviewFilter.None"/>
+    /// (the default): the reviews go in as written, swearing and all — the owner wants the app
+    /// as uncensored as it can be, and anything a model then refuses is reported, not hidden.
+    /// </summary>
+    public ReviewFilter ReviewFilter { get; set; } = ReviewFilter.None;
+
+    /// <summary>
+    /// Swap image-filter trigger words ("blood", "rats", "drugs") for "unusual" before the image
+    /// call. Off by default: the scene is drawn as written, and a refusal is shown to the user
+    /// and pushed to the owner. On, every swap is still pushed to the owner.
+    /// </summary>
+    public bool BluntImagePrompts { get; set; }
+}
+
+/// <summary>How much of a review is kept from the scorer.</summary>
+public enum ReviewFilter
+{
+    /// <summary>As written.</summary>
+    None,
+
+    /// <summary>Profanity becomes "[bleep]"; nothing is dropped.</summary>
+    Mask,
+
+    /// <summary>Profanity masked, and a review with an explicit term is dropped (the old behaviour).</summary>
+    Strict
 }

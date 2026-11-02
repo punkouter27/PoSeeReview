@@ -141,3 +141,66 @@
 .moderation-triage-concerns {
     padding-inline-start: var(--space-md);
 }
+
+/* Cards under 48rem, the grid above it: both are rendered (see the markup), CSS picks one. */
+.moderation-cards {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+@media (max-width: 48rem) {
+    .moderation-cards {
+        display: grid;
+        gap: var(--space-sm);
+    }
+
+    .moderation-grid {
+        display: none;
+    }
+}
+
+.moderation-card {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: var(--space-md);
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+}
+
+.moderation-card[data-reviewed] {
+    opacity: 0.72;
+}
+
+.moderation-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2xs);
+}
+
+.moderation-card-badges {
+    display: flex;
+    gap: var(--space-3xs);
+}
+
+.moderation-card-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2xs) var(--space-sm);
+    margin: var(--space-2xs) 0;
+}
+
+.moderation-card-facts dt {
+    font-size: var(--text-2xs);
+    color: var(--color-text-muted);
+}
+
+.moderation-card-facts dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+}

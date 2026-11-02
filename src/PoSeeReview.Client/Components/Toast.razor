@@ -1,9 +1,16 @@
 @* Always mounted (MainLayout), so the live region exists before its text arrives — a status
-   region inserted together with its message is not reliably announced. *@
+   region inserted together with its message is not reliably announced. The Undo button sits
+   outside the live region so it is not read out as part of every message. *@
 @implements IDisposable
 @inject ToastService Toasts
 
-<div class="toast" role="status">@Toasts.Message</div>
+<div class="toast@(Toasts.Message is null ? "" : " toast--open")">
+    <span role="status">@Toasts.Message</span>
+    @if (Toasts.CanUndo)
+    {
+        <button type="button" class="toast-action" @onclick="Toasts.Undo">Undo</button>
+    }
+</div>
 
 @code {
     protected override void OnInitialized() => Toasts.Changed += OnChanged;

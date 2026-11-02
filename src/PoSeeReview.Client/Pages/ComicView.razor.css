@@ -72,6 +72,7 @@
     }
 
     .comic-container ::deep .comic-actions,
+    .comic-container ::deep .audio-comic,
     .comic-narrative,
     .comic-disclosure {
         grid-column: 2;
@@ -318,4 +319,41 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+/* ── Cache-read skeleton: the page's own geometry in placeholder blocks ───────────────────── */
+.comic-skeleton {
+    animation: none;
+}
+
+.comic-skeleton-back {
+    display: block;
+    width: 13rem;
+    height: var(--tap-target);
+    border-radius: var(--radius-pill);
+}
+
+.comic-skeleton-title {
+    width: 70%;
+    height: 2rem;
+}
+
+.comic-skeleton-ring {
+    width: clamp(80px, 14vw, 110px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+}
+
+.comic-skeleton-strip {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius-card);
+}
+
+@media (min-width: 64rem) {
+    .comic-skeleton-strip {
+        grid-column: 1;
+        grid-row: 1 / -1;
+        max-height: calc(100dvh - 12rem);
+    }
 }

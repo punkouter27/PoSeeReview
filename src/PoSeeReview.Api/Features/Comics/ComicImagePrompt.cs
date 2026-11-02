@@ -16,7 +16,8 @@ internal static partial class ComicImagePrompt
 {
     /// <summary>
     /// Terms the image safety filters reject. The analysis prompt already asks for scenes in
-    /// cartoon terms, so this is the backstop, not the plan: every hit is reported by the caller.
+    /// cartoon terms, and the swap is opt-in (Comics:BluntImagePrompts): by default the scene is
+    /// drawn as written and a refusal is reported instead. Every swap that does happen is reported.
     /// <para>
     /// Whole words with their inflections spelled out. A trailing <c>\w*</c> used to turn
     /// "ratatouille", "rating", "rather", "diet" and "method" into "unusual".
@@ -32,16 +33,15 @@ internal static partial class ComicImagePrompt
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex FlaggedTermRegex();
 
-    /// <summary>Builds the prompt, blunting flagged terms, and reports which ones it blunted.</summary>
+    /// <summary>Builds the prompt from the scenes as given (blunting, when wanted, is <see cref="Blunt(IReadOnlyList{string})"/> first).</summary>
     /// <param name="filmStills">
     /// For FLUX: to it "comic strip" means speech balloons, which it fills with misspelled
     /// lettering whatever the rest of the prompt says. Framed as stills from a silent cartoon,
     /// with closed mouths and bare walls, it draws none.
     /// </param>
-    public static (string Prompt, List<string> BluntedTerms) Build(IReadOnlyList<string> scenes, bool filmStills = false)
+    public static string Build(IReadOnlyList<string> scenes, bool filmStills = false)
     {
-        var blunted = new List<string>();
-        var breakdown = string.Join("\n", scenes.Select((scene, i) => $"{i + 1}. {Blunt(scene, blunted)}"));
+        var breakdown = string.Join("\n", scenes.Select((scene, i) => $"{i + 1}. {scene}"));
         var panelCount = scenes.Count;
 
         if (filmStills)
@@ -50,7 +50,7 @@ internal static partial class ComicImagePrompt
                 ? "One wide landscape cartoon illustration, like a still frame from a silent animated short film."
                 : "Two stacked landscape cartoon illustrations, like two still frames from a silent animated short film, separated by a thick black border. The same characters, with matching outfits and visual traits, appear in both frames.";
 
-            return ($"""
+            return $"""
 {frames}
 
 Draw each frame exactly as described:
@@ -62,7 +62,7 @@ Visual style:
 - Characters react with closed-mouth expressions, eye-rolls, shrugs and pointing; nobody is talking
 - Bare walls in plain solid colors; signs, menus and posters are blank colored shapes
 - Clean empty background space above the characters' heads
-""", blunted);
+""";
         }
 
         var panelLayout = panelCount == 1
@@ -91,7 +91,17 @@ Visual style:
 - Wordless, silent, pantomime scenes throughout
 """;
 
-        return (prompt, blunted);
+        return prompt;
+    }
+
+    /// <summary>
+    /// The scenes with every image-filter trigger word swapped for "unusual", and which words
+    /// went. Only used when <c>Comics:BluntImagePrompts</c> is on; the caller reports every swap.
+    /// </summary>
+    public static (IReadOnlyList<string> Scenes, List<string> Terms) Blunt(IReadOnlyList<string> scenes)
+    {
+        var terms = new List<string>();
+        return ([.. scenes.Select(scene => Blunt(scene, terms))], terms);
     }
 
     private static string Blunt(string text, List<string> blunted) =>

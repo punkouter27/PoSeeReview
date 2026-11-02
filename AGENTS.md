@@ -49,12 +49,14 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
 
 - **Screenshot UI changes, before and after.** When a change touches the UI, capture the old and
   new states, annotate what changed, and save it as one self-contained page:
-  `SCREENSHOTS/YYMMDD-feature-name.html` (today's date, kebab-case feature). Give the full,
-  absolute path to that file in the reply. The folder is gitignored (the pages embed their images,
-  and committing them grew the repo by megabytes per change): they are local review aids.
+  `SCREENSHOTS/YYMMDD-feature-name.html` (today's date, kebab-case feature), plus a single
+  annotated PNG beside it (`SCREENSHOTS/YYMMDD-feature-name.png`) showing before and after side by
+  side with the notes drawn on. Give the full, absolute paths to both files in the reply. The
+  folder is gitignored (the pages embed their images, and committing them grew the repo by
+  megabytes per change): they are local review aids.
 - **Call out big deletions.** If a prompt's changes remove more than 100 lines of code overall
   (net), say so in the reply.
-- **TL;DR any answer over 100 words** with a concise ~20-word summary at the end.
+- **TL;DR any answer over 100 words** with a recap of under 20 words at the very end.
 - **3-tier diff summary for any code change over 20 lines.** Append exactly three lines, one per
   tier:
   1. **Toddler:** one sentence of simple, conceptual intuition.

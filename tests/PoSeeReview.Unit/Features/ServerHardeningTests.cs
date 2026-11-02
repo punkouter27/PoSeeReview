@@ -33,13 +33,19 @@ public sealed class ServerHardeningTests
     }
 
     [Fact]
-    public void ImagePrompt_BluntsWholeWordsOnly()
+    public void ImagePrompt_BluntsWholeWordsOnly_AndOnlyWhenAsked()
     {
-        var (prompt, blunted) = ComicImagePrompt.Build(
+        string[] scenes =
         [
             "A chef rates the ratatouille by a rather odd method, mid diet.",
             "A cartoon rat is killed by rats."
-        ]);
+        ];
+
+        // Drawn as written by default.
+        Assert.Contains("A cartoon rat is killed by rats.", ComicImagePrompt.Build(scenes), StringComparison.Ordinal);
+
+        var (softened, blunted) = ComicImagePrompt.Blunt(scenes);
+        var prompt = ComicImagePrompt.Build(softened);
 
         foreach (var innocent in new[] { "rates", "ratatouille", "rather", "method", "diet" })
         {

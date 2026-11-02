@@ -75,9 +75,11 @@ public sealed class AzureContentSafetyScreener(
     {
         int Of(string category) => severities.TryGetValue(category, out var s) ? s : 0;
 
+        // Only the top severity (6) refuses; everything from 4 publishes and reaches the owner.
+        // The owner wants the app as uncensored as possible and told about every call it makes.
         foreach (var category in new[] { "Sexual", "Hate", "SelfHarm" })
         {
-            if (Of(category) >= 4)
+            if (Of(category) >= 6)
             {
                 return new ContentScreenResult(ContentScreenOutcome.Block, $"cs-{category.ToLowerInvariant()}");
             }
@@ -85,7 +87,7 @@ public sealed class AzureContentSafetyScreener(
 
         foreach (var category in new[] { "Sexual", "Hate", "SelfHarm" })
         {
-            if (Of(category) >= 2)
+            if (Of(category) >= 4)
             {
                 return new ContentScreenResult(ContentScreenOutcome.Flag, $"cs-{category.ToLowerInvariant()}");
             }

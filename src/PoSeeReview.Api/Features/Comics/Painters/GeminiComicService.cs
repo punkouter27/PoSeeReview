@@ -69,19 +69,7 @@ public sealed class GeminiComicService : IImageGenerationService
             throw new ArgumentException("Panel count must be 1 or 2", nameof(panelScenes));
 
         var stopwatch = Stopwatch.StartNew();
-        var (prompt, bluntedTerms) = ComicImagePrompt.Build(panelScenes);
-
-        if (bluntedTerms.Count > 0)
-        {
-            // Recorded rather than silent. Blunting stays because the alternative is a refusal on
-            // the one-star reviews this product exists to mine, but a rewrite should be visible:
-            // "rat" becoming "unusual" changes what the artwork depicts, and a counter is the
-            // only way to notice that it is happening often enough to matter.
-            _telemetryClient.GetMetric("Gemini.Image.PromptTermsBlunted").TrackValue(bluntedTerms.Count);
-            _logger.LogInformation(
-                "Blunted {Count} term(s) the image safety filter rejects: {Terms}",
-                bluntedTerms.Count, string.Join(", ", bluntedTerms));
-        }
+        var prompt = ComicImagePrompt.Build(panelScenes);
 
         // One attempt. The "GeminiApi" HttpClient carries a timeout and nothing else: a re-sent
         // image POST can be billed again, so a slow or failed call is surfaced, never retried.
@@ -138,6 +126,11 @@ public sealed class GeminiComicService : IImageGenerationService
             {
                 new { role = "user", parts = new[] { new { text = prompt } } }
             },
+            // The adjustable filters all the way open: the owner wants the comic drawn as the
+            // reviews describe it. Google's fixed image-safety check still applies; when it
+            // refuses, the refusal is shown and reported (ImageDeclinedException), never hidden.
+            safetySettings = new[] { "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT" }
+                .Select(category => new { category, threshold = "BLOCK_NONE" }),
             generationConfig = new
             {
                 // Without this the model may answer with prose about the picture it would draw.

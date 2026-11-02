@@ -17,7 +17,8 @@ public sealed class ModerationRepository(
     IOptions<AzureStorageOptions> storageOptions,
     IOptions<ModerationOptions> moderationOptions,
     TimeProvider timeProvider,
-    ILogger<ModerationRepository> logger) : IContentModerationGate
+    ILogger<ModerationRepository> logger,
+    OwnerAlerts? alerts = null) : IContentModerationGate
 {
     private readonly TableClient _table =
         tableServiceClient.GetTableClient(storageOptions.Value.ModerationTableName);
@@ -77,6 +78,7 @@ public sealed class ModerationRepository(
             logger.LogWarning(
                 "Auto-hid {PlaceId} after {Count} distinct reports (threshold {Threshold})",
                 placeId, distinctReporters, threshold);
+            alerts?.Send("Comic auto-hidden", $"{distinctReporters} people reported it. Hidden until you review it.", placeId, urgent: true);
         }
 
         return shouldHide;
@@ -117,7 +119,19 @@ public sealed class ModerationRepository(
         }, cancellationToken);
 
         logger.LogInformation("Flagged {PlaceId} for review ({Category})", placeId, category);
+
+        // Sent even when the row was already on the queue: each refusal or edit is its own event.
+        var (title, urgent) = category switch
+        {
+            _ when category.StartsWith(ModerationCategories.Blocked, StringComparison.Ordinal) => ("Comic blocked by the content screen", true),
+            _ when category.StartsWith(ModerationCategories.ImageDeclined, StringComparison.Ordinal) => ("Image model refused to draw a comic", true),
+            _ when category.StartsWith(ModerationCategories.PromptSoftened, StringComparison.Ordinal) => ("Image prompt softened", false),
+            _ when category.StartsWith(ModerationCategories.VoiceDeclined, StringComparison.Ordinal) => ("Voice model refused part of an audio comic", true),
+            _ => ("Comic flagged (published)", false)
+        };
+        alerts?.Send(title, category, placeId, urgent);
     }
+
 
     /// <summary>
     /// Applies a moderator's decision. <paramref name="hidden"/> and <paramref name="suppressed"/>

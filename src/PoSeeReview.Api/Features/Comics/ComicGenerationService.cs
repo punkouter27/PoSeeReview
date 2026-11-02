@@ -173,9 +173,9 @@ public partial class ComicGenerationService : IComicGenerationService
             prioritizedReviews.Count(r => r.Rating == 2),
             prioritizedReviews.Count(r => r.Rating > 2));
 
-        // Filter inappropriate content. Ratings travel with the text so a panel's cited review
-        // number can be turned back into a star rating.
-        var filteredReviews = PrepareReviews(prioritizedReviews.Where(r => !string.IsNullOrWhiteSpace(r.Text)));
+        // Filtered only as far as Comics:ReviewFilter says (as written, by default). Ratings travel
+        // with the text so a panel's cited review number can be turned back into a star rating.
+        var filteredReviews = PrepareReviews(prioritizedReviews.Where(r => !string.IsNullOrWhiteSpace(r.Text)), _options.ReviewFilter);
         if (filteredReviews.Count < _options.MinimumReviewsRequired)
         {
             _logger.LogWarning("Insufficient appropriate reviews after filtering for placeId: {PlaceId}", placeId);
@@ -239,6 +239,9 @@ public partial class ComicGenerationService : IComicGenerationService
             _logger.LogWarning("Content screen blocked the narrative for placeId {PlaceId} ({Category})",
                 placeId, screen.Category);
             _telemetryClient.GetMetric("Comics.ContentBlocked").TrackValue(1);
+            // On the queue and on the owner's phone: a block is censorship, and is never silent.
+            await _moderationGate.FlagForReviewAsync(placeId,
+                ModerationCategories.Describe(ModerationCategories.Blocked, screen.Category ?? "unknown"), cancellationToken);
             throw new ContentBlockedException(screen.Category ?? "unknown");
         }
 
@@ -254,10 +257,24 @@ public partial class ComicGenerationService : IComicGenerationService
         // Generate comic image (panel count capped at 2)
         progress?.Report(new ComicGenerationProgress(ComicGenerationPhase.GeneratingArtwork, strangenessScore, captions));
         var imageStopwatch = Stopwatch.StartNew();
+        // Drawn as written unless Comics:BluntImagePrompts is on; then every swapped word is
+        // reported to the owner. The stored scenes stay as written either way.
+        IReadOnlyList<string> paintedScenes = scenes;
+        if (_options.BluntImagePrompts)
+        {
+            (paintedScenes, var softened) = ComicImagePrompt.Blunt(scenes);
+            if (softened.Count > 0)
+            {
+                _telemetryClient.GetMetric("Comics.Image.PromptTermsBlunted").TrackValue(softened.Count);
+                await _moderationGate.FlagForReviewAsync(placeId,
+                    ModerationCategories.Describe(ModerationCategories.PromptSoftened, string.Join(", ", softened)), cancellationToken);
+            }
+        }
+
         byte[] imageBytes;
         try
         {
-            imageBytes = await _imageGenerationService.GenerateComicImageAsync(scenes, cancellationToken);
+            imageBytes = await _imageGenerationService.GenerateComicImageAsync(paintedScenes, cancellationToken);
         }
         catch (ImageDeclinedException ex)
         {
@@ -267,7 +284,8 @@ public partial class ComicGenerationService : IComicGenerationService
             // fallback that answered a refusal by paying for a second image of an unrelated
             // cheerful restaurant and publishing it under these reviews' score.
             _telemetryClient.GetMetric("Comics.ImageDeclined").TrackValue(1);
-            await _moderationGate.FlagForReviewAsync(placeId, "image_declined", cancellationToken);
+            await _moderationGate.FlagForReviewAsync(placeId,
+                ModerationCategories.Describe(ModerationCategories.ImageDeclined, ex.Reason.Length > 300 ? ex.Reason[..300] : ex.Reason), cancellationToken);
             _logger.LogWarning("Image model declined to draw placeId {PlaceId}: {Reason}", placeId.Value, ex.Reason);
             throw;
         }
@@ -397,7 +415,7 @@ public partial class ComicGenerationService : IComicGenerationService
     [GeneratedRegex(
         @"\b(?:fuck|shit|ass|bitch|bastard|piss|dick)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex ProfanityRegex();
+    internal static partial Regex ProfanityRegex();
 
     /// <summary>
     /// Drops reviews with explicit content and masks profanity in the rest. Both checks run on a
@@ -406,12 +424,16 @@ public partial class ComicGenerationService : IComicGenerationService
     private static List<string> FilterInappropriateReviews(List<string> reviews) =>
         [.. reviews.Select(review => review.Normalize(System.Text.NormalizationForm.FormC)).Where(IsPublishable).Select(MaskProfanity)];
 
-    /// <summary><see cref="FilterInappropriateReviews(List{string})"/>, keeping each review's stars beside its text.</summary>
-    private static List<PreparedReview> PrepareReviews(IEnumerable<Review> reviews) =>
+    /// <summary>
+    /// The reviews as the scorer sees them, filtered to <paramref name="filter"/>: as written,
+    /// masked, or <see cref="FilterInappropriateReviews(List{string})"/>'s strict drop-and-mask.
+    /// Stars travel beside the text.
+    /// </summary>
+    private static List<PreparedReview> PrepareReviews(IEnumerable<Review> reviews, ReviewFilter filter) =>
         [.. reviews
             .Select(review => (Text: review.Text.Normalize(System.Text.NormalizationForm.FormC), review.Rating))
-            .Where(review => IsPublishable(review.Text))
-            .Select(review => new PreparedReview(MaskProfanity(review.Text), review.Rating))];
+            .Where(review => filter != ReviewFilter.Strict || IsPublishable(review.Text))
+            .Select(review => new PreparedReview(filter == ReviewFilter.None ? review.Text : MaskProfanity(review.Text), review.Rating))];
 
     private static bool IsPublishable(string review) => !ExplicitContentRegex().IsMatch(NormalizeLeetSpeak(review));
 
@@ -496,7 +518,7 @@ public partial class ComicGenerationService : IComicGenerationService
     /// Normalizes common leet-speak substitutions, strictly one character for one (see
     /// <see cref="MaskProfanity"/>). There is no rule for "*": a starred word is already masked.
     /// </summary>
-    private static string NormalizeLeetSpeak(string text)
+    internal static string NormalizeLeetSpeak(string text)
     {
         return text
             .Replace('0', 'o')

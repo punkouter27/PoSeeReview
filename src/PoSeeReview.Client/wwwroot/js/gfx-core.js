@@ -235,12 +235,13 @@ export const gfx = {
         state.reducedMotion = detectReducedMotion();
         state.webgl2 = detectWebGl2();
 
-        // 'lite' until the user opts into 'full' in /settings: the simplest app is the default.
-        // A stored preference is still overridden by an OS-level reduced-motion request and by
-        // a device with no WebGL2 — neither is a preference we are entitled to ignore.
+        // 'full' unless the user picked otherwise in /settings: the frame-budget watchdog steps a
+        // device that cannot keep up down to 'lite' on its own. A stored preference is still
+        // overridden by an OS-level reduced-motion request and by a device with no WebGL2 —
+        // neither is a preference we are entitled to ignore.
         state.tier = (state.reducedMotion || !state.webgl2)
             ? 'off'
-            : (readStoredTier() ?? 'lite');
+            : (readStoredTier() ?? 'full');
 
         return this.describe();
     },

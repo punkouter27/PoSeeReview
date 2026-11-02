@@ -51,7 +51,7 @@ public sealed class LocalImageService(
             throw new ArgumentException("Panel count must be 1 or 2", nameof(panelScenes));
 
         var settings = options.Value;
-        var (prompt, _) = ComicImagePrompt.Build(panelScenes);
+        var prompt = ComicImagePrompt.Build(panelScenes);
         var size = panelScenes.Count == 1 ? settings.LandscapeSize : string.Join('x', settings.LandscapeSize.Split('x').Reverse());
 
         var stopwatch = Stopwatch.StartNew();

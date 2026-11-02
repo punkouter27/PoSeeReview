@@ -66,3 +66,25 @@ public interface IContentModerationGate
     /// </summary>
     Task FlagForReviewAsync(PlaceId placeId, string category, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Category prefixes for <see cref="IContentModerationGate.FlagForReviewAsync"/> that mark a
+/// comic as kept off the app or edited before it got there, rather than merely flagged. The
+/// owner is alerted on every one of them.
+/// </summary>
+public static class ModerationCategories
+{
+    /// <summary>The content screen refused it before the image call. "blocked: {category}".</summary>
+    public const string Blocked = "blocked";
+
+    /// <summary>The image model refused to draw it. "image_declined: {reason}".</summary>
+    public const string ImageDeclined = "image_declined";
+
+    /// <summary>Words were swapped out of the image prompt. "prompt_softened: {terms}".</summary>
+    public const string PromptSoftened = "prompt_softened";
+
+    /// <summary>The voice model refused a line of the audio comic. "voice_declined: {reason}".</summary>
+    public const string VoiceDeclined = "voice_declined";
+
+    public static string Describe(string prefix, string detail) => $"{prefix}: {detail}";
+}

@@ -155,6 +155,29 @@ public class BlobStorageService : IBlobStorageService
         !string.IsNullOrWhiteSpace(blobUrl) && (await ResolveBlobClient(blobUrl).ExistsAsync()).Value;
 
     /// <inheritdoc />
+    public async Task UploadNamedAsync(string name, byte[] bytes, string contentType, CancellationToken cancellationToken = default)
+    {
+        var blob = _blobServiceClient.GetBlobContainerClient(_containerName).GetBlobClient(name);
+        using var stream = new MemoryStream(bytes);
+        await blob.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]?> ReadNamedAsync(string name, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var content = await _blobServiceClient.GetBlobContainerClient(_containerName).GetBlobClient(name)
+                .DownloadContentAsync(cancellationToken);
+            return content.Value.Content.ToArray();
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
     public Task<string> RefreshSasUrlAsync(string existingBlobUrl)
     {
         if (string.IsNullOrWhiteSpace(existingBlobUrl))

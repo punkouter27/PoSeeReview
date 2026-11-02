@@ -54,4 +54,10 @@ public interface IBlobStorageService
     /// </summary>
     /// <param name="blobUrl">Full URL (with or without SAS) of the blob to check</param>
     Task<bool> BlobExistsAsync(string blobUrl);
+
+    /// <summary>Writes (or overwrites) a named blob in the comics container — the audio comics.</summary>
+    Task UploadNamedAsync(string name, byte[] bytes, string contentType, CancellationToken cancellationToken = default);
+
+    /// <summary>The named blob's bytes, or null when there is none.</summary>
+    Task<byte[]?> ReadNamedAsync(string name, CancellationToken cancellationToken = default);
 }

@@ -21,7 +21,14 @@
     <ChildContent>
     @if (_entries is null)
     {
-        <LoadingIndicator Message="Loading your comics..." />
+        @* Shaped like the rows about to land, so nothing jumps when they do. *@
+        <p class="visually-hidden" role="status">Loading your comics...</p>
+        <ul class="comic-rows">
+            @for (var i = 0; i < 4; i++)
+            {
+                <ComicRow Skeleton="true" Href="" Name="" />
+            }
+        </ul>
     }
     else if (_entries.Count == 0)
     {

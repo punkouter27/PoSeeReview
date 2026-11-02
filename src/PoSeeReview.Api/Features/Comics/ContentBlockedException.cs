@@ -7,13 +7,13 @@ namespace PoSeeReview.Api.Features.Comics;
 /// refundable — the same treatment the strangeness floor gets, and for the same reason.
 /// </para>
 /// <para>
-/// The message is deliberately vague about what tripped the screen. Naming the category to an
-/// end user is a guide to rewording around it, and the screen's job is not to teach evasion.
+/// The message names the category. The owner wants every refusal visible; a vague "could not be
+/// published" hid what the screen had done.
 /// </para>
 /// </summary>
 public sealed class ContentBlockedException(string category)
-    : Exception("The story drawn from these reviews could not be published.")
+    : Exception($"The story drawn from these reviews was blocked by the content screen ({category}), so nothing was drawn.")
 {
-    /// <summary>Operator-facing label for telemetry and logs. Never sent to a client.</summary>
+    /// <summary>The screen category that refused it.</summary>
     public string Category { get; } = category;
 }

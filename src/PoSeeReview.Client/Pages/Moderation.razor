@@ -39,7 +39,14 @@
 
             @if (_queue is null)
             {
-                <LoadingIndicator Message="Loading the moderation queue..." />
+                @* Skeleton rows in the queue's shape rather than a spinner, so the list lands in place. *@
+                <p class="visually-hidden" role="status">Loading the moderation queue...</p>
+                <ul class="comic-rows">
+                    @for (var i = 0; i < 4; i++)
+                    {
+                        <ComicRow Skeleton="true" Href="" Name="" />
+                    }
+                </ul>
             }
             else if (_queue.Items.Count == 0)
             {
@@ -54,11 +61,38 @@
                     comics auto-hide at @_queue.AutoHideThreshold independent reports
                 </p>
 
-                @* A sortable grid rather than a stack of cards: an operator scans and compares many
-                   rows, which a card per item made a long scroll. Remove still names what it erases,
-                   now in a confirm dialog instead of an inline panel that pushed the row apart. *@
-                <div class="moderation-grid">
+                @* A sortable grid on a desktop, where an operator scans and compares many rows; under
+                   48rem the same queue as cards (newest first), because the grid's seven columns
+                   scrolled sideways on a phone. Both are rendered and CSS picks one; the action menu
+                   is one template (ActionsFor) keyed per layout so popover ids stay unique. Remove
+                   still names what it erases, in a confirm dialog. *@
                 <RadzenScope>
+                <ul class="moderation-cards">
+                    @foreach (var item in _queue.Items.OrderByDescending(i => i.LastReportedAt))
+                    {
+                        <li class="moderation-card" data-reviewed="@(item.IsReviewed ? "true" : null)">
+                            <div class="moderation-card-head">
+                                <span class="moderation-name">@(string.IsNullOrWhiteSpace(item.RestaurantName) ? "(comic no longer cached)" : item.RestaurantName)</span>
+                                <span class="moderation-card-badges">
+                                    <RadzenBadge BadgeStyle="@StateStyle(item)" Text="@StateText(item)" />
+                                    @if (!item.IsReviewed)
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="New" />
+                                    }
+                                </span>
+                            </div>
+                            <span class="moderation-place">@item.PlaceId</span>
+                            <dl class="moderation-card-facts">
+                                <div><dt>Reports</dt><dd>@item.ReportCount</dd></div>
+                                <div><dt>Top reason</dt><dd>@item.TopReason</dd></div>
+                                <div><dt>Last activity</dt><dd>@RelativeTime.Format(item.LastReportedAt)</dd></div>
+                                <div><dt>Comic</dt><dd>@(item.HasLiveComic ? "cached" : "expired")</dd></div>
+                            </dl>
+                            @ActionsFor(item, "card")
+                        </li>
+                    }
+                </ul>
+                <div class="moderation-grid">
                     <RadzenDataGrid TItem="ModerationItemDto" Data="@_queue.Items" class="moderation-list"
                                     AllowSorting="true" AllowPaging="true" PageSize="20" Density="Density.Compact"
                                     RowRender="@MarkReviewed" EmptyText="Nothing to review.">
@@ -89,58 +123,13 @@
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn Title="Actions" Sortable="false" MinWidth="9rem">
                                 <Template Context="item">
-                                    <div class="moderation-actions">
-                                        <RadzenButton Text="Open" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
-                                                      Click="@(() => Navigation.NavigateTo($"/comic/{item.PlaceId}"))" />
-                                        @* One overflow menu instead of five inline buttons: the row stays
-                                           compact and every action is still one tap away. *@
-                                        <button type="button" class="btn btn-secondary btn-icon moderation-menu-btn"
-                                                popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                title="More actions" aria-label="@($"More actions for {item.RestaurantName}")">
-                                            <span aria-hidden="true">⋯</span>
-                                        </button>
-                                        <div id="@($"mod-menu-{item.PlaceId}")" class="popover-menu moderation-popover" popover>
-                                            @if (item.IsHidden)
-                                            {
-                                                <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                        disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Restore)">Clear</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                        disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Hide)">Hide</button>
-                                            }
-                                            @if (!item.IsSuppressed)
-                                            {
-                                                <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                        disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Suppress)">Suppress</button>
-                                            }
-                                            @if (item.HasLiveComic)
-                                            {
-                                                <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                        disabled="@(_isBusy || _triaging is not null)"
-                                                        @onclick="() => TriageAsync(item)">@(_triaging == item.PlaceId ? "Reading…" : item.Triage is null ? "AI triage" : "Re-triage")</button>
-                                            }
-                                            @if (item.Triage is not null)
-                                            {
-                                                <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                        @onclick="() => _drawerItem = item">View triage</button>
-                                            }
-                                            <hr class="popover-menu-divider" />
-                                            <button type="button" class="popover-menu-item moderation-menu-item--danger" popovertarget="@($"mod-menu-{item.PlaceId}")"
-                                                    disabled="@_isBusy" @onclick="() => ConfirmRemoveAsync(item)">Remove</button>
-                                        </div>
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(item.Reason))
-                                    {
-                                        <p class="moderation-note">@item.Reason</p>
-                                    }
+                                    @ActionsFor(item, "grid")
                                 </Template>
                             </RadzenDataGridColumn>
                         </Columns>
                     </RadzenDataGrid>
-                </RadzenScope>
                 </div>
+                </RadzenScope>
             }
         </Authorized>
     </AuthorizeView>
@@ -261,6 +250,56 @@
             args.Attributes.Add("data-reviewed", true);
         }
     }
+
+    /// <summary>A row's Open button and action menu, shared by the grid and the cards. <paramref name="where"/> keeps the popover ids unique, since both layouts are in the DOM.</summary>
+    private RenderFragment ActionsFor(ModerationItemDto item, string where) => @<text>
+        <div class="moderation-actions">
+            <RadzenButton Text="Open" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                          Click="@(() => Navigation.NavigateTo($"/comic/{item.PlaceId}"))" />
+            @* One overflow menu instead of five inline buttons: the row stays
+               compact and every action is still one tap away. *@
+            <button type="button" class="btn btn-secondary btn-icon moderation-menu-btn"
+                    popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                    title="More actions" aria-label="@($"More actions for {item.RestaurantName}")">
+                <span aria-hidden="true">⋯</span>
+            </button>
+            <div id="@($"mod-menu-{where}-{item.PlaceId}")" class="popover-menu moderation-popover" popover>
+                @if (item.IsHidden)
+                {
+                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Restore)">Clear</button>
+                }
+                else
+                {
+                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Hide)">Hide</button>
+                }
+                @if (!item.IsSuppressed)
+                {
+                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Suppress)">Suppress</button>
+                }
+                @if (item.HasLiveComic)
+                {
+                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            disabled="@(_isBusy || _triaging is not null)"
+                            @onclick="() => TriageAsync(item)">@(_triaging == item.PlaceId ? "Reading…" : item.Triage is null ? "AI triage" : "Re-triage")</button>
+                }
+                @if (item.Triage is not null)
+                {
+                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            @onclick="() => _drawerItem = item">View triage</button>
+                }
+                <hr class="popover-menu-divider" />
+                <button type="button" class="popover-menu-item moderation-menu-item--danger" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                        disabled="@_isBusy" @onclick="() => ConfirmRemoveAsync(item)">Remove</button>
+            </div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(item.Reason))
+        {
+            <p class="moderation-note">@item.Reason</p>
+        }
+    </text>;
 
     /// <summary>
     /// The confirm names what it erases: the comic, the blob, the leaderboard row, the permanent

@@ -784,8 +784,31 @@
         box-shadow: var(--shadow-card-hover);
     }
 
-    .toast:empty {
+    .toast:not(.toast--open) {
         display: none;
+    }
+
+    .toast--open {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    /* Undo: the one control on the toast, sized to the tap target on the always-dark pill. */
+    .toast-action {
+        min-height: var(--tap-target);
+        padding: 0 var(--space-sm);
+        border: 0;
+        border-radius: var(--radius-pill);
+        background: transparent;
+        color: var(--color-on-dark);
+        font: inherit;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .toast-action:hover {
+        background: color-mix(in srgb, var(--color-on-dark) 14%, transparent);
     }
 
     /* ── Popover menu ────────────────────────────────────────────────────────────────────────
@@ -923,6 +946,46 @@
         }
     }
 
+    /* A drawer: the same menu as a full-height panel slid in from the right, for a page's
+       views and filters (the Hall of Fame). On a phone it stays the bottom sheet above. */
+    @media (width > 40rem) {
+        .popover-menu--drawer {
+            inset: 0 0 0 auto;
+            width: min(20rem, 85vw);
+            height: 100dvh;
+            max-height: none;
+            margin: 0;
+            align-content: start;
+            padding: var(--space-lg) var(--space-sm);
+            border-width: 0 0 0 1px;
+            border-radius: var(--radius-card) 0 0 var(--radius-card);
+        }
+
+        .popover-menu--drawer::backdrop {
+            background: var(--surface-inverse-veil);
+        }
+    }
+
+    @media (width > 40rem) and (prefers-reduced-motion: no-preference) {
+        .popover-menu--drawer {
+            translate: 100% 0;
+            transition:
+                translate var(--duration-slow) var(--ease-out),
+                overlay var(--duration-slow) allow-discrete,
+                display var(--duration-slow) allow-discrete;
+        }
+
+        .popover-menu.popover-menu--drawer:popover-open {
+            translate: 0 0;
+        }
+
+        @starting-style {
+            .popover-menu.popover-menu--drawer:popover-open {
+                translate: 100% 0;
+            }
+        }
+    }
+
     /* ── Skeleton ────────────────────────────────────────────────────────────────────────────
        Token-driven so a placeholder stays darker than its card in dark mode. */
     .sk-block,
@@ -965,6 +1028,15 @@
         background: var(--color-danger-surface);
         border: 1px solid var(--color-danger);
         color: var(--color-danger-text);
+    }
+
+    /* SectionBoundary: one failed section, with its own Retry beside the message. */
+    .section-error {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-sm);
     }
 
     /* ── Error / empty state ─────────────────────────────────────────────────────────────────
@@ -1079,6 +1151,40 @@
     .comic-row:has(.comic-row-name:focus-visible) {
         outline: 2px solid var(--color-brand);
         outline-offset: 2px;
+    }
+
+    /* One hover/press language for everything tappable that is not a .btn: rows, restaurant
+       cards, chips, menu items and pins lift a little on hover and give on press, on the motion
+       tokens. Individual `translate`/`scale`, never `transform`: board springs and MapLibre own
+       that on these elements. Press is instant; release springs back from the base transition. */
+    .comic-row:not([aria-hidden]) {
+        transition:
+            translate var(--duration-fast) var(--ease-out),
+            scale var(--duration-slow) var(--ease-spring-1),
+            border-color var(--duration-fast) var(--ease-out),
+            box-shadow var(--duration-fast) var(--ease-out);
+    }
+
+    .comic-row:not([aria-hidden]):hover {
+        translate: 0 -2px;
+        border-color: var(--color-border-strong);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .comic-row:not([aria-hidden]):active,
+    .chip-toggle:active,
+    .popover-menu-item:active:not(:disabled) {
+        scale: 0.98;
+        transition-duration: var(--duration-instant);
+    }
+
+    .chip-toggle,
+    .popover-menu-item {
+        transition: scale var(--duration-slow) var(--ease-spring-1), background var(--duration-fast) var(--ease-out);
+    }
+
+    .map-pin:active .map-pin-face {
+        scale: 1.05;
     }
 
     .comic-row .comic-thumbnail {
@@ -2191,6 +2297,13 @@
         box-shadow: 0 0 0 3px var(--color-brand), var(--shadow-sm);
     }
 
+    /* Zoomed out over a city (map-view.js sets data-halftone below zoom 11) the pins print as
+       newsprint: a dot screen in the pin's own edge colour over its fill. */
+    [data-halftone] .map-pin .map-pin-face {
+        background-image: radial-gradient(circle, color-mix(in srgb, var(--pin-edge) 28%, transparent) 30%, transparent 34%);
+        background-size: 4px 4px;
+    }
+
     /* New results drop in nearest-first (map-view.js dropPins sets --drop-delay and clears
        data-drop on animationend). `backwards`: hidden before its turn, untouched after, so the
        selection scale is never pinned by a finished fall. The 350ms lead rides out the stall of a
@@ -2297,6 +2410,57 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+    }
+
+    /* Panel lighting for every other comic: the page's one light (js/glass.js) rakes across the
+       print — a specular hotspot where the light is, and a soft falloff away from it, as if the
+       paper had a surface. Rare comics already wear the foil, which carries its own glare. */
+    :root[data-fx-tier="full"] .comic-strip-container:not([data-rare])::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        border-radius: inherit;
+        pointer-events: none;
+        background:
+            radial-gradient(circle at var(--glass-lx, 30%) var(--glass-ly, 12%), var(--glass-light), transparent 45%) fixed,
+            linear-gradient(calc(var(--glass-x, 0.5) * 180deg + 90deg),
+                transparent 40%, color-mix(in srgb, var(--color-comic-ink) 22%, transparent));
+        mix-blend-mode: soft-light;
+    }
+
+    /* The audio comic (js/audio-comic.js sets data-speaking-panel): the panel being acted out
+       stays bright and the other recedes. A mask on the image, not the container — the
+       container's mask belongs to the ink reveal. */
+    .comic-strip-container[data-panels="2"][data-speaking-panel="1"] .comic-strip-image {
+        mask-image: linear-gradient(#000 50%, rgb(0 0 0 / 0.45) 50%);
+    }
+
+    .comic-strip-container[data-panels="2"][data-speaking-panel="2"] .comic-strip-image {
+        mask-image: linear-gradient(rgb(0 0 0 / 0.45) 50%, #000 50%);
+    }
+
+    /* js/ink-fx.js: the ink bleed over a panel boundary, and the heat behind the score ring. */
+    .fx-ink-bleed {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .fx-heat {
+        position: absolute;
+        inset: -35%;
+        z-index: -1;
+        width: 170%;
+        height: 170%;
+        pointer-events: none;
+    }
+
+    .strangeness-ring-wrap:has(> .fx-heat) {
+        isolation: isolate;
     }
 }
 

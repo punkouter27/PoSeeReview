@@ -273,11 +273,25 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   so a refusal is not re-billed nightly.
 - **Image QA measures, never redraws.** `ComicImageQaService` (Azure chat only) checks a sample of
   fresh comics with a vision call and emits `Comics.ImageQa.*` dimensioned by image model.
-- **An image refusal is a refusal.** `ImageDeclinedException` → 422 and a moderation flag. Never
-  redraw a substitute scene under the reviews' score. `ComicImagePrompt` blunts filter-tripping
-  terms and reports them via `*.Image.PromptTermsBlunted`.
-- **Profanity is masked, not dropped** (`[bleep]`, one-for-one leet normalisation); only explicit
-  sexual terms drop a review.
+- **As uncensored as possible, never silently** (the owner's standing instruction). Reviews go to
+  the scorer as written (`Comics:ReviewFilter` = `None`; `Mask` = `[bleep]` with one-for-one leet
+  normalisation, `Strict` = the old mask-and-drop-explicit). Scenes are drawn as written
+  (`Comics:BluntImagePrompts` off; on, `ComicImagePrompt.Blunt` swaps trigger words in
+  `ComicGenerationService`, never in the painters). Gemini's adjustable `safetySettings` are
+  `BLOCK_NONE`. Every block, refusal, softening and auto-hide is `FlagForReviewAsync` with a
+  `ModerationCategories` prefix (Shared) and an ntfy push through `OwnerAlerts`
+  (`Moderation:AlertNtfyTopic`, Key Vault; empty = off). Don't add a filter that drops or rewrites
+  content without both.
+- **An image refusal is a refusal.** `ImageDeclinedException` → 422, a flag carrying the reason, and
+  an alert. Never redraw a substitute scene under the reviews' score.
+- **Audio comic** (`AudioComicService`, `AudioComic.razor`, `js/audio-comic.js`): tap-to-record,
+  then cached per comic id as `audio/{comicId}.wav|.json` in the comics container. One chat call
+  (`AzureOpenAI:AudioScriptDeployment`) writes a narrator + archetype cast, dialogue *invented* from
+  the reviews and labelled a dramatization (never real names — the user chose invented over
+  verbatim). `AzureOpenAI:TtsDeployment` voices each line as raw 24 kHz PCM with an acting
+  direction, so timings are exact and a swear word is cut out for a synthesized bleep. Single-flight
+  on `ComicGenerationLock`; paid calls run on `CancellationToken.None`; the POST is on `comics-post`.
+  It plays on the user's tap regardless of the sound-effects switch (the tap is the request).
 - **Comics are lossy WebP.** Skia encodes WebP lossy at any quality below 100 (the overlay uses 85).
   `DeleteComicImageAsync` removes every extension, since older rows are `.png`.
 - **Imaging is SkiaSharp, not ImageSharp.** Every patched ImageSharp is 4.x, which needs a Six Labors
@@ -305,11 +319,13 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   `/api/takedowns` also suppresses before it erases. Gated by the `Moderator` role, not a shared key.
   The gate **fails open** on read errors. A withheld comic is **451**, except on the share card (404).
 - **Pre-publish screening.** `IContentSafetyScreener` runs on the narrative before the paid image
-  call. Allegation language **flags** (publishes, queues for a human); only categories with no
-  legitimate reading **block**. Word-boundary matching; figurative food words excluded. With
-  `Moderation:ContentSafetyEndpoint` set, `AzureContentSafetyScreener` adds Azure AI Content Safety
-  under the lexical screen (lexical runs first and keeps its verdict; severity ≥4 sexual/hate/self-harm
-  blocks, ≥2 flags, violence flags only at ≥4) and fails open to the lexical verdict.
+  call. Allegation language (and hyperbole like "rape" prices or "kill yourself") **flags**
+  (publishes, queues for a human, alerts); only child sexual content, bestiality and suicide
+  instructions **block**, and the 422 names the category. Word-boundary matching; figurative food
+  words excluded. With `Moderation:ContentSafetyEndpoint` set, `AzureContentSafetyScreener` adds
+  Azure AI Content Safety under the lexical screen (lexical runs first and keeps its verdict;
+  sexual/hate/self-harm block only at severity 6 and flag from 4, violence flags at ≥4) and fails
+  open to the lexical verdict.
 - **AI triage advises.** `POST /api/moderation/{placeId}/triage` (`Moderation:TriageDeployment`)
   stores keep/hide/remove advice in the moderation table's `TRIAGE` partition (a moderator's state
   write is a full replace of the `MOD` row and must not erase it), tied to the comic id it read.
@@ -339,8 +355,16 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   `popover`, never from `nav.nav-links`, which `HeaderContractUiTests` pins at exactly one item (Hall of Fame — the brand link is the way home). Under 40rem every
   `.popover-menu` is a bottom sheet over a scrim (shared layer, so callers' placement loses). `/diagnostics` and
   `/moderation` have no nav entry.
-- **Components.** `ComicRow` is every list of comics; `StateCard` is every empty/error/404 screen;
-  `PageShell` is the one-row page header. Add to these rather than hand-rolling a layout.
+- **Components.** `ComicRow` is every list of comics (its `Skeleton` mode is every list's loading
+  state — no spinner where rows are coming); `StateCard` is every empty/error/404 screen;
+  `PageShell` is the one-row page header; `SectionBoundary` is an `ErrorBoundary` round one part of
+  a page (the strip, the board, the discovery map) with its own Retry (`Recover()`), under the
+  layouts' whole-page `ErrorPanel`. Add to these rather than hand-rolling a layout.
+- **Report flow.** Send closes `ReportDialog` at once; `ToastService.ShowUndoableAsync` offers Undo
+  for 5s and the POST leaves only when the window passes (or another toast supersedes it). There is
+  no thanks screen. A failure is said on the toast.
+- **Moderation on a phone.** Under 48rem `/moderation` is cards, the grid above it; both render and
+  CSS picks one, so the row menu is one `ActionsFor(item, where)` template with per-layout popover ids.
 - **Radzen is operator-only.** `/moderation` and `/diagnostics` wrap their Radzen components in
   `RadzenScope`, which loads `js/radzen-theme.js` (theme into `@layer vendor`, script) first and hosts
   `RadzenDialog`. Its `--rz-*` variables are re-pointed at app tokens at the end of `app.css`, so
@@ -349,9 +373,12 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 - **State services.** `DiscoveryState` keeps the last search so Back restores it without a refetch
   (text searches also live in `?q=`); `ToastService` drives the one `<Toast />` in `MainLayout`;
   `ShareService.ShareComicAsync` is the only share path and always uses the short link.
-- **Live board.** `/leaderboard` re-fetches every 60s while the tab is visible. No SignalR. The
-  default view is the bare top ten with no chips; "Past weeks" (`?view=week`) and the map are
-  links under it, and either one shows a single "Right now" chip back.
+- **Live board.** `/leaderboard` re-fetches every 60s while the tab is visible. No SignalR. Its
+  views — Right now, Past weeks (`?view=week`), On a map (only when rows carry coordinates) — sit
+  behind one "☰ <current view>" button that opens a native popover drawer
+  (`.popover-menu--drawer`: slides in from the right above 40rem, the shared bottom sheet below).
+  Each item hides it with `popovertargetaction="hide"`, so focus returns to the button. A long list
+  ends in "Back to top".
 - **Map view.** `MapView` + `js/map-view.js` (its own module, not part of `fx.js`) back discovery —
   map by default, List remembered in `posee_discovery_layout` — and the live board's map link.
   Discovery's map overlay holds "Search this area" (after a user pan/zoom, zoom ≥ 11; reported by
@@ -400,20 +427,30 @@ Read its header comment before adding CSS.
 
 Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-reveal.js`,
 `panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`, `soundtrack.js`,
-`confetti.js`, `ink-motes.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
+`confetti.js`, `ink-motes.js`, `ink-fx.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
 `map-view.js` is imported by `MapView` and `radzen-theme.js` by `RadzenScope`, both on their own).
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
 **Simplest by default, extras in `/settings`.** Sound is **off** until switched on, the effects tier
-is `lite` until the user picks Full, and the soundtrack, map sounds and ink motes are opt-in. Every switch is on the
+is `full` (the frame watchdog steps a slow device down to `lite`), and the soundtrack, map sounds and ink motes are opt-in. Every switch is on the
 `/settings` page (linked from the account menu); nothing else offers one.
 
 - **`gfx-core.js`**: one shared `requestAnimationFrame` loop (never start a private rAF), a 20ms
   frame budget that steps the tier down after **1500ms** of sustained overrun (milliseconds, not
   frames; each frame adds at most 100ms, so a single compile stall is a hitch, not a downgrade; not persisted), tiers `off`/`lite`/`full` stamped on `<html data-fx-tier>`. `off` is forced
   by reduced motion or no WebGL2. `createSurface` gives one WebGL2 context per canvas.
-  `poseeFx.stats()` in the console is the frame-budget readout.
+  The frame-budget readout is `/diagnostics` → Graphics (`FrameBudget`: frame time against the
+  budget, a tier strip, the WebGPU state) or `poseeFx.stats()` in the console.
+- **`[JSImport]` for the hot path.** `FxInterop` binds fx.js's plain exports (`tapAt`, `tapCached`,
+  `fillStats`) through `JSHost.ImportAsync("fx", "/js/fx.js")` — the URL `index.html` loads, so it
+  is the same module instance. Taps cross without JSON and `fillStats` writes the stats into a
+  .NET `Span<double>`. Browser-only (`[SupportedOSPlatform("browser")]`; guard calls with
+  `OperatingSystem.IsBrowser()`), and `FxService` falls back to `IJSRuntime` until the bind lands.
+  Its `JSException` is `System.Runtime.InteropServices.JavaScript.JSException`, not JSInterop's.
+- **WebAssembly AOT is deliberately off**: it roughly doubles the download a phone fetches before
+  first paint, for an app whose work is UI and interop, and CI would need the `wasm-tools` workload.
+  The trim analyzer stays on with zero warnings.
 - **Backdrop** (`gradient.js`, `full` tier): built from `--color-surface` / `--color-brand-surface`
   / `--color-brand`, re-read on a theme flip (OS scheme or `data-theme`). It leans on score, pointer,
   scroll and the audio level, restarts itself when the tier returns to `full`, and a lost WebGL
@@ -437,7 +474,12 @@ is `lite` until the user picks Full, and the soundtrack, map sounds and ink mote
   instead of ticks. The generation wait is a chord that gains a voice per SSE phase
   (`playPhase`) and must be closed with `endWait` (done / fail sags / abandon) on every exit.
   `signature(placeId, score)` seeds a per-restaurant motif (seed by place id, never name);
-  `panel-scrub.js` replays its notes as panels cross mid-screen.
+  `panel-scrub.js` replays its notes as panels cross mid-screen ("crossed" = the marker is
+  anywhere above the midline; a zero-height band AT the midline was skipped by every real scroll
+  step; markers already past at mount are primed silently). Taps vary per control
+  (`tapVariation`, seeded by x column). Pin drops and the map whoosh are placed in the scene
+  (`positional`: pan, plus distance from the middle → quieter and wetter). A board row's move
+  carries a noise whoosh whose sweep grows with the places it moved.
 - **Haptics** follow the sound preference and can be switched off on their own, never on on their
   own. Three fixed patterns (tap / confirm / error). Sound, haptics, music, map sounds, volume, the
   tier and ink motes all live on `/settings`.
@@ -450,20 +492,28 @@ is `lite` until the user picks Full, and the soundtrack, map sounds and ink mote
 - **Share**: a CERTIFIED STRANGE stamp lands on the comic (`stampComic` in fx.js, `.fx-stamp`
   and its `fx-stamp-slam` keyframes in app.css), `full` only; the impact throws ink
   (`confetti.splat`) with `audio.inkSplash`.
-- **`lite` is the calm tier** and the default: the ink reveal, glass blur and the account sheet's
+- **`lite` is the calm tier** (the default is `full` since 2026-11; `lite` is what the watchdog falls back to): the ink reveal, glass blur and the account sheet's
   rise. Everything celebratory or springy — the stamp and splat, confetti, the sprung score ring,
   board springs, pin drops, the strip's scroll tilt — waits for `full`.
 - **Rare comics** (score ≥ 80, `data-rare` on the strip) wear a token-rainbow foil that slides and
   tilts with the page light (`--glass-x/-y`, unitless twins of `--glass-lx/-ly`), `full` only.
+  Every other strip gets a soft-light sheen from the same light (its `::before`), `full` only.
+- **`ink-fx.js`** (`full` only, own short-lived WebGL canvases): `bleed` spreads ink along the
+  gutter as the next panel crosses mid-screen (one-shot, ~0.9s); `heat` raises a haze behind the
+  score ring past 55 (`HEAT_FROM`), living while the ring is in the DOM. The ink motes, when on,
+  start packed at the ring and burst outward as the score lands (`burst` uniform).
 - **Board** moves are damped springs (climbers overshoot, fallers bounce) in `animateBoardMoves`;
   a climb into #1 fires `confetti.js` (2D canvas, tiny inked panels) and `audio.crown`.
 - **Removed (2026-10):** the ink-fluid wait, score particles, halftone print reveal, page curl,
   duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge,
   the "Why 54?" score panel (the comic page's one action is Share) and the Duel page with its card. If one comes back, it goes behind a
   `/settings` switch that starts off. Their dead modules were deleted the same month; git history has them.
+  The audio comic (2026-11) is not the old AI voice: it is a tap-to-record button on the comic, not
+  automatic narration, and it costs nothing until someone taps it.
 - **Map** heat glow is a MapLibre custom layer in MapLibre's own context; it pulses only at `full`.
   New pins drop in nearest-first (`dropPins`; the face falls via `translate`, the button never
-  moves) and the first eight pluck where they land. **Map sounds** (`posee_map_sounds`, opt-in):
+  moves) and the first eight pluck where they land. Below zoom 11 the map carries
+  `data-halftone` and pins print as a dot screen. **Map sounds** (`posee_map_sounds`, opt-in):
   wind from camera speed, a ping when "Search this area" appears, a hum from the drawn places.
 - **Ink motes** (`ink-motes.js`, `posee_gpu_motes`, opt-in, `full`, WebGPU only — no fallback, the
   switch is hidden without it): a compute pass advances a curl-noise particle field and a render

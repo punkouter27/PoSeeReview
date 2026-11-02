@@ -56,7 +56,18 @@ export function start(container, options = {}) {
     // motif repeatedly and turns a detail into an alarm.
     const fired = new Set();
 
+    // The first callback reports every marker's starting state. One already above the middle was
+    // passed before the reader arrived: marked fired silently, so mounting plays nothing.
+    let primed = false;
+
     const observer = new IntersectionObserver((entries) => {
+        if (!primed) {
+            primed = true;
+            for (const entry of entries) {
+                if (entry.isIntersecting) fired.add(Number(entry.target.dataset.panelIndex));
+            }
+            return;
+        }
         for (const entry of entries) {
             if (!entry.isIntersecting) continue;
             const index = Number(entry.target.dataset.panelIndex);
@@ -69,10 +80,11 @@ export function start(container, options = {}) {
             }
         }
     }, {
-        // A 1px band across the middle of the viewport. Everything above and below is cropped
-        // away, so "intersecting" means precisely "this panel is at the centre of the screen" —
-        // which is the moment a reader is actually looking at it.
-        rootMargin: '-50% 0px -50% 0px',
+        // Everything above the middle of the viewport (the root reaches far above the top edge),
+        // so "intersecting" means "this panel's centre has passed the middle of the screen". It
+        // used to be a zero-height band AT the middle, which a 1px marker only touched when a
+        // scroll step landed exactly on it — any normal step jumped past, and the note never played.
+        rootMargin: '100000px 0px -50% 0px',
         threshold: 0
     });
 

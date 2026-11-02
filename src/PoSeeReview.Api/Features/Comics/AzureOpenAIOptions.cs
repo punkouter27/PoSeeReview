@@ -68,4 +68,13 @@ public class AzureOpenAIOptions
 
     /// <summary><c>low</c>, <c>medium</c> or <c>high</c>. Price scales with it roughly 4x per step.</summary>
     public string ImageQuality { get; set; } = "low";
+
+    /// <summary>
+    /// Text-to-speech deployment that voices the audio comic (<see cref="AudioComicService"/>).
+    /// gpt-4o-mini-tts takes acting directions per line. Same resource, endpoint and key.
+    /// </summary>
+    public string TtsDeployment { get; set; } = "gpt-4o-mini-tts";
+
+    /// <summary>Chat deployment that writes the audio comic's script. Writing, so not the nano.</summary>
+    public string AudioScriptDeployment { get; set; } = "gpt-5.4-mini";
 }

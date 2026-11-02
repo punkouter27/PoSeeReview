@@ -76,8 +76,9 @@ public sealed class AiPipelineTests
 
     [Theory]
     [InlineData(0, 0, 0, 0, null)]
-    [InlineData(0, 4, 0, 0, "Block:cs-hate")]
-    [InlineData(2, 0, 0, 0, "Flag:cs-sexual")]
+    [InlineData(0, 4, 0, 0, "Flag:cs-hate")]     // only the top severity refuses; 4 publishes and alerts
+    [InlineData(0, 6, 0, 0, "Block:cs-hate")]
+    [InlineData(2, 0, 0, 0, null)]            // low severity is not worth a push
     [InlineData(0, 0, 2, 0, null)]          // cartoon slapstick: mild violence is the genre
     [InlineData(0, 0, 4, 0, "Flag:cs-violence")]
     [InlineData(0, 0, 0, 6, "Block:cs-selfharm")]

@@ -52,7 +52,8 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
     /// <summary>
     /// The heading, the minimal default and the never-an-error-banner rule on one page load. The
     /// heading renders through PageShell (.page-hero-title / .page-shell-title). The default view
-    /// is the board alone: no region, limit or view chips — the archive and map are links under it.
+    /// is the board alone: no region, limit or view chips — one "☰ Right now" button opens the views
+    /// drawer (archive, map), and that is the page's only control.
     /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
@@ -63,8 +64,9 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
         await Assertions.Expect(page.Locator("h1.page-hero-title, h1.page-shell-title"))
             .ToHaveTextAsync("Hall of Fame");
-        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit'], .leaderboard-container .chip-toggle"))
+        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit'], .leaderboard-container .chip-toggle:not(.board-views-toggle)"))
             .ToHaveCountAsync(0);
+        await Assertions.Expect(page.Locator(".board-views-toggle")).ToContainTextAsync("Right now");
 
         await Assertions.Expect(page.Locator(".alert-danger")).ToHaveCountAsync(0);
         await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync(new() { Timeout = RenderTimeout });
