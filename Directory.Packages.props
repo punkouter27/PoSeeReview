@@ -5,27 +5,27 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
-    <PackageVersion Include="MinVer" Version="6.0.0" />
+    <PackageVersion Include="MinVer" Version="6.1.0" />
     <!-- Azure SDKs -->
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
-    <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
-    <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.1" />
+    <PackageVersion Include="Azure.Data.Tables" Version="12.13.0" />
+    <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.5.2" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <!-- ASP.NET Core & Web -->
     <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <!-- Explicit pin: Microsoft.AspNetCore.OpenApi 10.0.x pulls Microsoft.OpenApi 2.0.0, which
          carries a high-severity advisory (GHSA-v5pm-xwqc-g5wc). CentralPackageTransitivePinning
          lifts the transitive reference to this fixed version. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
     <!-- Resilience -->
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
     <!-- Logging -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.ApplicationInsights" Version="5.0.1" />
@@ -33,34 +33,34 @@
     <!-- Transitive-only pin (no direct PackageReference): lifts the 1.15.1 pull that carries
          CVE GHSA-g94r-2vxg-569j. Do not remove as "unused". -->
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
-    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.8.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.10.0" />
     <!-- Image Processing -->
     <!-- SkiaSharp, not ImageSharp: why, and why NoDependencies, is in CLAUDE.md ("Imaging"). -->
-    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <PackageVersion Include="SkiaSharp" Version="4.154.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
     <!-- API Documentation -->
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.14.9" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.5" />
     <!-- System -->
     <!-- Testing -->
-    <PackageVersion Include="coverlet.collector" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
-    <PackageVersion Include="Moq" Version="4.20.72" />
-    <PackageVersion Include="Testcontainers.Azurite" Version="4.14.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="Moq" Version="4.21.0" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <!-- UI Libraries -->
     <!-- E2E UI -->
-    <PackageVersion Include="Microsoft.Playwright" Version="1.49.0" />
-    <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.13.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.64.1" />
+    <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.14.0" />
     <!-- Validation -->
     <!-- Admin pages only (/moderation, /diagnostics). Its theme is fetched into the `vendor` layer
          on those pages, never linked; see js/radzen-theme.js. -->
-    <PackageVersion Include="Radzen.Blazor" Version="12.0.6" />
-    <PackageVersion Include="FluentValidation" Version="11.11.0" />
-    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageVersion Include="Radzen.Blazor" Version="12.1.8" />
+    <PackageVersion Include="FluentValidation" Version="11.12.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.12.0" />
   </ItemGroup>
 </Project>
