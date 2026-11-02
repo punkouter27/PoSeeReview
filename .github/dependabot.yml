@@ -10,6 +10,10 @@ updates:
       # Microsoft.AspNetCore.OpenApi 10 needs Microsoft.OpenApi 2.x; 3.x fails restore (NU1608). Lift with .NET 11.
       - dependency-name: Microsoft.OpenApi
         update-types: ["version-update:semver-major"]
+      # 3.x is the OpenTelemetry rewrite: Serilog.Sinks.ApplicationInsights 5 needs < 3.0 (NU1608) and
+      # ITelemetryInitializer is gone. A migration, not a bump.
+      - dependency-name: Microsoft.ApplicationInsights*
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
