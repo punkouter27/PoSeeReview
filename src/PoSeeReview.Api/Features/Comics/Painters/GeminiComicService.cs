@@ -6,7 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Comics.Painters;
 
 /// <summary>
 /// Google Gemini image generation service (generateContent image models).

@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Sharing;
 using PoSeeReview.Api.Features.Auth;
 using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features.Diagnostics;
@@ -16,6 +17,7 @@ internal static class FeatureEndpoints
     {
         app.MapAuthEndpoints();
         app.MapComicsEndpoints();
+        app.MapSharingEndpoints();
         app.MapRestaurantsEndpoints();
         app.MapLeaderboardEndpoints();
         app.MapModerationEndpoints();

@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Comics.Painters;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using PoSeeReview.Api.Features.Comics;

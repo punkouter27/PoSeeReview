@@ -4,10 +4,10 @@ using Microsoft.Extensions.Options;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Shared.Ids;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Sharing;
 
 /// <summary>
-/// Persistence for short links. Owned by the Comics slice (NET_RULES 2.2).
+/// Persistence for short links. Owned by the Sharing slice (NET_RULES 2.2).
 /// </summary>
 public sealed class ShareLinkRepository(
     TableServiceClient tableServiceClient,

@@ -1,8 +1,9 @@
+using PoSeeReview.Api.Imaging;
 using PoSeeReview.Api.Storage;
 using SkiaSharp;
 using PoSeeReview.Shared.Contracts;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Sharing;
 
 /// <summary>
 /// Builds the link-preview card.

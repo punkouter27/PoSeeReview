@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Sharing;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using PoSeeReview.Api.Features.Comics;

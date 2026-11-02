@@ -6,7 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Comics.Painters;
 
 /// <summary>
 /// gpt-image on the same Azure AI Foundry resource as the scorer, used when

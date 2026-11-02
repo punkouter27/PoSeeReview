@@ -1,4 +1,4 @@
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Comics.Painters;
 
 /// <summary>
 /// Service for generating comic strip images using an AI image model: gpt-image via Azure,

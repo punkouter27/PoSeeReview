@@ -1,5 +1,7 @@
 
 // Only configure Serilog if not running in test mode
+using PoSeeReview.Api.Features.Sharing;
+using PoSeeReview.Api.Imaging;
 using System.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.HttpOverrides;

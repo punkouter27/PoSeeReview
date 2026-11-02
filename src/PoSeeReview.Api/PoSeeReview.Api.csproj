@@ -39,8 +39,8 @@
   <ItemGroup>
     <!-- Caption and share-card faces (OFL); loaded by SkiaText. Named, not globbed, so a missing
          font fails the compile instead of every caption at runtime. -->
-    <EmbeddedResource Include="Features\Comics\Fonts\Bangers-Regular.ttf" LogicalName="Fonts.Bangers-Regular.ttf" />
-    <EmbeddedResource Include="Features\Comics\Fonts\DMSans-Bold.ttf" LogicalName="Fonts.DMSans-Bold.ttf" />
+    <EmbeddedResource Include="Imaging\Fonts\Bangers-Regular.ttf" LogicalName="Fonts.Bangers-Regular.ttf" />
+    <EmbeddedResource Include="Imaging\Fonts\DMSans-Bold.ttf" LogicalName="Fonts.DMSans-Bold.ttf" />
   </ItemGroup>
 
   <ItemGroup>

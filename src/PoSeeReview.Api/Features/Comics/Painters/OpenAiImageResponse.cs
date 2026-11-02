@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Comics.Painters;
 
 /// <summary>The OpenAI images wire shape (<c>data[0].b64_json</c>), read by every OpenAI-compatible painter.</summary>
 internal static class OpenAiImageResponse

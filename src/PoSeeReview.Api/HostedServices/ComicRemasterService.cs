@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Comics.Painters;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Options;
 using PoSeeReview.Api.Features.Comics;

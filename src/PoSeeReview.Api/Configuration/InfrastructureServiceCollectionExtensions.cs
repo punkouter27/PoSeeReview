@@ -1,3 +1,5 @@
+using PoSeeReview.Api.Features.Sharing;
+using PoSeeReview.Api.Features.Comics.Painters;
 using PoSeeReview.Api.Telemetry;
 using System.Net;
 using Azure.AI.OpenAI;

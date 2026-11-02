@@ -12,8 +12,13 @@ namespace PoSeeReview.Api.Features.Comics;
 public sealed class LiveComicLookup(IComicRepository comics, IOptions<ComicOptions> options, TimeProvider timeProvider)
     : ILiveComicLookup
 {
-    public async Task<bool> IsLiveAsync(PlaceId placeId) =>
-        IsLive(await comics.GetByPlaceIdAsync(placeId), timeProvider.GetUtcNow(), options.Value.PromptVersion);
+    public async Task<bool> IsLiveAsync(PlaceId placeId) => await GetLiveAsync(placeId) is not null;
+
+    public async Task<Comic?> GetLiveAsync(PlaceId placeId) =>
+        await comics.GetByPlaceIdAsync(placeId) is { } comic
+        && IsLive(comic, timeProvider.GetUtcNow(), options.Value.PromptVersion)
+            ? comic
+            : null;
 
     internal static bool IsLive(Comic? comic, DateTimeOffset now, int promptVersion) =>
         comic is not null && comic.ExpiresAt > now && comic.PromptVersion == promptVersion;

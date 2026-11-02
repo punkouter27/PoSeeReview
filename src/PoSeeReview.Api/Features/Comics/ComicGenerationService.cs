@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Comics.Painters;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.ApplicationInsights;

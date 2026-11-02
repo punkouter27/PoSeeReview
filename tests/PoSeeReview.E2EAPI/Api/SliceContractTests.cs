@@ -34,26 +34,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
         Assert.Equal("ALL", payload.Region); // no region is the worldwide board
     }
 
-    [Theory]
-    [InlineData("not-a-region")]
-    [InlineData("U")]
-    [InlineData("123")]
-    public async Task GetLeaderboard_InvalidRegion_Returns400(string region)
-    {
-        var response = await CreateAuthenticatedClient().GetAsync($"/api/leaderboard?region={region}");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
     // ── Restaurants ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetNearby_MissingCoordinates_Returns400()
-    {
-        var response = await CreateAuthenticatedClient().GetAsync("/api/restaurants/nearby");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
 
     [Fact]
     public async Task GetNearby_ReturnsWellFormedEnvelope()
@@ -66,14 +47,18 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
         Assert.Equal(payload.Restaurants.Count, payload.TotalCount);
     }
 
-    // ── Comics: place ids and retired routes ────────────────────────────────
+    // ── Input validation, place ids and retired routes ──────────────────────
 
     [Theory]
+    [InlineData("/api/leaderboard?region=not-a-region", HttpStatusCode.BadRequest)]
+    [InlineData("/api/leaderboard?region=U", HttpStatusCode.BadRequest)]
+    [InlineData("/api/leaderboard?region=123", HttpStatusCode.BadRequest)]
+    [InlineData("/api/restaurants/nearby", HttpStatusCode.BadRequest)] // missing coordinates
     [InlineData("/share/place-1/card.png", HttpStatusCode.NotFound)] // well-formed, no comic
     [InlineData("/share/bad%20id/card.png", HttpStatusCode.BadRequest)]
     [InlineData("/api/comics/bad%20id", HttpStatusCode.BadRequest)]
     [InlineData("/duel/place-1/place-2", HttpStatusCode.Redirect)] // retired page, old links land on the board
-    public async Task PlaceIdRoutes_RejectMalformedIds_AndRetiredDuelRedirects(string path, HttpStatusCode expected)
+    public async Task Routes_RejectBadInput_AndRetiredDuelRedirects(string path, HttpStatusCode expected)
     {
         var response = await CreateAuthenticatedClient().GetAsync(path);
 

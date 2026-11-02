@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SkiaSharp;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Imaging;
 
 /// <summary>
 /// Proves the Skia native library loads on this host and the embedded fonts parse.

@@ -21,19 +21,15 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
     });
 
     [Fact]
-    public async Task AuthMe_Unauthenticated_ReturnsAnonymousState()
-    {
-        var state = await CreateHttpsClient().GetFromJsonAsync<AuthStateDto>("/auth/me");
-
-        Assert.NotNull(state);
-        Assert.False(state.IsAuthenticated);
-        Assert.Null(state.UserId);
-    }
-
-    [Fact]
-    public async Task AuthMe_WithFakeHeaders_MapsClaimsPrincipal()
+    public async Task AuthMe_IsAnonymousWithoutHeaders_AndMapsFakeHeadersToClaims()
     {
         var client = CreateHttpsClient();
+        var anonymous = await client.GetFromJsonAsync<AuthStateDto>("/auth/me");
+
+        Assert.NotNull(anonymous);
+        Assert.False(anonymous.IsAuthenticated);
+        Assert.Null(anonymous.UserId);
+
         var request = new HttpRequestMessage(HttpMethod.Get, "/auth/me");
         request.Headers.Add("X-Fake-User", "test-user-42");
         request.Headers.Add("X-Fake-Roles", "Admin, Tester");
@@ -61,24 +57,17 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
         Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>A non-local returnUrl collapses to the root (open-redirect guard); logout lands on /login.</summary>
     [Theory]
-    [InlineData("https://evil.example/phish")]
-    [InlineData("//evil.example")]
-    [InlineData("/\\evil.example")]
-    public async Task FakeLogin_NonLocalReturnUrl_CollapsesToRoot(string returnUrl)
+    [InlineData("/auth/login/fake?returnUrl=https%3A%2F%2Fevil.example%2Fphish", "/")]
+    [InlineData("/auth/login/fake?returnUrl=%2F%2Fevil.example", "/")]
+    [InlineData("/auth/login/fake?returnUrl=%2F%5Cevil.example", "/")]
+    [InlineData("/auth/logout", "/login")]
+    public async Task AuthRedirects_StayLocal(string path, string expectedLocation)
     {
-        var response = await CreateHttpsClient().GetAsync($"/auth/login/fake?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        var response = await CreateHttpsClient().GetAsync(path);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/", response.Headers.Location?.ToString());
-    }
-
-    [Fact]
-    public async Task Logout_RedirectsToLogin()
-    {
-        var response = await CreateHttpsClient().GetAsync("/auth/logout");
-
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/login", response.Headers.Location?.ToString());
+        Assert.Equal(expectedLocation, response.Headers.Location?.ToString());
     }
 }

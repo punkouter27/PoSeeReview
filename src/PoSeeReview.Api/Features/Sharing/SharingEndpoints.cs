@@ -1,30 +1,41 @@
 using PoSeeReview.Api.Middleware;
+using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Dtos;
 using PoSeeReview.Shared.Ids;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Sharing;
 
 /// <summary>
-/// Short links for comics. Maps <c>/api/share</c> and the public <c>/s/{code}</c> resolver
-/// (NET_RULES 3.3).
+/// Sharing slice. Maps the link-preview card <c>/share/{placeId}/card.png</c>, short links under
+/// <c>/api/share</c> and the public <c>/s/{code}</c> resolver (NET_RULES 3.3). Reads comics only
+/// through the Shared contracts.
 /// <para>
 /// A comic's canonical URL carries a Google place id — around thirty opaque characters. That is
 /// fine in an href and hostile everywhere a link is actually shared: a message, a caption, a
 /// screenshot someone retypes. The short form is also the only stable handle this app has for
 /// counting how a comic travelled.
 /// </para>
-/// <para>
-/// In the Comics slice rather than one of its own: a short link only ever addresses a comic, and
-/// <c>/share/{placeId}/card.png</c> — the other half of sharing — was already mapped here.
-/// </para>
 /// </summary>
-internal static class ShareLinksEndpoints
+internal static class SharingEndpoints
 {
     /// <summary>Public prefix for a minted link. Short on purpose — it is half the point.</summary>
     public const string ResolverPrefix = "/s";
 
-    public static IEndpointRouteBuilder MapShareLinkEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapSharingEndpoints(this IEndpointRouteBuilder app)
     {
+        // The link-preview card. Deliberately NOT under /api: UserAgentValidationMiddleware only
+        // lets social crawlers through on non-/api paths, so an og:image under /api would be
+        // fetched by exactly the clients that get a 400 there. Anonymous for the same reason —
+        // a 401 on a preview fetch unfurls as the same blank card as no tags at all.
+        // Output-cached because each one is an anonymous blob download plus a Skia render.
+        // The shared policy keeps an entry for 60 seconds, which is also the longest a card for a
+        // comic that has since been withheld can still be served from this cache.
+        app.MapGet("/share/{placeId}/card.png", GetShareCardAsync)
+            .WithTags("Sharing")
+            .AllowAnonymous()
+            .RequireValidPlaceId()
+            .CacheOutput(SharedReadCachePolicy.Name);
+
         var group = app.MapGroup("/api/share").WithTags("ShareLinks").RequireValidPlaceId();
 
         // Minting requires a session, like every other business slice: it writes a row.
@@ -39,6 +50,44 @@ internal static class ShareLinksEndpoints
             .AllowAnonymous();
 
         return app;
+    }
+
+    /// <summary>
+    /// Renders the 1200x630 image a shared link unfurls as.
+    /// <para>
+    /// <c>og:image</c> used to point at the comic's blob URL directly, and that URL carries a SAS
+    /// signature that lapses in about a week. Every share older than the signature unfurled as a
+    /// blank card, on a page whose Hall of Fame row is designed to last forever.
+    /// </para>
+    /// <para>
+    /// A withheld or missing comic is a plain 404, not a 451: this is a crawler-facing image, a
+    /// withheld comic should simply produce no card, and a legal-reasons status inside an img tag
+    /// is noise nobody reads.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> GetShareCardAsync(
+        string placeId,
+        ILiveComicLookup liveComics,
+        IContentModerationGate moderationGate,
+        ShareCardService shareCardService,
+        HttpContext http)
+    {
+        var id = PlaceId.From(placeId);
+        var comic = (await moderationGate.EvaluateAsync(id, http.RequestAborted)).IsServable
+            ? await liveComics.GetLiveAsync(id)
+            : null;
+
+        if (comic is null || await shareCardService.RenderAsync(comic, http.RequestAborted) is not { } png)
+        {
+            return Results.NotFound();
+        }
+
+        // Long enough that a crawler re-fetching a popular link does not re-render it, short
+        // enough that a takedown stops being served within the hour. The card is composed
+        // from a comic, so it must not outlive one by much.
+        http.Response.Headers.CacheControl = "public, max-age=3600";
+
+        return Results.File(png, "image/png");
     }
 
     private static async Task<IResult> CreateAsync(

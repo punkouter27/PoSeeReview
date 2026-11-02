@@ -1,6 +1,6 @@
 using SkiaSharp;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Imaging;
 
 /// <summary>
 /// Fonts and the little text layout Skia does not do for us (it draws a line, it does not wrap).

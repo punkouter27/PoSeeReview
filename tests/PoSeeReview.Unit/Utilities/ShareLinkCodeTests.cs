@@ -19,7 +19,7 @@ public class ShareLinkCodeTests
 {
     private static readonly Type Keys =
         typeof(PoSeeReview.Api.Storage.AzureStorageOptions).Assembly
-            .GetType("PoSeeReview.Api.Features.Comics.ShareLinkKeys", throwOnError: true)!;
+            .GetType("PoSeeReview.Api.Features.Sharing.ShareLinkKeys", throwOnError: true)!;
 
     private static string NewCode() =>
         (string)Keys.GetMethod("NewCode", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null)!;

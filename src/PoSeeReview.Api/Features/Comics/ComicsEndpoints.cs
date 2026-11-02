@@ -32,84 +32,12 @@ internal static class ComicsEndpoints
         group.MapGet("/{placeId}/image", DownloadComicImage).AddEndpointFilter(RefuseWithheld);
         group.MapGet("/{placeId}", GetCachedComic).AddEndpointFilter(RefuseWithheld);
 
-        // The link-preview cards. Deliberately NOT under /api: UserAgentValidationMiddleware only
-        // lets social crawlers through on non-/api paths, so an og:image under /api would be
-        // fetched by exactly the clients that get a 400 there. Anonymous for the same reason —
-        // a 401 on a preview fetch unfurls as the same blank card as no tags at all.
-        // Output-cached because each one is an anonymous blob download plus a Skia render.
-        // The shared policy keeps an entry for 60 seconds, which is also the longest a card for a
-        // comic that has since been withheld can still be served from this cache.
-        app.MapGet("/share/{placeId}/card.png", GetShareCard)
-            .WithTags("Comics")
-            .AllowAnonymous()
-            .RequireValidPlaceId()
-            .CacheOutput(SharedReadCachePolicy.Name);
-
-        // Short links live in this slice because they only ever address a comic — see
-        // ShareLinksEndpoints for why they are not under /api.
-        app.MapShareLinkEndpoints();
-
         // The duel page is gone; links shared before it was retired land on the board instead of a 404.
         app.MapGet("/duel/{**rest}", () => Results.Redirect("/leaderboard"))
             .ExcludeFromDescription()
             .AllowAnonymous();
 
         return app;
-    }
-
-    /// <summary>
-    /// Renders the 1200x630 image a shared link unfurls as.
-    /// <para>
-    /// <c>og:image</c> used to point at the comic's blob URL directly, and that URL carries a SAS
-    /// signature that lapses in about a week. Every share older than the signature unfurled as a
-    /// blank card, on a page whose Hall of Fame row is designed to last forever.
-    /// </para>
-    /// </summary>
-    private static async Task<IResult> GetShareCard(
-        string placeId,
-        IComicGenerationService comicGenerationService,
-        ShareCardService shareCardService,
-        IContentModerationGate moderationGate,
-        HttpContext http)
-    {
-        var comic = await ServableComicAsync(placeId, comicGenerationService, moderationGate, http.RequestAborted);
-
-        return comic is null
-            ? Results.NotFound()
-            : CardResult(await shareCardService.RenderAsync(comic, http.RequestAborted), http);
-    }
-
-    /// <summary>
-    /// The live comic for a card, or null when there is none or moderation is withholding it.
-    /// A plain 404 follows, not a 451: this is a crawler-facing image, a withheld comic should
-    /// simply produce no card, and a legal-reasons status inside an img tag is noise nobody reads.
-    /// </summary>
-    private static async Task<Comic?> ServableComicAsync(
-        string placeId,
-        IComicGenerationService comicGenerationService,
-        IContentModerationGate moderationGate,
-        CancellationToken cancellationToken)
-    {
-        var id = PlaceId.From(placeId);
-
-        return (await moderationGate.EvaluateAsync(id, cancellationToken)).IsServable
-            ? await comicGenerationService.GetCachedComicAsync(id, cancellationToken)
-            : null;
-    }
-
-    private static IResult CardResult(byte[]? png, HttpContext http)
-    {
-        if (png is null)
-        {
-            return Results.NotFound();
-        }
-
-        // Long enough that a crawler re-fetching a popular link does not re-render it, short
-        // enough that a takedown stops being served within the hour. The card is composed
-        // from a comic, so it must not outlive one by much.
-        http.Response.Headers.CacheControl = "public, max-age=3600";
-
-        return Results.File(png, "image/png");
     }
 
     /// <summary>

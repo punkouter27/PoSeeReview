@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Features.Comics.Painters;
 using System.Text.Json;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;

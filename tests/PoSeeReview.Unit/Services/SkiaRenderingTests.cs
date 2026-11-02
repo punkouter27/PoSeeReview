@@ -1,3 +1,4 @@
+using PoSeeReview.Api.Imaging;
 using Microsoft.Extensions.Logging.Abstractions;
 using PoSeeReview.Api.Features.Comics;
 using SkiaSharp;

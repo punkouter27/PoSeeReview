@@ -4,7 +4,7 @@ using PoSeeReview.Api.Middleware;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Ids;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Sharing;
 
 /// <summary>
 /// Answers link-preview crawlers on <c>/comic/{placeId}</c> with a real Open Graph document.

@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
-namespace PoSeeReview.Api.Features.Comics;
+namespace PoSeeReview.Api.Features.Comics.Painters;
 
 /// <summary><c>LocalImage</c> configuration for <see cref="LocalImageService"/>.</summary>
 public sealed class LocalImageOptions
