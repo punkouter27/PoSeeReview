@@ -32,7 +32,7 @@
     <!-- OpenTelemetry -->
     <!-- Transitive-only pin (no direct PackageReference): lifts the 1.15.1 pull that carries
          CVE GHSA-g94r-2vxg-569j. Do not remove as "unused". -->
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
