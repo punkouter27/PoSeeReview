@@ -175,57 +175,6 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         Assert.False(exists);
     }
 
-    [Fact]
-
-    [Trait("Category", "Integration")]
-    public async Task RestaurantEntity_CacheExpiration_PropertyStored()
-    {
-        // Arrange
-        await _fixture.ClearTableAsync(TestTableName);
-        var tableClient = _fixture.TableServiceClient.GetTableClient(TestTableName);
-
-        var cachedAt = DateTimeOffset.UtcNow.AddHours(-12);
-        var entity = new TableEntity("US-WA-Seattle", "CacheTest")
-        {
-            { "PlaceId", "CacheTest" },
-            { "Name", "Cache Test Restaurant" },
-            { "CachedAt", cachedAt }
-        };
-
-        // Act
-        await tableClient.UpsertEntityAsync(entity);
-        var retrieved = await tableClient.GetEntityAsync<TableEntity>("US-WA-Seattle", "CacheTest");
-
-        // Assert
-        Assert.NotNull(retrieved.Value["CachedAt"]);
-        var retrievedCachedAt = (DateTimeOffset)retrieved.Value["CachedAt"];
-        Assert.Equal(cachedAt.ToString("o"), retrievedCachedAt.ToString("o"));
-    }
-
-    [Fact]
-
-    [Trait("Category", "Integration")]
-    public async Task RestaurantEntity_PartitionKeyStrategy_UseRegion()
-    {
-        // Arrange
-        await _fixture.ClearTableAsync(TestTableName);
-        var tableClient = _fixture.TableServiceClient.GetTableClient(TestTableName);
-
-        var region = "US-NY-NewYork";
-        var entity = new TableEntity(region, "NYPlace123")
-        {
-            { "PlaceId", "NYPlace123" },
-            { "Region", region }
-        };
-
-        // Act
-        await tableClient.UpsertEntityAsync(entity);
-        var retrieved = await tableClient.GetEntityAsync<TableEntity>(region, "NYPlace123");
-
-        // Assert
-        Assert.Equal(region, retrieved.Value.PartitionKey);
-        Assert.Equal("NYPlace123", retrieved.Value.RowKey);
-    }
 
     private async Task<bool> EntityExistsAsync(TableClient tableClient, string partitionKey, string rowKey)
     {

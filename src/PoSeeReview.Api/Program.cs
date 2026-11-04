@@ -10,7 +10,6 @@ using PoSeeReview.Api.Features.Auth;
 using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features;
 using PoSeeReview.Api.Health;
-using PoSeeReview.Api.HostedServices;
 using PoSeeReview.Api.Identity;
 using PoSeeReview.Api.Middleware;
 using PoSeeReview.Api.Telemetry;

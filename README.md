@@ -1,6 +1,6 @@
 # PoSeeReview
 
-PoSeeReview turns unusual restaurant reviews into AI-generated four-panel comic strips and publishes ranked results to a global Hall of Fame leaderboard. The solution runs as a Blazor WebAssembly frontend and .NET 10 API in a single Azure App Service, backed by Azure Table and Blob Storage, Azure OpenAI, and Google Gemini for narrative and image generation.
+PoSeeReview turns unusual restaurant reviews into AI-generated one- or two-panel comic strips and publishes ranked results to a global Hall of Fame leaderboard. The solution runs as a Blazor WebAssembly frontend and .NET 10 API in a single Azure App Service, backed by Azure Table and Blob Storage, Azure OpenAI, and Google Gemini for narrative and image generation.
 
 ---
 
@@ -8,7 +8,7 @@ PoSeeReview turns unusual restaurant reviews into AI-generated four-panel comic 
 
 ### Vision
 
-Every neighborhood has restaurants with bizarre, unhinged, or strangely poetic Google Maps reviews. PoSeeReview mines that raw material, distills the strangest signal from real reviews, and turns it into shareable four-panel comic strips. The output is ranked on a global leaderboard by a computed "strangeness score" (0–100), creating a continuously refreshing artifact of collective absurdity.
+Every neighborhood has restaurants with bizarre, unhinged, or strangely poetic Google Maps reviews. PoSeeReview mines that raw material, distills the strangest signal from real reviews, and turns it into shareable one- or two-panel comic strips. The output is ranked on a global leaderboard by a computed "strangeness score" (0–100), creating a continuously refreshing artifact of collective absurdity.
 
 The product has a single core loop: open app → share location → browse nearby restaurants → tap one → watch the AI pipeline run → receive a personalized comic strip → share it or check your restaurant's global rank. This loop must complete in under 12 seconds on a cold miss, and under 500ms on a cache hit.
 
@@ -52,7 +52,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 
 **6d. Video export.** "🎬 Make a video" beside Share films the comic as a 9:16 clip for Reels, Shorts and TikTok, entirely in the browser (canvas + `MediaRecorder`; MP4 on Chrome 126+ and Safari, WebM elsewhere). The soundtrack is the audio comic (recorded on that tap if nobody has yet, so it costs the same cent; a refused recording gives a silent clip), the camera follows the speaking panel and the short link is printed at the bottom. Filming takes as long as the clip; a second tap shares the file, or saves it where the browser cannot share files. No new endpoint or config.
 
-**7. Ephemeral by design.** Comics expire after 24 hours. The `ExpiredComicCleanupService` runs on a 30-minute background loop and batch-purges expired rows and blobs (batch size 25, configurable 5–200). This keeps storage costs bounded and the leaderboard fresh. Users who want to regenerate a comic can force-refresh at any time.
+**7. Ephemeral by design.** Comics expire after 7 days (`Comics:CacheDurationDays`). The `ExpiredComicCleanupService` runs on a 30-minute background loop and batch-purges expired rows and blobs (batch size 25, configurable 5–200). This keeps storage costs bounded and the leaderboard fresh. Users who want to regenerate a comic can force-refresh at any time.
 
 ### Non-Goals (v1)
 
@@ -65,7 +65,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 ### Technical Constraints
 
 - **Latency target:** p50 cold-miss generation < 10s. p95 cache hit < 500ms.
-- **Caching:** Comics and restaurant data cache for 24 hours in Azure Table Storage. SAS URLs are issued for 8 days to avoid stale URL errors within the cache window.
+- **Caching:** Comics cache for 7 days and restaurant data for 24 hours in Azure Table Storage. SAS URLs are issued for 8 days, outliving the comic, to avoid stale URL errors within the cache window.
 - **Rate limiting:** The comic generation stream (`POST /api/comics/{placeId}/stream`) has its own `comics-post` policy, 3 per minute per signed-in user, on top of the 240/min global window per IP, plus a daily per-user and app-wide budget.
 - **Bot protection:** All requests are evaluated by `UserAgentValidationMiddleware`. Requests with missing or blocked User-Agent patterns are rejected at 400 before hitting the application layer.
 - **Sign-in required by default.** Every endpoint needs a session (Microsoft sign-in, or the guest cookie outside Production) unless it opts out: `/auth`, `/health*`, `/diag`, `/s/{code}`, `/share/{placeId}/card.png`, the SPA shell, and `POST /api/takedowns`, which carries its own `X-Api-Key`.

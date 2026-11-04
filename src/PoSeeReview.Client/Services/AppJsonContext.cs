@@ -13,8 +13,6 @@ namespace PoSeeReview.Client.Services;
 [JsonSerializable(typeof(ComicDto))]
 [JsonSerializable(typeof(AudioComicDto))]
 [JsonSerializable(typeof(AudioComicLineDto))]
-[JsonSerializable(typeof(ScoreBreakdownDto))]
-[JsonSerializable(typeof(ComicSourceDto))]
 [JsonSerializable(typeof(ComicGenerationEventDto))]
 [JsonSerializable(typeof(LeaderboardResponse))]
 [JsonSerializable(typeof(HallOfFameResponse))]

@@ -17,7 +17,6 @@ using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features.Leaderboard;
 using PoSeeReview.Api.Features.Moderation;
 using PoSeeReview.Api.Features.Restaurants;
-using PoSeeReview.Api.HostedServices;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Ids;

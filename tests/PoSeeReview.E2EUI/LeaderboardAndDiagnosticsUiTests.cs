@@ -74,34 +74,15 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Diagnostics_NeverRendersAnUnmaskedSecret(string viewport)
+    public async Task Diagnostics_ShowsDependencyHealth(string viewport)
     {
         var page = await SignedInAsync(viewport, "/diagnostics");
         await page.Locator(".diagnostics-container").First
             .WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
 
-        // Dependency health, folded in from the former Diagnostics_ShowsDependencyHealth:
-        // same route, same render, one page load instead of two.
+        // Masking is proven end to end by E2EAPI's Diag_IsAnonymous_…NeverShowsASecret and by the
+        // unit tests; the page only renders what /diag returns.
         await Assertions.Expect(page.Locator(".health-summary, .diagnostics-section").First)
             .ToBeVisibleAsync(new() { Timeout = RenderTimeout });
-
-        var rows = page.Locator(".config-row");
-        var count = await rows.CountAsync();
-        for (var i = 0; i < count; i++)
-        {
-            var key = (await rows.Nth(i).Locator(".config-key").TextContentAsync() ?? string.Empty).ToLowerInvariant();
-            if (!key.Contains("key") && !key.Contains("secret") && !key.Contains("password") && !key.Contains("connectionstring"))
-            {
-                continue;
-            }
-
-            var value = (await rows.Nth(i).Locator(".config-value").TextContentAsync() ?? string.Empty).Trim();
-            if (value.Length == 0 || value.Equals("(not set)", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            Assert.Contains("***", value, StringComparison.Ordinal);
-        }
     }
 }

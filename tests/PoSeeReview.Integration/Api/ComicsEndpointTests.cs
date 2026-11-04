@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features.Restaurants;
 using PoSeeReview.Api;
@@ -20,11 +22,13 @@ namespace PoSeeReview.Integration.Api;
 public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
+    private readonly int _cacheDays;
     private readonly ITestOutputHelper _output;
 
     public ComicsEndpointTests(CustomWebApplicationFactory<Program> factory, ITestOutputHelper output)
     {
         _client = factory.CreateClient();
+        _cacheDays = factory.Services.GetRequiredService<IOptions<ComicOptions>>().Value.CacheDurationDays;
         _output = output;
     }
 
@@ -122,7 +126,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
             Assert.NotNull(comic.BlobUrl);
             Assert.True(comic.GeneratedAt <= DateTime.UtcNow);
             Assert.True(comic.ExpiresAt > DateTime.UtcNow);
-            Assert.True(comic.ExpiresAt <= DateTime.UtcNow.AddHours(24));
+            Assert.True(comic.ExpiresAt <= comic.GeneratedAt.AddDays(_cacheDays));
         }
     }
 
@@ -197,7 +201,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
 
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task PostComic_ReturnsCachedComicWithin24HoursOrContentPolicy()
+    public async Task PostComic_SecondCall_ReturnsTheCachedComicOrContentPolicy()
     {
         // Arrange
         var placeId = "ChIJN1t_tDeuEmsRUsoyG83frY4";

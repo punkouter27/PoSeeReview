@@ -89,6 +89,7 @@
     private int _expiredCount;
     private ElementReference _clearDialog;
     private IJSObjectReference? _clearModule;
+    private DotNetObjectReference<MyComics>? _self;
     private bool _clearModalActive;
 
     protected override async Task OnInitializedAsync() => await ReloadAsync();
@@ -103,7 +104,7 @@
         try
         {
             _clearModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/modal.js");
-            _clearModalActive = await _clearModule.InvokeAsync<bool>("open", _clearDialog, DotNetObjectReference.Create(this));
+            _clearModalActive = await _clearModule.InvokeAsync<bool>("open", _clearDialog, _self ??= DotNetObjectReference.Create(this));
         }
         catch (JSException)
         {
@@ -113,7 +114,7 @@
 
     /// <summary>Raised by js/modal.js when Escape or the backdrop closes the native dialog.</summary>
     [JSInvokable]
-    public Task OnNativeClearCloseAsync()
+    public Task OnNativeCloseAsync()
     {
         _confirmingClear = false;
         return Task.CompletedTask;
@@ -182,6 +183,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _self?.Dispose();
         if (_clearModule is not null)
         {
             try

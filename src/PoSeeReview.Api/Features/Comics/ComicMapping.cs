@@ -5,9 +5,10 @@ using PoSeeReview.Shared.Enums;
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
-/// Domain <see cref="Comic"/> to wire <see cref="ComicDto"/>. Extracted because three call
-/// sites project it — generate, cached read, and the social-preview page — and a new field
-/// would otherwise be easy to add to two of them and forget in the third.
+/// Domain <see cref="Comic"/> to wire <see cref="ComicDto"/>. Extracted because two call
+/// sites project it — the generation stream and the cached read — and a new field would
+/// otherwise be easy to add to one and forget in the other. The scorer's ratings and per-panel
+/// sources stay on the domain comic and in storage; nothing on the wire reads them.
 /// </summary>
 internal static class ComicMapping
 {
@@ -24,10 +25,6 @@ internal static class ComicMapping
         IsCached = isCached ?? comic.CacheState == ComicCacheState.Cached,
         Captions = comic.Captions,
         Scenes = comic.Scenes,
-        Breakdown = comic.Breakdown is { } b
-            ? new ScoreBreakdownDto { Absurdity = b.Absurdity, Specificity = b.Specificity, StoryPotential = b.StoryPotential }
-            : null,
-        Sources = [.. comic.Sources.Select(s => new ComicSourceDto { Panel = s.Panel, ReviewNumber = s.ReviewNumber, Rating = s.Rating })],
         IsRemastered = comic.RemasterState == RemasterState.Remastered
     };
 }

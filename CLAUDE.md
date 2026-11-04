@@ -87,8 +87,11 @@ src/PoSeeReview.Api        ASP.NET Core host; also serves the WASM client
   Features/<Slice>/        endpoints + services + entities + repositories together:
                            Auth, Comics, Sharing, Restaurants, Leaderboard, Diagnostics, Moderation
   Features/Comics/Painters/  the image providers behind IImageGenerationService (sub-namespace)
-  Configuration/           Key Vault wiring, secret managers, infrastructure DI
+                           (Comics also owns its background services: expiry cleanup, pre-draw,
+                           remaster — they reach the board only through Shared contracts)
+  Configuration/           Key Vault wiring, secret managers, infrastructure DI, StartupSecretValidator
   Storage/                 cross-slice TableStorageRepository, BlobStorageService
+  Health/, Middleware/     health checks; UA validation, rate limiting, exception handler, filters
   Imaging/                 cross-slice SkiaText, embedded Fonts/, SkiaImagingHealthCheck
   Identity/                ICurrentRequestIdentityAccessor + HttpContext impl
   Telemetry/               App Insights + OpenTelemetry, RoleNameTelemetryInitializer
@@ -315,8 +318,10 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   after `MaxConcurrencyRetries`. Table Storage 409/412 retries (budget, moderation) go through
   `Storage/TableConcurrency`. `GET /api/comics/budget` is free so the UI greys out the button
   before a tap.
-- **`GET /api/comics/{placeId}/image`** re-serves the blob from this origin. Not used for display;
-  Share attaches the image file from it — the SAS blob sends no CORS.
+- **`GET /api/comics/{placeId}/image`** re-serves the blob from this origin: Share and the video
+  export read it (the SAS blob sends no CORS), `/my-comics` and the landing display through it
+  (`ComicImageUrl.SameOrigin`, so the PWA can cache it), and so does every comic locally (Azurite's
+  SAS URL is http, blocked as mixed content).
 - **Reports** (`/api/reports`): session required, rate limited, deduped by reporter (RowKey is the
   principal), only ever writes a row.
 - **Moderation** is graded: **Hide** (reversible, what auto-hide at 3 distinct reporters does),
@@ -338,7 +343,7 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 
 ### Hall of Fame, share cards, previews
 
-- **Weekly Hall of Fame** keeps each place's **peak** and outlives the 24h comic (hence
+- **Weekly Hall of Fame** keeps each place's **peak** and outlives the comic (`Comics:CacheDurationDays`, 7) (hence
   `ImageExpired`). The live board mirrors the live comic: a redraw below
   `MinimumStrangenessScore` deletes the row, the board only lists places `ILiveComicLookup` calls
   live (filtered, not deleted — a prompt rollback revives them), and expiry cleanup deletes the

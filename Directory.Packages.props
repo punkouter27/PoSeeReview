@@ -46,7 +46,6 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.7" />
     <!-- System -->
     <!-- Testing -->
-    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />

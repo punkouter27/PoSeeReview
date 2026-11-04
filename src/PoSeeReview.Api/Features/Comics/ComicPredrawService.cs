@@ -1,9 +1,8 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Options;
-using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Shared.Contracts;
 
-namespace PoSeeReview.Api.HostedServices;
+namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary><c>Predraw</c> configuration: which places are drawn before anyone asks.</summary>
 public sealed class PredrawOptions

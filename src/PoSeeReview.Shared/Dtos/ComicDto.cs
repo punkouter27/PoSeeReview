@@ -63,32 +63,7 @@ public class ComicDto
     /// </summary>
     public string[] Scenes { get; set; } = [];
 
-    /// <summary>Why the score is what it is: the three 0-10 ratings. Null on older comics.</summary>
-    public ScoreBreakdownDto? Breakdown { get; set; }
-
-    /// <summary>Which reviews (by position and stars) each panel was drawn from. Empty on older comics.</summary>
-    public ComicSourceDto[] Sources { get; set; } = [];
-
     /// <summary>True once the popular-comic remaster has redrawn the artwork.</summary>
     public bool IsRemastered { get; set; }
 }
 
-/// <summary>The scorer's three ratings, each 0-10.</summary>
-public class ScoreBreakdownDto
-{
-    public int Absurdity { get; set; }
-
-    public int Specificity { get; set; }
-
-    public int StoryPotential { get; set; }
-}
-
-/// <summary>One review a panel drew on: 1-based panel, 1-based review position, star rating.</summary>
-public class ComicSourceDto
-{
-    public int Panel { get; set; }
-
-    public int ReviewNumber { get; set; }
-
-    public int Rating { get; set; }
-}

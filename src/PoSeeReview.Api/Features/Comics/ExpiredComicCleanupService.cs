@@ -5,14 +5,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PoSeeReview.Api.Features.Comics;
-using PoSeeReview.Api.Features.Leaderboard;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Ids;
 using PoSeeReview.Shared.Enums;
 
-namespace PoSeeReview.Api.HostedServices;
+namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
 /// Periodically purges expired comics and their associated blobs

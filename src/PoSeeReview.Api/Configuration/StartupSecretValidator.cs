@@ -2,13 +2,12 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PoSeeReview.Api.Configuration;
 using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features.Restaurants;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Ids;
 
-namespace PoSeeReview.Api.HostedServices;
+namespace PoSeeReview.Api.Configuration;
 
 /// <summary>
 /// Fail-fast validator that runs once at startup.

@@ -8,7 +8,6 @@ using Microsoft.Extensions.Options;
 using Moq;
 using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Features.Moderation;
-using PoSeeReview.Api.HostedServices;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Api.Telemetry;
 using PoSeeReview.Shared.Contracts;

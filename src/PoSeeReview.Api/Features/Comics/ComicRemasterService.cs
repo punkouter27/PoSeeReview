@@ -1,12 +1,11 @@
 using PoSeeReview.Api.Features.Comics.Painters;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Options;
-using PoSeeReview.Api.Features.Comics;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Enums;
 
-namespace PoSeeReview.Api.HostedServices;
+namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary><c>Remaster</c> configuration: which comics earn the premium painter, and how many per run.</summary>
 public sealed class RemasterOptions

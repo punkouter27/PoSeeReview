@@ -54,7 +54,7 @@
 }
 
 /* `min(220px, 100%)` rather than a bare 220px: auto-fit tracks overflow their container when
-   the container is narrower than the floor, which is the same class of bug .config-row had. */
+   the container is narrower than the floor, and the page scrolled sideways. */
 .key-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
@@ -87,41 +87,6 @@
     overflow-wrap: anywhere;
 }
 
-.config-table {
-    display: grid;
-    gap: 0.6rem;
-}
-
-/* `minmax(220px, 320px)` has a hard 220px floor and grid items default to `min-width: auto`,
-   so neither column could shrink below its content. Config values are unbroken GUIDs, URLs and
-   masked connection strings, so the row settled at ~604px and dragged the whole document to
-   628px — the page scrolled sideways on every viewport from 320px up to ~700px. `minmax(0, …)`
-   plus `min-width: 0` on the items lets the columns actually collapse. */
-.config-row {
-    display: grid;
-    grid-template-columns: minmax(0, clamp(140px, 30%, 320px)) minmax(0, 1fr);
-    gap: var(--space-md);
-    padding: 0.85rem var(--space-md);
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-}
-
-.config-key {
-    min-width: 0;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-}
-
-.config-value {
-    min-width: 0;
-    color: var(--color-text-secondary);
-    /* `anywhere`, not `break-word`: break-word will not break a single unbroken token that is
-       itself wider than the column, which is exactly what a connection string is. */
-    overflow-wrap: anywhere;
-}
-
 .error-summary {
     cursor: pointer;
     color: var(--color-danger);
@@ -146,10 +111,6 @@
     .health-summary {
         flex-direction: column;
         text-align: center;
-    }
-
-    .config-row {
-        grid-template-columns: minmax(0, 1fr);
     }
 }
 
