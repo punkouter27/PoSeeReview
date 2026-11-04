@@ -1,0 +1,17 @@
+/* Scoped to ComicVideo. `.btn` and `.btn-secondary` come from app.css; the button sits beside
+   Share in ComicActions' row at its own width, so Share keeps the room. */
+
+.action-video {
+    position: relative;
+    overflow: hidden;
+}
+
+/* A thin filming bar along the button's bottom edge. */
+.action-video-progress {
+    position: absolute;
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 4px;
+    border: 0;
+    accent-color: var(--color-accent);
+}

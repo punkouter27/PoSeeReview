@@ -1,4 +1,4 @@
-@* The comic page's action bar. Share is the one action — for the Content Creator persona it is
+@* The comic page's action bar. Share is the main action — for the Content Creator persona it is
    the entire product. *@
 @using PoSeeReview.Client.Services
 @using PoSeeReview.Shared.Dtos
@@ -10,6 +10,7 @@
     <button type="button" class="btn btn-primary action-share" @onclick="ShareAsync" disabled="@_isBusy">
         <span aria-hidden="true">📤</span> Share
     </button>
+    <ComicVideo Comic="Comic" />
 </div>
 
 @code {

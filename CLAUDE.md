@@ -292,6 +292,12 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   direction, so timings are exact and a swear word is cut out for a synthesized bleep. Single-flight
   on `ComicGenerationLock`; paid calls run on `CancellationToken.None`; the POST is on `comics-post`.
   It plays on the user's tap regardless of the sound-effects switch (the tap is the request).
+- **Video export** (`ComicVideo.razor`, `js/comic-video.js`, beside Share): films a 1080x1920 clip
+  in the browser — canvas + `MediaRecorder`, MP4 where the browser records it (Chrome 126+, Safari),
+  WebM otherwise — with the audio comic as the soundtrack (recorded on the tap if it never was;
+  silent if refused) and the camera on the speaking panel. Real time, on a timer rather than rAF so
+  it films at any effects tier. Two taps by necessity: the share sheet needs fresh activation, which
+  filming outlasts, so it reads "Share video" (or "Save video", a download) once ready. No server code.
 - **Comics are lossy WebP.** Skia encodes WebP lossy at any quality below 100 (the overlay uses 85).
   `DeleteComicImageAsync` removes every extension, since older rows are `.png`.
 - **Imaging is SkiaSharp, not ImageSharp.** Every patched ImageSharp is 4.x, which needs a Six Labors
@@ -428,7 +434,8 @@ Read its header comment before adding CSS.
 Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-reveal.js`,
 `panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`, `soundtrack.js`,
 `confetti.js`, `ink-motes.js`, `ink-fx.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
-`map-view.js` is imported by `MapView` and `radzen-theme.js` by `RadzenScope`, both on their own).
+`map-view.js` is imported by `MapView`, `radzen-theme.js` by `RadzenScope`, `audio-comic.js` by `AudioComic`
+and `comic-video.js` by `ComicVideo`, each on its own).
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
@@ -506,7 +513,7 @@ is `full` (the frame watchdog steps a slow device down to `lite`), and the sound
   a climb into #1 fires `confetti.js` (2D canvas, tiny inked panels) and `audio.crown`.
 - **Removed (2026-10):** the ink-fluid wait, score particles, halftone print reveal, page curl,
   duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge,
-  the "Why 54?" score panel (the comic page's one action is Share) and the Duel page with its card. If one comes back, it goes behind a
+  the "Why 54?" score panel (the comic page's actions are Share and its video) and the Duel page with its card. If one comes back, it goes behind a
   `/settings` switch that starts off. Their dead modules were deleted the same month; git history has them.
   The audio comic (2026-11) is not the old AI voice: it is a tap-to-record button on the comic, not
   automatic narration, and it costs nothing until someone taps it.

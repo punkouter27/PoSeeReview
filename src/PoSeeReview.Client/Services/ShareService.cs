@@ -32,20 +32,18 @@ public sealed class ShareService(
     /// Shares a comic by its short link. The canonical URL is only the fallback when the short
     /// one cannot be minted: a place id is thirty opaque characters, hostile in a caption.
     /// </summary>
-    public async Task<ShareOutcome> ShareComicAsync(string placeId, string restaurantName, int score)
+    public async Task<ShareOutcome> ShareComicAsync(string placeId, string restaurantName, int score) =>
+        await ShareAsync(restaurantName, ComicBlurb(restaurantName, score), await ComicLinkAsync(placeId), placeId);
+
+    /// <summary>The comic's short link, or its canonical URL when one cannot be minted.</summary>
+    public async Task<string> ComicLinkAsync(string placeId)
     {
         var url = (await api.CreateShareLinkAsync(placeId))?.ShortUrl;
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            url = navigation.ToAbsoluteUri($"/comic/{placeId}").ToString();
-        }
-
-        return await ShareAsync(
-            restaurantName,
-            $"{restaurantName} scored {score}/100 on the strangeness scale. Look at this.",
-            url,
-            placeId);
+        return string.IsNullOrWhiteSpace(url) ? navigation.ToAbsoluteUri($"/comic/{placeId}").ToString() : url;
     }
+
+    public static string ComicBlurb(string restaurantName, int score) =>
+        $"{restaurantName} scored {score}/100 on the strangeness scale. Look at this.";
 
     /// <param name="placeId">When given, the comic image is attached where the browser can share files.</param>
     public async Task<ShareOutcome> ShareAsync(string title, string text, string url, string? placeId = null)

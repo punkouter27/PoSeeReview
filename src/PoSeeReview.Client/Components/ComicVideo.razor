@@ -1,0 +1,183 @@
+@* The comic as a 9:16 clip for Reels / Shorts / TikTok, filmed in the browser (comic-video.js).
+   Two taps by necessity: filming takes as long as the clip, and the share sheet needs a fresh
+   tap. The soundtrack is the audio comic, recorded on the first tap if nobody has yet (the tap is
+   the request, as on its own button); if the voices are refused the clip is silent. Hidden where
+   the browser cannot record a canvas. *@
+@implements IAsyncDisposable
+@using PoSeeReview.Client.Services
+@using PoSeeReview.Shared.Dtos
+@using Microsoft.AspNetCore.Components.Web
+@inject ApiClient ApiClient
+@inject ShareService ShareService
+@inject ToastService Toasts
+@inject FxService Fx
+@inject IJSRuntime JS
+
+@if (_supported)
+{
+    <button type="button" class="btn btn-secondary action-video" disabled="@(_stage is Stage.Voicing or Stage.Filming)" @onclick="TapAsync">
+        <span aria-hidden="true">🎬</span>
+        @(_stage switch
+        {
+            Stage.Voicing => "Recording the voices…",
+            Stage.Filming => "Filming…",
+            Stage.Ready => _canShare ? "Share video" : "Save video",
+            _ => "Make a video",
+        })
+        <progress @ref="_progress" class="action-video-progress" max="1" hidden="@(_stage != Stage.Filming)" aria-label="Filming progress"></progress>
+    </button>
+}
+
+@code {
+    private enum Stage { Idle, Voicing, Filming, Ready }
+
+    [Parameter, EditorRequired] public ComicDto Comic { get; set; } = default!;
+
+    private bool _supported;
+    private bool _canShare;
+    private Stage _stage;
+    private int _handle;
+    private string _url = string.Empty;
+    private ElementReference _progress;
+    private IJSObjectReference? _module;
+    private bool _disposed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/comic-video.js");
+            _supported = await _module.InvokeAsync<bool>("supported");
+        }
+        catch (JSException)
+        {
+            _supported = false;
+        }
+
+        if (_supported)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private Task TapAsync(MouseEventArgs e) => _stage == Stage.Ready ? ShareAsync() : MakeAsync(e);
+
+    private async Task MakeAsync(MouseEventArgs e)
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        await Fx.PlayTapAtAsync(e.ClientX);
+        _stage = Stage.Voicing;
+        StateHasChanged();
+
+        try
+        {
+            var audio = await VoicesAsync();
+            _url = await ShareService.ComicLinkAsync(Comic.PlaceId);
+            _stage = Stage.Filming;
+            StateHasChanged();
+
+            _handle = await _module.InvokeAsync<int>(
+                "make", _progress, Comic.PlaceId, Comic.RestaurantName, Comic.StrangenessScore,
+                Math.Max(1, Comic.Captions.Length), _url, audio?.Lines, audio?.AudioUrl);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_handle == 0)
+            {
+                _stage = Stage.Idle;
+                Toasts.Show("Couldn't make the video in this browser.");
+                await Fx.PlayErrorAsync();
+                return;
+            }
+
+            _canShare = await _module.InvokeAsync<bool>("canShare", _handle, Comic.RestaurantName);
+            _stage = Stage.Ready;
+            Toasts.Show(_canShare ? "Your video is ready — tap Share video." : "Your video is ready — tap Save video.");
+        }
+        catch (Exception ex) when (ex is JSException or HttpRequestException)
+        {
+            _stage = Stage.Idle;
+            Toasts.Show("Couldn't make the video.");
+            await Fx.PlayErrorAsync();
+        }
+    }
+
+    /// <summary>The audio comic, recorded now if it never was; null (a silent clip) if refused.</summary>
+    private async Task<AudioComicDto?> VoicesAsync()
+    {
+        try
+        {
+            return await ApiClient.GetAudioComicAsync(Comic.PlaceId)
+                ?? await ApiClient.RecordAudioComicAsync(Comic.PlaceId);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException)
+        {
+            Toasts.Show($"No voices this time ({ex.Message}) — the video will be silent.");
+            return null;
+        }
+    }
+
+    private async Task ShareAsync()
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        // Straight to the share sheet: anything awaited first can outlast the tap's activation.
+        var outcome = await _module.InvokeAsync<string>(
+            "share", _handle, Comic.RestaurantName,
+            $"{ShareService.ComicBlurb(Comic.RestaurantName, Comic.StrangenessScore)} {_url}");
+
+        switch (outcome)
+        {
+            case "shared":
+                Toasts.Show("Shared!");
+                await Fx.PlayShareStingerAsync();
+                break;
+            case "downloaded":
+                Toasts.Show("Video saved");
+                await Fx.PlayShareStingerAsync();
+                break;
+            case "failed":
+                Toasts.Show("Couldn't share that one.");
+                await Fx.PlayErrorAsync();
+                break;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        if (_module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _module.InvokeVoidAsync("cancelFilming");
+            if (_handle != 0)
+            {
+                await _module.InvokeVoidAsync("release", _handle);
+            }
+
+            await _module.DisposeAsync();
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException)
+        {
+            // The page is already gone.
+        }
+    }
+}
