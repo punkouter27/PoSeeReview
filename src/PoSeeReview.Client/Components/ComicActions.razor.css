@@ -3,7 +3,6 @@
 
 .comic-actions {
     display: flex;
-    gap: var(--space-sm);
     margin-top: var(--space-md);
 }
 
@@ -11,4 +10,3 @@
 .action-share {
     flex: 1 0 auto;
 }
-
