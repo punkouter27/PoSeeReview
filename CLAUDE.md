@@ -436,14 +436,14 @@ Read its header comment before adding CSS.
 `propagateAudioState()` fans a sound-preference change out to haptics.
 
 Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-reveal.js`,
-`panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`, `soundtrack.js`,
+`panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`,
 `confetti.js`, `ink-motes.js`, `ink-fx.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
 `map-view.js` is imported by `MapView`, `radzen-theme.js` by `RadzenScope`, and `audio-comic.js` by `AudioComic`, each on its own).
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
 **Everything on by default, switches in `/settings`** (the owner's call, 2026-11). Sound, haptics,
-the soundtrack, map sounds and ink motes start **on** at full volume (an absent key is on; only an
+map sounds and ink motes start **on** at full volume (an absent key is on; only an
 explicit `"false"` is off), the theme is Auto and the effects tier is `full` (the frame watchdog
 steps a slow device down to `lite`). Every switch is on the
 `/settings` page (linked from the account menu); nothing else offers one.
@@ -518,7 +518,7 @@ steps a slow device down to `lite`). Every switch is on the
   a climb into #1 fires `confetti.js` (2D canvas, tiny inked panels) and `audio.crown`.
 - **Removed (2026-10):** the ink-fluid wait, score particles, halftone print reveal, page curl,
   duel arc shader, 3D mode, sticker maker and AI voice; then read-aloud narration, Save, Challenge,
-  the "Why 54?" score panel (the comic page's one action is Share) and the Duel page with its card. If one comes back, it goes behind a
+  the "Why 54?" score panel (the comic page's one action is Share) and the Duel page with its card; then the comic soundtrack (2026-11, the owner's call: no music). If one comes back, it goes behind a
   `/settings` switch that starts off. Their dead modules were deleted the same month; git history has them.
   The audio comic (2026-11) is not the old AI voice: it is a tap-to-record button on the comic, not
   automatic narration, and it costs nothing until someone taps it.
@@ -537,9 +537,6 @@ steps a slow device down to `lite`). Every switch is on the
   filter, keyed off `:root[data-glass="liquid"]`, which is set only on Chromium at `full` — other
   engines parse `backdrop-filter: url()` and then draw no backdrop. One specular light for the page
   (`--glass-lx/-ly`, a `fixed` gradient) follows the pointer or a permission-free tilt.
-- **Soundtrack** (`soundtrack.js`) is on by default with sound (`posee_soundtrack`, the
-  "Comic soundtrack" switch on `/settings`): a four-bar loop seeded by place id, scheduled look-ahead on the audio clock,
-  released when the comic page is disposed.
 - **View transitions**: forward is the halftone dot mask; back is an ink blot (`--ink-blot`) growing
   from the tap point (`--vt-x/-y`). Never await rAF inside the update callback (rendering is suppressed while it
   is pending); the click is taken from Blazor in a capture-phase listener and `Blazor.navigateTo` is

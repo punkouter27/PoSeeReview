@@ -324,7 +324,7 @@ function tapVariation(clientX) {
 // effectively random order; on a diatonic scale that produces semitone clashes.
 const PENTATONIC = [523.25, 587.33, 698.46, 783.99, 932.33]; // C5 D5 F5 G5 A#5
 
-// ── Seeded generation, for the per-comic signature (and soundtrack.js) ───────────────────
+// ── Seeded generation, for the per-comic signature ──────────────────────────────────
 
 /**
  * FNV-1a over a string. Any stable hash would do; this one is four lines and has no collisions
@@ -1269,15 +1269,5 @@ export const audio = {
         hum = null;
         release(h.gain, h.nodes, 0.8);
         setTimeout(() => h.output.dispose(), 1000);
-    },
-
-    /**
-     * The output stage for a long-running voice that lives outside this file (the comic
-     * soundtrack). Null until the context is running: such a voice has to wait for a gesture
-     * like everything else.
-     */
-    bus() {
-        if (!canPlay()) return null;
-        return { ctx: state.ctx, makeOutput };
     }
 };

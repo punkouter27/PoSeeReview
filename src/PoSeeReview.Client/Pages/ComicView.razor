@@ -391,8 +391,6 @@
 
         _scoreLanded = true;   // Drops the conic sweep, which only means something while counting.
         await Fx.PlaySignatureAsync(_comic?.PlaceId ?? PlaceId, score);
-        // After the motif, so the loop enters on its own rather than under it.
-        await Fx.StartSoundtrackAsync(_comic?.PlaceId ?? PlaceId, score);
         Layout.MainLayout.RaiseScoreChanged(score);
         await Fx.StopMotesAsync(_motesHandle);
         _motesHandle = await Fx.StartMotesAsync(score);
@@ -415,8 +413,7 @@
     {
         _disposed = true;
 
-        // The soundtrack, the wait's chord and the motes would otherwise follow the user to the next route.
-        await Fx.StopSoundtrackAsync();
+        // The wait's chord and the motes would otherwise follow the user to the next route.
         await Fx.StopMotesAsync(_motesHandle);
         if (_isGenerating)
         {

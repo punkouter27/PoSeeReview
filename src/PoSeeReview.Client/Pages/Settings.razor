@@ -7,8 +7,8 @@
 
 <PageTitle>Settings - PoSeeReview</PageTitle>
 
-@* Every extra lives here, and every one starts on: sound, haptics, soundtrack, map sounds and
-   ink motes at full volume, Full effects, Auto theme. All of it is stored in this browser only. *@
+@* Every extra lives here, and every one starts on: sound, haptics, map sounds and ink
+   motes at full volume, Full effects, Auto theme. All of it is stored in this browser only. *@
 <PageShell Title="Settings" Width="PageShell.ShellWidth.Narrow">
     <section class="settings-group glass" aria-labelledby="settings-appearance">
         <h2 id="settings-appearance">Appearance</h2>
@@ -56,14 +56,6 @@
                 </button>
             </div>
         }
-
-        <div class="settings-row">
-            <span class="settings-label">Comic soundtrack</span>
-            <button type="button" class="chip-toggle @(_music ? "chip-toggle--active" : "")"
-                    aria-pressed="@(_music ? "true" : "false")" disabled="@(!_sound)" @onclick="ToggleMusicAsync">
-                @(_music ? "On" : "Off")
-            </button>
-        </div>
 
         <div class="settings-row">
             <span class="settings-label">Map sounds</span>
@@ -139,7 +131,6 @@
     private FxCapabilities _caps;
     private bool _sound;
     private FxToggleState _haptics;
-    private bool _music;
     private bool _mapSounds;
     private FxToggleState _motes;
     private int _volume = 100;
@@ -155,7 +146,6 @@
         _caps = await Fx.GetCapabilitiesAsync(refresh: true);
         _sound = await Fx.IsAudioEnabledAsync();
         _haptics = await Fx.GetHapticsAsync();
-        _music = await Fx.IsSoundtrackEnabledAsync();
         _mapSounds = await Fx.IsMapSoundsEnabledAsync();
         _motes = await Fx.GetMotesAsync();
         _volume = (int)Math.Round(await Fx.GetVolumeAsync() * 100);
@@ -182,7 +172,6 @@
         _haptics = await Fx.GetHapticsAsync();
     }
 
-    private async Task ToggleMusicAsync() => _music = await Fx.SetSoundtrackEnabledAsync(!_music);
 
     private async Task ToggleMapSoundsAsync() => _mapSounds = await Fx.SetMapSoundsEnabledAsync(!_mapSounds);
 

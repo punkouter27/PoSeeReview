@@ -21,7 +21,6 @@ import * as confetti from './confetti.js';
 import * as glass from './glass.js';
 import * as motes from './ink-motes.js';
 import * as inkFx from './ink-fx.js';
-import { soundtrack } from './soundtrack.js';
 
 function guard(fn, fallback = null) {
     try {
@@ -54,10 +53,6 @@ function propagateAudioState(enabled) {
     guard(() => haptics.syncAudio(enabled));
     if (!enabled) {
         guard(() => haptics.cancel());
-        guard(() => soundtrack.halt());
-    } else {
-        // A gesture that brought sound back may be the first moment the wanted loop can play.
-        guard(() => soundtrack.resume(audio.bus()));
     }
 }
 
@@ -345,21 +340,6 @@ export const fx = {
      * plays the same figure, which is what makes it an identity rather than a flourish.
      */
     playSignature: (seed, score) => guard(() => audio.signature(seed, score)),
-
-    // ── Soundtrack (opt-in) ──────────────────────────────────────────────────────────────
-    soundtrackEnabled: () => guard(() => soundtrack.isEnabled(), false),
-    /** From the settings page's click, so the context can unlock on the same gesture. */
-    setSoundtrackEnabled: (enabled) => guardAsync(async () => {
-        const applied = soundtrack.setEnabled(enabled);
-        if (applied) {
-            await audio.unlock();
-            soundtrack.resume(audio.bus());
-        }
-        return applied;
-    }, false),
-    /** The comic page asks for its loop; it starts now if it can, or when sound next unlocks. */
-    startSoundtrack: (seed, score) => guard(() => soundtrack.want(audio.bus(), seed, score)),
-    stopSoundtrack: () => guard(() => soundtrack.release()),
 
     // ── Haptics ──────────────────────────────────────────────────────────────────────────
     hapticsDescribe: () => guard(() => haptics.describe(), { supported: false, enabled: false, explicit: false }),
