@@ -1,8 +1,8 @@
 namespace PoSeeReview.Shared.Dtos;
 
 /// <summary>
-/// A comic acted out: one WAV and its script, timed. The script is model-written dialogue
-/// inspired by the reviews (a dramatization, not quotes); swearing is bleeped in the audio and
+/// A conversation overheard at the place: one WAV and its script, timed. No narrator; the
+/// script is model-written talk sourced from the reviews (a dramatization, not quotes); swearing is bleeped in the audio and
 /// shown as "[bleep]" here.
 /// </summary>
 public sealed class AudioComicDto

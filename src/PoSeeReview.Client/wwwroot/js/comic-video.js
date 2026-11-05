@@ -173,7 +173,7 @@ export async function make(progress, placeId, title, score, panels, url, lines, 
 
             ctx.fillStyle = colors.muted;
             ctx.font = 'bold 36px "DM Sans", sans-serif';
-            if (buffer) ctx.fillText('AI dramatization · dialogue invented from the reviews', W / 2, H - 150);
+            if (buffer) ctx.fillText('AI dramatization · based on the reviews', W / 2, H - 150);
             ctx.fillStyle = colors.ink;
             ctx.font = 'bold 48px "DM Sans", sans-serif';
             ctx.fillText(url.replace(/^https?:\/\//, ''), W / 2, H - 80);

@@ -289,11 +289,13 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   content without both.
 - **An image refusal is a refusal.** `ImageDeclinedException` → 422, a flag carrying the reason, and
   an alert. Never redraw a substitute scene under the reviews' score.
-- **Audio comic** (`AudioComicService`, `AudioComic.razor`, `js/audio-comic.js`): tap-to-record,
-  then cached per comic id as `audio/{comicId}.wav|.json` in the comics container. One chat call
-  (`AzureOpenAI:AudioScriptDeployment`) writes a narrator + archetype cast, dialogue *invented* from
-  the reviews and labelled a dramatization (never real names — the user chose invented over
-  verbatim). `AzureOpenAI:TtsDeployment` voices each line as raw 24 kHz PCM with an acting
+- **Audio comic** (`AudioComicService`, `AudioComic.razor`, `js/audio-comic.js`): "Listen in",
+  tap-to-record, then cached per comic id as `audio/{comicId}.v2.wav|.json` in the comics container
+  (bump `ScriptVersion` when the prompt changes; older recordings are simply not read). One chat
+  call (`AzureOpenAI:AudioScriptDeployment`) writes a conversation overheard at the place — **no
+  narrator** (the user's call): two or three archetypes (Regular, Server, …) caught mid-talk, every
+  detail sourced from the reviews, the words written fresh and labelled a dramatization (never real
+  names, never verbatim — the user chose invented over verbatim). `AzureOpenAI:TtsDeployment` voices each line as raw 24 kHz PCM with an acting
   direction, so timings are exact and a swear word is cut out for a synthesized bleep. Single-flight
   on `ComicGenerationLock`; paid calls run on `CancellationToken.None`; the POST is on `comics-post`.
   It plays on the user's tap regardless of the sound-effects switch (the tap is the request).
