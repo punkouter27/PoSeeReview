@@ -440,8 +440,10 @@ Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-rev
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
-**Simplest by default, extras in `/settings`.** Sound is **off** until switched on, the effects tier
-is `full` (the frame watchdog steps a slow device down to `lite`), and the soundtrack, map sounds and ink motes are opt-in. Every switch is on the
+**Everything on by default, switches in `/settings`** (the owner's call, 2026-11). Sound, haptics,
+the soundtrack, map sounds and ink motes start **on** at full volume (an absent key is on; only an
+explicit `"false"` is off), the theme is Auto and the effects tier is `full` (the frame watchdog
+steps a slow device down to `lite`). Every switch is on the
 `/settings` page (linked from the account menu); nothing else offers one.
 
 - **`gfx-core.js`**: one shared `requestAnimationFrame` loop (never start a private rAF), a 20ms
@@ -472,7 +474,7 @@ is `full` (the frame watchdog steps a slow device down to `lite`), and the sound
 - **Nothing may throw into .NET.** `FxService` swallows `JSException` and returns a benign default
   (0 handle = not running, except the gradient, above). `SafeAsync<T>` needs its `[DynamicallyAccessedMembers]` annotation or
   the trimmed client fails `IL2091`.
-- **Audio** is synthesised (no assets), defaults **off**, and cannot start before a trusted gesture;
+- **Audio** is synthesised (no assets), defaults **on**, and cannot start before a trusted gesture;
   `unlock()` **races** the resume against a short deadline — Chrome leaves an unhonoured resume
   pending forever, which once hung the whole discovery search. Reduced motion forces silence as a
   runtime gate that never overwrites the stored preference. Master volume is `0.22 × volume`
@@ -521,9 +523,9 @@ is `full` (the frame watchdog steps a slow device down to `lite`), and the sound
 - **Map** heat glow is a MapLibre custom layer in MapLibre's own context; it pulses only at `full`.
   New pins drop in nearest-first (`dropPins`; the face falls via `translate`, the button never
   moves) and the first eight pluck where they land. Below zoom 11 the map carries
-  `data-halftone` and pins print as a dot screen. **Map sounds** (`posee_map_sounds`, opt-in):
+  `data-halftone` and pins print as a dot screen. **Map sounds** (`posee_map_sounds`, on by default):
   wind from camera speed, a ping when "Search this area" appears, a hum from the drawn places.
-- **Ink motes** (`ink-motes.js`, `posee_gpu_motes`, opt-in, `full`, WebGPU only — no fallback, the
+- **Ink motes** (`ink-motes.js`, `posee_gpu_motes`, on by default, `full`, WebGPU only — no fallback, the
   switch is hidden without it): a compute pass advances a curl-noise particle field and a render
   pass draws it from the same storage buffer, inserted right after `.fx-backdrop` so it stacks
   over the field and under the page. A GPU validation error or lost device stops it.
@@ -533,7 +535,7 @@ is `full` (the frame watchdog steps a slow device down to `lite`), and the sound
   filter, keyed off `:root[data-glass="liquid"]`, which is set only on Chromium at `full` — other
   engines parse `backdrop-filter: url()` and then draw no backdrop. One specular light for the page
   (`--glass-lx/-ly`, a `fixed` gradient) follows the pointer or a permission-free tilt.
-- **Soundtrack** (`soundtrack.js`) is opt-in even with sound on (`posee_soundtrack`, the
+- **Soundtrack** (`soundtrack.js`) is on by default with sound (`posee_soundtrack`, the
   "Comic soundtrack" switch on `/settings`): a four-bar loop seeded by place id, scheduled look-ahead on the audio clock,
   released when the comic page is disposed.
 - **View transitions**: forward is the halftone dot mask; back is an ink blot (`--ink-blot`) growing

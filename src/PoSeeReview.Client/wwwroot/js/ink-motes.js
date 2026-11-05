@@ -6,7 +6,7 @@
 // straight out of the same storage buffer, so nothing round-trips through JavaScript per frame.
 // There is no WebGL fallback on purpose — without WebGPU the switch is not offered at all.
 //
-// Opt-in (`posee_gpu_motes`, the "Ink motes" switch on /settings), `full` tier only, one
+// On by default (`posee_gpu_motes`, the "Ink motes" switch on /settings), `full` tier only, one
 // instance at a time, ticked by the shared loop. A tier drop or a lost device stops it; the
 // comic page asks again next time it opens.
 
@@ -117,9 +117,9 @@ let nextHandle = 1;
 
 const readEnabled = () => {
     try {
-        return localStorage.getItem(STORAGE_KEY) === 'true';
+        return localStorage.getItem(STORAGE_KEY) !== 'false';   // on unless switched off
     } catch {
-        return false;
+        return true;
     }
 };
 

@@ -5,9 +5,8 @@
 // it read aloud — sits in silence. This gives the place a room to sit in. Same seed, same loop,
 // forever: a restaurant you return to sounds like it did last time.
 //
-// OPT-IN, unlike every other sound in the app. A cue is a second long; a loop is not, and music
-// nobody asked for under a page is the fastest way to get the whole app muted. The switch sits
-// in /settings next to sound and haptics, stored as `posee_soundtrack`.
+// ON BY DEFAULT (the owner's call), like every other sound: it only plays once sound is unlocked
+// by a tap. The switch sits in /settings next to sound and haptics, stored as `posee_soundtrack`.
 //
 // What the score does (the seed only ever picks notes):
 //   * scale     — the same SCALES ladder the motif uses, so the loop and the motif agree
@@ -30,9 +29,9 @@ const LEVEL = 0.55;
 
 function readEnabled() {
     try {
-        return localStorage.getItem(STORAGE_KEY) === 'true';
+        return localStorage.getItem(STORAGE_KEY) !== 'false';   // on unless switched off
     } catch {
-        return false;
+        return true;
     }
 }
 

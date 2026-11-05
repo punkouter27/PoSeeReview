@@ -41,12 +41,13 @@ const state = {
     lastPlayedAt: new Map()
 };
 
-// Only an explicit "true" is on: an absent key, or a browser that blocks localStorage, is quiet.
+// On unless switched off: only an explicit "false" is quiet. It still waits for a trusted gesture
+// (unlock), and reduced motion still silences it at runtime.
 function readStoredEnabled() {
     try {
-        return localStorage.getItem(STORAGE_KEY) === 'true';
+        return localStorage.getItem(STORAGE_KEY) !== 'false';
     } catch {
-        return false;
+        return true;
     }
 }
 
@@ -508,9 +509,9 @@ let hum = null;
 
 function readStoredMapSounds() {
     try {
-        return localStorage.getItem(MAP_SOUNDS_KEY) === 'true';
+        return localStorage.getItem(MAP_SOUNDS_KEY) !== 'false';
     } catch {
-        return false;
+        return true;
     }
 }
 
@@ -1157,7 +1158,7 @@ export const audio = {
         }
     },
 
-    // ── Map sounds (opt-in, `posee_map_sounds`) ──────────────────────────────────────────
+    // ── Map sounds (on by default, `posee_map_sounds`) ──────────────────────────────────────────
 
     mapSoundsEnabled: () => state.mapSounds,
 
