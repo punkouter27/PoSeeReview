@@ -290,12 +290,14 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 - **An image refusal is a refusal.** `ImageDeclinedException` → 422, a flag carrying the reason, and
   an alert. Never redraw a substitute scene under the reviews' score.
 - **Audio comic** (`AudioComicService`, `AudioComic.razor`, `js/audio-comic.js`): "Listen in",
-  tap-to-record, then cached per comic id as `audio/{comicId}.v2.wav|.json` in the comics container
+  tap-to-record, then cached per comic id as `audio/{comicId}.v3.wav|.json` in the comics container
   (bump `ScriptVersion` when the prompt changes; older recordings are simply not read). One chat
-  call (`AzureOpenAI:AudioScriptDeployment`) writes a conversation overheard at the place — **no
-  narrator** (the user's call): two or three archetypes (Regular, Server, …) caught mid-talk, every
-  detail sourced from the reviews, the words written fresh and labelled a dramatization (never real
-  names, never verbatim — the user chose invented over verbatim). `AzureOpenAI:TtsDeployment` voices each line as raw 24 kHz PCM with an acting
+  call (`AzureOpenAI:AudioScriptDeployment`) writes a **make-believe visit**, overheard — no
+  narrator and not a retelling of the comic (both the user's call): two or three archetypes
+  (Regular, Server, …) live one invented visit stitched from details across up to ten reviews —
+  Google's five "most relevant" plus its five newest (`IRestaurantService.GetNewestReviewsAsync`,
+  the legacy Place Details API with `reviews_sort=newest`, uncached and never part of the score;
+  ~2¢ extra per recording). Labelled a dramatization; never real names, never verbatim. `AzureOpenAI:TtsDeployment` voices each line as raw 24 kHz PCM with an acting
   direction, so timings are exact and a swear word is cut out for a synthesized bleep. Single-flight
   on `ComicGenerationLock`; paid calls run on `CancellationToken.None`; the POST is on `comics-post`.
   It plays on the user's tap regardless of the sound-effects switch (the tap is the request).

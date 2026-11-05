@@ -33,6 +33,14 @@ public interface IRestaurantService
     Task<Restaurant> GetRestaurantByPlaceIdAsync(PlaceId placeId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Up to five of the place's newest reviews, beyond the "most relevant" five on
+    /// <see cref="GetRestaurantByPlaceIdAsync"/>. Uncached and not part of the comic's score; the
+    /// audio comic reads it for more source material. Empty where no implementation offers it.
+    /// </summary>
+    Task<IReadOnlyList<Review>> GetNewestReviewsAsync(PlaceId placeId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Review>>([]);
+
+    /// <summary>
     /// Geocodes a free-form location query (city, ZIP/postal code, etc.) to coordinates.
     /// </summary>
     /// <param name="locationQuery">User-entered location text</param>

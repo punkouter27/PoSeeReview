@@ -1,4 +1,4 @@
-@* A conversation overheard at the place, no narrator. The first tap records it (paid, a few
+@* A made-up visit to the place, overheard, no narrator, built from up to ten reviews. The first tap records it (paid, a few
    seconds) and plays; every later play is the cached recording. The talk is model-written from
    the reviews, so it says so.
    Plays on the user's tap whatever the app's sound-effects switch says: pressing Play is the
@@ -15,7 +15,7 @@
             <span aria-hidden="true">@(_busy ? "⏺" : "▶")</span>
             @(_busy ? "Recording the voices…" : _manifest is null ? "Listen in" : "Play it again")
         </button>
-        <span class="audio-comic-note">AI dramatization · an overheard conversation based on the reviews</span>
+        <span class="audio-comic-note">AI dramatization · a made-up visit built from the reviews</span>
     </div>
     <audio @ref="_audio" class="audio-comic-player" controls preload="none" hidden="@(_handle == 0)"></audio>
     <p @ref="_caption" class="audio-comic-caption" aria-live="off"></p>

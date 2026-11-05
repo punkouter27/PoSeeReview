@@ -256,6 +256,34 @@ public partial class GoogleMapsService
     }
 
     /// <summary>
+    /// Up to five of the newest reviews, from the legacy Place Details API. The Places API (New)
+    /// returns only the five "most relevant" and cannot sort, so this is the one way past five.
+    /// Empty when the legacy API refuses (not enabled on the key, quota); throws on transport errors.
+    /// </summary>
+    public async Task<List<Review>> GetNewestReviewsAsync(PlaceId placeId, CancellationToken cancellationToken = default)
+    {
+        var url = $"https://maps.googleapis.com/maps/api/place/details/json?place_id={Uri.EscapeDataString(placeId.Value)}&fields=reviews&reviews_sort=newest&key={_apiKey}";
+        using var doc = JsonDocument.Parse(await _httpClient.GetStringAsync(url, cancellationToken));
+        var root = doc.RootElement;
+        if (root.GetProperty("status").GetString() != "OK")
+        {
+            _logger.LogWarning("Legacy Place Details refused newest reviews for {PlaceId}: {Status}",
+                placeId, root.GetProperty("status").GetString());
+            return [];
+        }
+
+        return root.TryGetProperty("result", out var result) && result.TryGetProperty("reviews", out var reviews)
+            ? [.. reviews.EnumerateArray().Select(r => new Review
+            {
+                AuthorName = r.TryGetProperty("author_name", out var a) ? a.GetString() ?? "Anonymous" : "Anonymous",
+                Rating = r.TryGetProperty("rating", out var stars) ? stars.GetInt32() : 0,
+                Text = r.TryGetProperty("text", out var t) ? t.GetString() ?? string.Empty : string.Empty,
+                Time = r.TryGetProperty("time", out var at) ? DateTimeOffset.FromUnixTimeSeconds(at.GetInt64()) : DateTimeOffset.UtcNow
+            })]
+            : [];
+    }
+
+    /// <summary>
     /// Gets detailed place information including reviews
     /// </summary>
     public async Task<Restaurant?> GetPlaceDetailsAsync(PlaceId placeId, CancellationToken cancellationToken = default)

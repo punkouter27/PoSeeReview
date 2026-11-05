@@ -98,6 +98,10 @@ public class RestaurantService : IRestaurantService
         return restaurant;
     }
 
+    /// <summary>Not cached: only the audio comic asks, once per comic, and it caches its own result.</summary>
+    public async Task<IReadOnlyList<Review>> GetNewestReviewsAsync(PlaceId placeId, CancellationToken cancellationToken = default) =>
+        await _googleMapsService.GetNewestReviewsAsync(placeId, cancellationToken);
+
     public async Task<(double lat, double lon)?> GeocodeLocationAsync(string locationQuery, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(locationQuery))
