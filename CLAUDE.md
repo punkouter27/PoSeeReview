@@ -51,11 +51,13 @@ replaces one. Playwright browsers install via
 ### Local storage
 
 ```powershell
-docker compose up -d azurite    # official mcr.microsoft.com/azure-storage/azurite image, ports 10000-10002
+pwsh SCRIPTS/start-azurite.ps1   # Docker image if Docker is up, else `npx azurite@3`; ports 10000-10002
 ```
 
-Set `"Storage:UseAzurite": true` in `appsettings.Development.json` — without it local dev uses the
-**real** Azure storage account via Key Vault.
+Development defaults to Azurite (`"Storage:UseAzurite": true` in `appsettings.Development.json`), so
+a stale Key Vault storage key cannot block startup and a local run never touches production data.
+To run against the **real** storage account for one session: `$env:Storage__UseAzurite = 'false'`.
+`start-azurite` (and so `start-api-clean`) runs the script; it is a no-op if Azurite already answers.
 
 Azurite blob URLs carry the account as their first path segment (`/devstoreaccount1/comics/{blob}`);
 Azure's are `/comics/{blob}`. `BlobStorageService.ResolveBlobClient` anchors on the container
@@ -268,9 +270,9 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   Hall of Fame rows follow. One attempt per comic (`RemasterState` Declined/Failed is final); rows
   with no `ImageModel` predate it and are skipped. `Remaster:MaxPerRun` × runs/day is the ceiling.
   Every background spender (`Remaster:Enabled`, `Predraw:Enabled`, `ImageQa:SampleRate`) is **off
-  in `appsettings.json` and the option defaults**, and only `appsettings.Production.json` (the one
-  tracked exception to the `appsettings.*.json` ignore) turns it on: local dev talks to production
-  storage, and a laptop, a test host or a new environment must not spend unasked.
+  in `appsettings.json` and the option defaults**, and only `appsettings.Production.json` turns it
+  on: local dev can be pointed at production storage, and a laptop, a test host or a new
+  environment must not spend unasked.
 - **Pre-draw.** `ComicPredrawService` runs the normal pipeline once a day for analyses with
   `Predraw:MinScore`, `Predraw:MinDemand` and no live comic, zeroing demand **before** each attempt
   so a refusal is not re-billed nightly.

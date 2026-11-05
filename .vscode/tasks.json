@@ -44,7 +44,7 @@
     {
       "label": "start-azurite",
       "type": "shell",
-      "command": "docker compose up -d azurite",
+      "command": "pwsh -NoProfile -File SCRIPTS/start-azurite.ps1",
       "problemMatcher": []
     },
     {
