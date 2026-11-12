@@ -1,0 +1,406 @@
+/* PoSeeReview design tokens (Rule 5): light-dark() + :root[data-theme] mapped onto --rz-* Radzen variables. */
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/_content/Radzen.Blazor/fonts/InterVariable.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Material Symbols Outlined';
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: block;
+    src: url('/_content/Radzen.Blazor/fonts/MaterialSymbolsOutlined.woff2') format('woff2');
+}
+
+@layer tokens {
+    :root {
+        color-scheme: light dark;
+
+        /* ── Brand ───────────────────────────────────────────────────────────────────────── */
+        --color-brand: #7C3AED;            /* 5.70:1 on white — safe as text and as a surface */
+        --color-brand-ink: #7C3AED;
+        --color-brand-dark: #1A0533;
+
+        /* ── Expressive colours: surface vs ink ──────────────────────────────────────────── */
+        --color-accent: #F59E0B;           /* surface only */
+        --color-accent-ink: #9B6407;       /* 4.56:1 on the darkest light surface (#f5f5f5) */
+        --color-accent-dark: #B45309;
+        --color-on-accent: #1E1E2E;        /* 7.64:1 on the amber surface */
+
+        --color-success: #10b981;          /* surface only */
+        --color-success-ink: #0B7F58;      /* 4.60:1 on the darkest light surface */
+
+        --color-danger: #D72536;           /* 4.58:1 on the darkest light surface */
+        --color-danger-ink: #C42232;
+
+        /* ── Neutrals ────────────────────────────────────────────────────────────────────── */
+        --color-surface: #F8F7FF;
+        --color-surface-alt: #f5f5f5;
+        --color-card: #ffffff;
+        --color-text-primary: #1e1e2e;     /* 16.40:1 */
+        --color-text-secondary: #555;      /* 7.46:1  */
+        --color-text-muted: #656F71;       /* 4.74:1 on the DARKEST light surface (#f5f5f5).
+                                              Was #6D797A, which cleared 4.5:1 only against pure
+                                              white and measured 4.26:1 on --color-brand-surface,
+                                              where the leaderboard timestamp actually renders. */
+
+        /* Two border weights. The old single token was invisible; making it 3:1 everywhere would
+           have put a hard grey box around every resting card. Subtle for decoration, strong for
+           anything that is genuinely a control boundary. */
+        --color-border: #C9C9DC;           /* 1.63:1 — resting card edges, dividers */
+        --color-border-strong: #8F8FB6;    /* 3.10:1 — inputs, focus targets, real affordances */
+
+        --color-highlight: #fff9e6;
+        --color-brand-surface: #f9f8ff;
+        --color-comic-ink: #1e1e2e;
+
+        --color-danger-surface: #f8d7da;
+        --color-danger-text: #721c24;
+        --color-success-surface: #d4edda;
+        --color-success-text: #155724;
+        --color-warning-text: #7A5C04;     /* was #856404 — lifted for AA on the highlight surface */
+
+        /* ── Typography ──────────────────────────────────────────────────────────────────────
+           A 7-step fluid ramp replacing the 22 ad-hoc font-size values that had accumulated.
+           Every step is a clamp so there is no breakpoint at which type jumps. */
+        --font-display: 'Bangers', cursive;
+        --font-body: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+        --text-2xs: 0.6875rem;                                  /* 11px — badges, overlines */
+        --text-xs:  0.75rem;                                    /* 12px — captions, notes */
+        --text-sm:  0.875rem;                                   /* 14px — secondary body */
+        --text-md:  1rem;                                       /* 16px — body */
+        --text-lg:  clamp(1.0625rem, 0.4vw + 1rem, 1.25rem);    /* lead */
+        --text-xl:  clamp(1.25rem,  1.2vw + 1rem, 1.75rem);     /* section heading */
+        --text-2xl: clamp(1.75rem,  2.4vw + 1rem, 2.5rem);      /* page heading */
+        --text-3xl: clamp(2.5rem,   6vw,          4rem);        /* hero */
+
+        --leading-tight: 1.15;
+        --leading-snug: 1.35;
+        --leading-normal: 1.55;
+
+        /* ── Spacing ────────────────────────────────────────────────────────────────────────
+           An 8-step scale replacing 219 distinct padding/margin/gap values. */
+        --space-3xs: 0.25rem;   /*  4px */
+        --space-2xs: 0.375rem;  /*  6px */
+        --space-xs:  0.5rem;    /*  8px */
+        --space-sm:  0.75rem;   /* 12px */
+        --space-md:  1rem;      /* 16px */
+        --space-lg:  1.5rem;    /* 24px */
+        --space-xl:  2rem;      /* 32px */
+        --space-2xl: 3rem;      /* 48px */
+
+        /* ── Geometry ────────────────────────────────────────────────────────────────────── */
+        --radius-sm: 8px;
+        --radius-card: 12px;
+        --radius-lg: 20px;
+        --radius-pill: 999px;
+
+        /* Minimum comfortable touch target (WCAG 2.5.8 / platform HIG). */
+        --tap-target: 2.75rem;  /* 44px */
+
+        /* ── Motion ──────────────────────────────────────────────────────────────────────────
+           Durations and easings, so a transition is chosen from a scale rather than typed from
+           memory. Every hand-rolled `0.2s ease` in this app was a slightly different guess, and
+           the result is that two adjacent controls settle at visibly different times.
+
+           The easings are not interchangeable, and picking the wrong one is the most common way
+           motion goes cheap:
+             --ease-out    things ARRIVING. Fast at first, settling. The default for anything
+                           entering, opening, or responding to a tap.
+             --ease-in     things LEAVING. Nothing should enter with this; it starts slow, which
+                           reads as hesitation.
+             --ease-spring slight overshoot, for a single emphasised element (the score landing).
+                           Applied to a list, overshoot reads as instability.
+
+           Durations scale with distance travelled, not with importance: a 4px chip needs less
+           time than a full-screen sheet or it looks sluggish. */
+        --duration-instant: 80ms;    /* state flips: checked, pressed */
+        --duration-fast: 140ms;      /* hovers, small chips, tooltips */
+        --duration-base: 220ms;      /* the default — cards, buttons, most things */
+        --duration-slow: 340ms;      /* sheets, page-level reveals */
+        --duration-deliberate: 620ms;/* the score count-up and its landing */
+
+        --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+        --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+        --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
+        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        /* Real springs: linear() can overshoot and settle, which one bezier cannot. 1 is gentle
+           (a press releasing), 2 bounces (a menu or dialog arriving). */
+        --ease-spring-1: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
+        --ease-spring-2: linear(0, 0.007, 0.029 2.2%, 0.118 4.7%, 0.625 14.4%, 0.826 19%, 0.902, 0.962, 1.008 26.1%, 1.041 28.7%, 1.064 32.1%, 1.07 36%, 1.061 40.5%, 1.015 53.4%, 0.999 61.6%, 0.995 71.2%, 1);
+
+        /* ── Elevation ───────────────────────────────────────────────────────────────────────
+           An elevation is a PAIR: a shadow and the surface tint that goes under it. Shadow
+           alone is why the design drifted — in dark mode a black shadow on a dark ground is
+           invisible, so depth there has to come from the surface getting *lighter* as it rises,
+           which is the opposite of what happens in light mode. Using --elevation-N-surface
+           together with --elevation-N-shadow gets both right in both themes; reaching past them
+           for a raw --shadow-* only works in one.
+
+           Four steps, matching the four things this app actually stacks:
+             1  resting cards in a list
+             2  a raised or hovered card
+             3  popovers, the toast
+             4  modal dialogs
+
+           Light mode: surfaces stay the same and shadows deepen. */
+        --elevation-1-shadow: var(--shadow-xs);
+        --elevation-2-shadow: var(--shadow-sm);
+        --elevation-3-shadow: var(--shadow-md);
+        --elevation-4-shadow: var(--shadow-lg);
+        --elevation-1-surface: var(--color-card);
+        --elevation-2-surface: var(--color-card);
+        --elevation-3-surface: var(--color-card);
+        --elevation-4-surface: var(--color-card);
+
+        --shadow-card: 0 2px 12px rgba(124, 58, 237, 0.08);
+        --shadow-card-hover: 0 6px 24px rgba(124, 58, 237, 0.18);
+        --gradient-brand: linear-gradient(135deg, #7C3AED 0%, #4F1D96 100%);
+        --gradient-sidebar: linear-gradient(180deg, #1A0533 0%, #2D1052 60%, #3b0764 100%);
+
+        /* ── Breakpoints ─────────────────────────────────────────────────────────────────────
+           Custom properties cannot be used inside @media, so these are documentation, not
+           machinery — but they are the ONLY four values any stylesheet in this app should use.
+           There were 13 before (480/560/600/640/640.98/768/992/1200 plus Bootstrap's five .98s),
+           which meant a card could reflow at one width and its container at another 8px away.
+
+               --bp-sm: 40rem   (640px)  phone landscape / small tablet
+               --bp-md: 48rem   (768px)  tablet
+               --bp-lg: 64rem   (1024px) desktop
+               --bp-xl: 80rem   (1280px) wide desktop
+
+           Prefer a container query (see .comic-rows) over a media query for anything that is
+           really about how much room a COMPONENT has rather than how big the screen is. */
+        --bp-sm: 40rem;
+        --bp-md: 48rem;
+        --bp-lg: 64rem;
+        --bp-xl: 80rem;
+
+        /* ── Inverse ("on dark") surfaces ────────────────────────────────────────────────────
+           The nav bar and the discovery hero are dark in BOTH themes — that is a deliberate
+           design choice, not a light-mode default. So `color: white` on them was never the bug
+           CLAUDE.md warns about; it was just unnamed. Naming it means a future theme change has
+           one place to edit, and it stops a reviewer having to work out per-line whether a
+           literal white is intentional or a dark-mode landmine.
+
+           Do NOT use these on a card. Cards are token-driven and flip with the theme. */
+        --surface-inverse: #140A28;
+        --surface-inverse-veil: rgba(20, 10, 40, 0.92);
+        --color-on-dark: #FFFFFF;
+        --color-on-dark-secondary: rgba(255, 255, 255, 0.82);
+        --color-on-dark-muted: rgba(255, 255, 255, 0.70);
+        --border-on-dark: rgba(255, 255, 255, 0.15);
+        --border-on-dark-subtle: rgba(255, 255, 255, 0.07);
+        --overlay-on-dark: rgba(255, 255, 255, 0.12);
+        --overlay-on-dark-strong: rgba(255, 255, 255, 0.20);
+
+        --gradient-hero: linear-gradient(160deg, #5B21B6 0%, #7C3AED 40%, #be185d 100%);
+        /* Darkens the outer edge of the hero so white type stays legible over the brightest
+           part of the gradient. */
+        --hero-scrim: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.3) 100%);
+        --text-shadow-on-dark: 0 2px 12px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+
+        /* Secondary brand pink — the second stop in the logo glow and the "hot" end of the
+           strangeness ramp. Was #f5576c / #f093fb pasted into four sheets. */
+        --color-brand-alt: #f5576c;
+        --color-brand-alt-soft: #f093fb;
+
+        /* Medals. Deliberately NOT theme-flipped: gold is gold. Named so they are obviously
+           intentional rather than looking like un-tokenised literals. */
+        --medal-gold: #ffd700;
+        --medal-gold-light: #ffe066;
+        --medal-gold-dark: #b8860b;
+        --medal-silver: #c0c0c0;
+        --medal-silver-light: #f0f0f0;
+        --medal-silver-dark: #808080;
+        --medal-bronze: #cd7f32;
+        --medal-bronze-light: #f0c080;
+        --medal-bronze-dark: #8b4513;
+
+        /* Status pills on the dark nav bar. Light-on-dark by construction, so they do not use
+           the theme-flipping success/danger tokens. */
+        --status-on-dark-ok: #86efac;
+        --status-on-dark-info: #bae6fd;
+        --status-on-dark-ok-border: rgba(34, 197, 94, 0.4);
+        --status-on-dark-info-border: rgba(99, 179, 237, 0.4);
+        --status-on-dark-danger: rgba(248, 113, 113, 0.5);
+        --status-on-dark-danger-surface: rgba(153, 27, 27, 0.35);
+
+        /* Comic letterbox. Intentionally near-black in both themes: it is a cinema frame around
+           the artwork, and flipping it to a light surface would wash out the panel. */
+        --surface-film: #0A0A0A;
+
+        /* ── Alpha derivatives ───────────────────────────────────────────────────────────────
+           color-mix lets a translucent tint follow --color-brand instead of freezing the
+           light-mode purple into a scoped sheet. Every rgba(124,58,237,x) in the app was that
+           frozen value, which is why brand-tinted borders and ring tracks stayed purple in dark
+           mode while everything around them went lilac. */
+        --brand-a08: color-mix(in srgb, var(--color-brand) 8%, transparent);
+        --brand-a12: color-mix(in srgb, var(--color-brand) 12%, transparent);
+        --brand-a18: color-mix(in srgb, var(--color-brand) 18%, transparent);
+        --brand-a35: color-mix(in srgb, var(--color-brand) 35%, transparent);
+
+        /* ── Elevation ───────────────────────────────────────────────────────────────────────
+           Neutral shadows, so a dark theme does not try to cast a soft grey glow on a dark page. */
+        --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.10);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+        --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.18);
+
+        /* ── Glass material ──────────────────────────────────────────────────────────────── */
+        --glass-tint: rgba(255, 255, 255, 0.58);
+        --glass-edge: rgba(255, 255, 255, 0.85);
+        --glass-shade: rgba(124, 58, 237, 0.10);
+        --glass-blur: 14px;
+        /* The specular light glass panes catch (js/glass.js moves it with the pointer). Under
+           text, so it is kept faint: white on a light pane only lightens the ground further. */
+        --glass-light: rgba(255, 255, 255, 0.55);
+
+        /* Uniform Po* spacing & Radzen variable bridge */
+        --po-font-sans: 'Inter', var(--font-body);
+        --po-header-height: 56px;
+        --rz-primary: var(--color-brand);
+        --rz-secondary: var(--color-brand-ink);
+        --rz-base-background-color: var(--color-card);
+        --rz-body-background-color: var(--color-surface);
+        --rz-text-color: var(--color-text-primary);
+        --rz-text-secondary-color: var(--color-text-secondary);
+        --rz-border-radius: var(--radius-sm);
+        --rz-card-border-radius: var(--radius-card);
+    }
+
+    /* Dark palette, applied twice on purpose:
+         1. @media (prefers-color-scheme: dark) — follows the OS automatically.
+         2. :root[data-theme="dark"] — an explicit choice that must beat the media query.
+       Only colour flips; type, spacing and geometry stay shared. */
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+            --color-brand: #A78BFA;
+            --color-brand-ink: #A78BFA;
+            --color-brand-dark: #0F021F;
+
+            --color-accent: #FBBF24;
+            --color-accent-ink: #FBBF24;      /* 10.34:1 on the dark card — no separate ink needed */
+            --color-accent-dark: #D97706;
+            --color-on-accent: #1E1E2E;
+
+            --color-success: #34d399;
+            --color-success-ink: #34d399;     /* 8.98:1 */
+
+            --color-danger: #f87171;
+            --color-danger-ink: #f87171;      /* 6.24:1 */
+
+            --color-surface: #12101A;
+            --color-surface-alt: #1C1926;
+            --color-card: #1C1926;
+            --color-text-primary: #ECEAF5;
+            --color-text-secondary: #B4AFC6;
+            --color-text-muted: #8E89A3;   /* 4.59:1 on the lightest dark surface (#2A2416) */
+
+            --color-border: #2C2838;
+            --color-border-strong: #696189;   /* 3.02:1 on the dark card — was #4A4460 at 1.88:1 */
+
+            --color-highlight: #2A2416;
+            --color-brand-surface: #1D1533;
+            --color-comic-ink: #ECEAF5;
+
+            --color-danger-surface: #3A1A1E;
+            --color-danger-text: #FCA5A5;
+            --color-success-surface: #12301F;
+            --color-success-text: #86EFAC;
+            --color-warning-text: #FCD34D;
+
+            --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.4);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.55);
+            --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.65);
+            --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.45);
+            --shadow-card-hover: 0 6px 24px rgba(0, 0, 0, 0.6);
+
+            /* Dark mode inverts how elevation is signalled. A black shadow on a near-black page
+               conveys nothing, so height is carried by the SURFACE getting lighter as it rises —
+               the physical model being that a raised surface catches more ambient light. The
+               shadows stay, but only to anchor the edge; the tint does the actual work. */
+            --elevation-1-surface: color-mix(in srgb, var(--color-card) 100%, white 0%);
+            --elevation-2-surface: color-mix(in srgb, var(--color-card) 96%, white 4%);
+            --elevation-3-surface: color-mix(in srgb, var(--color-card) 92%, white 8%);
+            --elevation-4-surface: color-mix(in srgb, var(--color-card) 87%, white 13%);
+
+            --gradient-brand: linear-gradient(135deg, #6D28D9 0%, #3B1078 100%);
+            --gradient-sidebar: linear-gradient(180deg, #0F021F 0%, #1B0937 60%, #26104D 100%);
+
+            --glass-tint: rgba(28, 25, 38, 0.55);
+            --glass-edge: rgba(167, 139, 250, 0.28);
+            --glass-shade: rgba(0, 0, 0, 0.40);
+            --glass-light: rgba(196, 181, 253, 0.10);
+        }
+    }
+
+    :root[data-theme="dark"] {
+        --color-brand: #A78BFA;
+        --color-brand-ink: #A78BFA;
+        --color-brand-dark: #0F021F;
+
+        --color-accent: #FBBF24;
+        --color-accent-ink: #FBBF24;
+        --color-accent-dark: #D97706;
+        --color-on-accent: #1E1E2E;
+
+        --color-success: #34d399;
+        --color-success-ink: #34d399;
+
+        --color-danger: #f87171;
+        --color-danger-ink: #f87171;
+
+        --color-surface: #12101A;
+        --color-surface-alt: #1C1926;
+        --color-card: #1C1926;
+        --color-text-primary: #ECEAF5;
+        --color-text-secondary: #B4AFC6;
+        --color-text-muted: #8E89A3;   /* 4.59:1 on the lightest dark surface (#2A2416) */
+
+        --color-border: #2C2838;
+        --color-border-strong: #696189;   /* 3.02:1 on the dark card — was #4A4460 at 1.88:1 */
+
+        --color-highlight: #2A2416;
+        --color-brand-surface: #1D1533;
+        --color-comic-ink: #ECEAF5;
+
+        --color-danger-surface: #3A1A1E;
+        --color-danger-text: #FCA5A5;
+        --color-success-surface: #12301F;
+        --color-success-text: #86EFAC;
+        --color-warning-text: #FCD34D;
+
+        --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.45);
+        --shadow-card-hover: 0 6px 24px rgba(0, 0, 0, 0.6);
+
+        /* The media-query block above redefines these four and this one did not, so an EXPLICIT
+           dark choice used to keep light mode's shadows — the 0.08-0.18 alphas, which are
+           invisible on a dark ground. Only ThemeUiTests sets data-theme today, which is why it
+           went unseen; that is exactly the asymmetry the layering note at the top warns about. */
+        --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.4);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.55);
+        --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.65);
+
+        /* Elevation by surface tint — see the note in the media-query block. */
+        --elevation-1-surface: color-mix(in srgb, var(--color-card) 100%, white 0%);
+        --elevation-2-surface: color-mix(in srgb, var(--color-card) 96%, white 4%);
+        --elevation-3-surface: color-mix(in srgb, var(--color-card) 92%, white 8%);
+        --elevation-4-surface: color-mix(in srgb, var(--color-card) 87%, white 13%);
+
+        --gradient-brand: linear-gradient(135deg, #6D28D9 0%, #3B1078 100%);
+        --gradient-sidebar: linear-gradient(180deg, #0F021F 0%, #1B0937 60%, #26104D 100%);
+
+        --glass-tint: rgba(28, 25, 38, 0.55);
+        --glass-edge: rgba(167, 139, 250, 0.28);
+        --glass-shade: rgba(0, 0, 0, 0.40);
+        --glass-light: rgba(196, 181, 253, 0.10);
+    }
+}

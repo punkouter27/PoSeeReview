@@ -15,3 +15,9 @@
     pointer-events: none;
     user-select: none;
 }
+
+@media (max-width: 720px) {
+    .build-stamp {
+        bottom: calc(3.75rem + var(--space-xs) + env(safe-area-inset-bottom));
+    }
+}

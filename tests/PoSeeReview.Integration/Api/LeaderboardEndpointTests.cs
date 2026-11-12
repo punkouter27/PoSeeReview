@@ -249,7 +249,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
     }
 
     // Response DTO for deserialization
-    private class LeaderboardResponse
+    private sealed class LeaderboardResponse
     {
         public List<LeaderboardEntryDto> Entries { get; set; } = new();
         public string Region { get; set; } = string.Empty;

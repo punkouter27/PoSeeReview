@@ -396,6 +396,18 @@ public class ApiClient
         return payload ?? throw new InvalidOperationException("Report response was null");
     }
 
+    public async Task<MockStatusDto?> GetMockStatusAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync("/diag/mock-status", AppJsonContext.Default.MockStatusDto, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
     public async Task<HealthStatusDto?> GetHealthStatusAsync(CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/health");

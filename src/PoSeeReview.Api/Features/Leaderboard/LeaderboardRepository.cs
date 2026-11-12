@@ -199,8 +199,7 @@ public class LeaderboardRepository : ILeaderboardRepository
     /// </summary>
     public async Task UpsertAsync(LeaderboardEntry entry)
     {
-        if (entry == null)
-            throw new ArgumentNullException(nameof(entry));
+        ArgumentNullException.ThrowIfNull(entry);
 
         if (entry.PlaceId.IsEmpty)
             throw new ArgumentException("PlaceId is required", nameof(entry));

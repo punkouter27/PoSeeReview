@@ -151,7 +151,7 @@ public sealed class ShareCardService(
 
         DrawDisc(canvas, centre, Radius, Shade.WithAlpha(200), 6f);
 
-        SkiaText.DrawCentred(canvas, score.ToString(), centre.X, centre.Y - 12, SkiaText.Card, 74, Accent);
+        SkiaText.DrawCentred(canvas, score.ToString(System.Globalization.CultureInfo.InvariantCulture), centre.X, centre.Y - 12, SkiaText.Card, 74, Accent);
         SkiaText.DrawCentred(canvas, "/ 100", centre.X, centre.Y + 44, SkiaText.Card, 20, OnDarkMuted);
     }
 

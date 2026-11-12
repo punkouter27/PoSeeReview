@@ -16,7 +16,7 @@
 //   'lite' — audio + CSS materials. No persistent GPU loop.
 //   'full' — everything, including the WebGL backdrop.
 
-const STORAGE_KEY = 'posee_fx_tier';
+const STORAGE_KEY = 'poseereview:fx-tier';
 const TIERS = ['off', 'lite', 'full'];
 
 // 60 FPS is 16.67ms. Budget the frame at 20ms so an occasional GC pause is not treated as a

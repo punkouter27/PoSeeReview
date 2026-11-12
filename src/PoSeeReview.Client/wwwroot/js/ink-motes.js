@@ -6,13 +6,13 @@
 // straight out of the same storage buffer, so nothing round-trips through JavaScript per frame.
 // There is no WebGL fallback on purpose — without WebGPU the switch is not offered at all.
 //
-// On by default (`posee_gpu_motes`, the "Ink motes" switch on /settings), `full` tier only, one
+// On by default (`poseereview:gpu-motes`, the "Ink motes" switch on /settings), `full` tier only, one
 // instance at a time, ticked by the shared loop. A tier drop or a lost device stops it; the
 // comic page asks again next time it opens.
 
 import { gfx } from './gfx-core.js';
 
-const STORAGE_KEY = 'posee_gpu_motes';
+const STORAGE_KEY = 'poseereview:gpu-motes';
 const WORKGROUP = 64;
 
 const COMPUTE_WGSL = /* wgsl */`

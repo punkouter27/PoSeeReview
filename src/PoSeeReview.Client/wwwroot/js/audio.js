@@ -12,9 +12,9 @@
 
 import { gfx } from './gfx-core.js';
 
-const STORAGE_KEY = 'posee_audio_enabled';
-const VOLUME_KEY = 'posee_audio_volume';
-const MAP_SOUNDS_KEY = 'posee_map_sounds';
+const STORAGE_KEY = 'poseereview:audio-enabled';
+const VOLUME_KEY = 'poseereview:audio-volume';
+const MAP_SOUNDS_KEY = 'poseereview:map-sounds';
 
 // Headroom: several voices can overlap during the score reveal, and summing oscillators at unity
 // gain clips hard. The user's volume scales this, never replaces it.
@@ -1158,7 +1158,7 @@ export const audio = {
         }
     },
 
-    // ── Map sounds (on by default, `posee_map_sounds`) ──────────────────────────────────────────
+    // ── Map sounds (on by default, `poseereview:map-sounds`) ──────────────────────────────────────────
 
     mapSoundsEnabled: () => state.mapSounds,
 

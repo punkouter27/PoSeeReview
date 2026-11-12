@@ -46,15 +46,15 @@ internal static class RequestLoggingExtensions
 
                 if (ex == null && httpContext.Response.StatusCode < 400)
                 {
-                    if (path.StartsWith("/_framework/")
-                        || path.StartsWith("/css/")
-                        || path.StartsWith("/lib/")
-                        || path.EndsWith(".wasm")
-                        || path.EndsWith(".wasm.gz")
-                        || path.EndsWith(".dat")
-                        || path.EndsWith(".dat.gz")
-                        || path.EndsWith(".js.map")
-                        || path.EndsWith(".js.map.gz"))
+                    if (path.StartsWith("/_framework/", StringComparison.OrdinalIgnoreCase)
+                        || path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase)
+                        || path.StartsWith("/lib/", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".wasm.gz", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".dat.gz", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".js.map", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".js.map.gz", StringComparison.OrdinalIgnoreCase))
                     {
                         return LogEventLevel.Debug;
                     }

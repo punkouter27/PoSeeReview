@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using PoSeeReview.Client.Components;
+using PoSeeReview.Client.Features.Discovery;
 using PoSeeReview.Shared.Dtos;
 
 namespace PoSeeReview.Client.Services;

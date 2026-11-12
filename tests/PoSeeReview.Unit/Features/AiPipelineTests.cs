@@ -85,7 +85,10 @@ public sealed class AiPipelineTests
     {
         var result = AzureContentSafetyScreener.Grade(new Dictionary<string, int>
         {
-            ["Sexual"] = sexual, ["Hate"] = hate, ["Violence"] = violence, ["SelfHarm"] = selfHarm
+            ["Sexual"] = sexual,
+            ["Hate"] = hate,
+            ["Violence"] = violence,
+            ["SelfHarm"] = selfHarm
         });
 
         Assert.Equal(expected, result is null ? null : $"{result.Outcome}:{result.Category}");

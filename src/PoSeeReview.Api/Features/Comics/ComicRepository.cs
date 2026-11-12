@@ -62,8 +62,7 @@ public class ComicRepository : IComicRepository
     /// <exception cref="ArgumentNullException">If comic or required fields are null</exception>
     public async Task UpsertAsync(Comic comic)
     {
-        if (comic == null)
-            throw new ArgumentNullException(nameof(comic));
+        ArgumentNullException.ThrowIfNull(comic);
 
         if (comic.PlaceId.IsEmpty)
             throw new ArgumentException("PlaceId is required", nameof(comic));

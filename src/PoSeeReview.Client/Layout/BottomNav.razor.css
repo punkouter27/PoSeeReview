@@ -1,0 +1,35 @@
+.po-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 40rem) {
+    .po-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        background: var(--surface-inverse-veil);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid var(--border-on-dark);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    ::deep .po-bottom-nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--color-on-dark-secondary);
+        text-decoration: none;
+    }
+
+    ::deep .po-bottom-nav-link.active {
+        color: var(--color-on-dark);
+        text-decoration: underline;
+    }
+}

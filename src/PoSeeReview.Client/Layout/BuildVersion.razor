@@ -8,7 +8,7 @@
 }
 
 @code {
-    private static readonly string? Stamp = typeof(BuildStamp).Assembly
+    private static readonly string? Stamp = typeof(BuildVersion).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(a => a.Key == "BuildStamp")?.Value;
 }

@@ -86,37 +86,37 @@ internal static class ComicsEndpoints
     private static (int Status, string Title, string Detail, string TypeUri, string ErrorType) DescribeFailure(
         Exception ex,
         string placeId) => ex switch
-    {
-        KeyNotFoundException => (
-            StatusCodes.Status404NotFound, "Not Found",
-            $"Restaurant not found: {placeId}", "https://tools.ietf.org/html/rfc7231#section-6.5.4", "restaurant_not_found"),
+        {
+            KeyNotFoundException => (
+                StatusCodes.Status404NotFound, "Not Found",
+                $"Restaurant not found: {placeId}", "https://tools.ietf.org/html/rfc7231#section-6.5.4", "restaurant_not_found"),
 
-        InsufficientReviewsException e => (
-            StatusCodes.Status400BadRequest, "Bad Request",
-            e.Message, "https://tools.ietf.org/html/rfc7231#section-6.5.1", "insufficient_reviews"),
+            InsufficientReviewsException e => (
+                StatusCodes.Status400BadRequest, "Bad Request",
+                e.Message, "https://tools.ietf.org/html/rfc7231#section-6.5.1", "insufficient_reviews"),
 
-        ContentBlockedException e => (
-            StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
-            e.Message, "https://tools.ietf.org/html/rfc4918#section-11.2", "content_blocked"),
+            ContentBlockedException e => (
+                StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
+                e.Message, "https://tools.ietf.org/html/rfc4918#section-11.2", "content_blocked"),
 
-        ImageDeclinedException e => (
-            StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
-            e.Message, "https://tools.ietf.org/html/rfc4918#section-11.2", "image_declined"),
+            ImageDeclinedException e => (
+                StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
+                e.Message, "https://tools.ietf.org/html/rfc4918#section-11.2", "image_declined"),
 
-        ContentWithheldException e => (
-            StatusCodes.Status451UnavailableForLegalReasons, "Unavailable For Legal Reasons",
-            WithheldDetail(e.IsSuppressed), "https://tools.ietf.org/html/rfc7725#section-3", "withheld"),
+            ContentWithheldException e => (
+                StatusCodes.Status451UnavailableForLegalReasons, "Unavailable For Legal Reasons",
+                WithheldDetail(e.IsSuppressed), "https://tools.ietf.org/html/rfc7725#section-3", "withheld"),
 
-        InsufficientStrangenessException => (
-            StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
-            "This restaurant's reviews are too ordinary to make a good comic. Try a place with weirder reviews!",
-            "https://tools.ietf.org/html/rfc4918#section-11.2", "insufficient_strangeness"),
+            InsufficientStrangenessException => (
+                StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
+                "This restaurant's reviews are too ordinary to make a good comic. Try a place with weirder reviews!",
+                "https://tools.ietf.org/html/rfc4918#section-11.2", "insufficient_strangeness"),
 
-        _ => (
-            StatusCodes.Status500InternalServerError, "Internal Server Error",
-            "Comic generation failed. Please try again later.",
-            "https://tools.ietf.org/html/rfc7231#section-6.6.1", "unknown")
-    };
+            _ => (
+                StatusCodes.Status500InternalServerError, "Internal Server Error",
+                "Comic generation failed. Please try again later.",
+                "https://tools.ietf.org/html/rfc7231#section-6.6.1", "unknown")
+        };
 
     private static void TrackFailure(string errorType, string placeId) =>
         PoSeeReviewTelemetry.ComicGenerationErrors.Add(1,

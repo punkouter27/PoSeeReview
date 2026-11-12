@@ -10,8 +10,8 @@ namespace PoSeeReview.Api.Storage;
 /// <typeparam name="T">Entity type that implements ITableEntity</typeparam>
 public class TableStorageRepository<T> where T : class, ITableEntity, new()
 {
-    protected readonly TableClient _tableClient;
-    protected readonly ILogger<TableStorageRepository<T>> _logger;
+    private readonly TableClient _tableClient;
+    private readonly ILogger<TableStorageRepository<T>> _logger;
 
     public TableStorageRepository(
         TableServiceClient tableServiceClient,

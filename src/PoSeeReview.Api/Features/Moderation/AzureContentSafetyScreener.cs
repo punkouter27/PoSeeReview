@@ -29,6 +29,7 @@ public sealed class AzureContentSafetyScreener(
     public const string HttpClientName = "ContentSafety";
 
     private const string ApiVersion = "2024-09-01";
+    private static readonly string[] ModerationCategories = ["Hate", "Sexual", "Violence", "SelfHarm"];
 
     public async Task<ContentScreenResult> ScreenAsync(string text, CancellationToken cancellationToken = default)
     {
@@ -50,7 +51,7 @@ public sealed class AzureContentSafetyScreener(
             request.Content = JsonContent.Create(new
             {
                 text = text.Length > 10_000 ? text[..10_000] : text,
-                categories = new[] { "Hate", "Sexual", "Violence", "SelfHarm" },
+                categories = ModerationCategories,
                 outputType = "FourSeverityLevels"
             });
 

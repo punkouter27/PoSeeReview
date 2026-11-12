@@ -51,7 +51,7 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/leaderboard", response.Headers.Location?.ToString());
-        var setCookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-PoSeeReview.Auth"));
+        var setCookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-PoSeeReview.Auth", StringComparison.Ordinal));
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=strict", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);

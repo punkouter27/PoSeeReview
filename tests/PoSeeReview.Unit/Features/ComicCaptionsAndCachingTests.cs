@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OutputCaching;
 using PoSeeReview.Api.Middleware;
 using PoSeeReview.Api.Features.Comics;
-using PoSeeReview.Client.Components;
+using PoSeeReview.Client.Features.Comics;
 using PoSeeReview.Shared.Contracts;
 using PoSeeReview.Shared.Ids;
 using Xunit;

@@ -14,7 +14,7 @@
 @inject ToastService Toast
 @inject ComicHistoryService History
 
-<PageTitle>PoSeeReview - Discover Strange Restaurant Stories</PageTitle>
+<PageTitle>Discover · PoSeeReview</PageTitle>
 
 <div class="index-container">
     @* The landing is two columns on a desktop: the search on the left, what the app has already
@@ -55,7 +55,7 @@
                         <button type="button" class="btn btn-primary location-btn"
                                 disabled="@IsBusy"
                                 @onclick="NearMeAsync"
-                                title="Use my location" aria-label="Use my location">
+                                title="Use my location">
                             <span aria-hidden="true">📍</span>
                             <span class="location-btn-label">@(IsLocating ? "Finding you..." : "Near me")</span>
                         </button>
@@ -301,7 +301,7 @@
 
     private LandingTab _landingTab = LandingTab.Strangest;
 
-    private const string LayoutKey = "posee_discovery_layout";
+    private const string LayoutKey = "poseereview:discovery-layout";
 
     /// <summary>The map is the default view; the list is the remembered alternative.</summary>
     private ResultsLayout _layout = ResultsLayout.Map;
@@ -553,8 +553,8 @@
         }
     }
 
-    private const string LastSearchKey = "posee_last_search";
-    private const string DiscoveryModeKey = "posee_discovery_mode";
+    private const string LastSearchKey = "poseereview:last-search";
+    private const string DiscoveryModeKey = "poseereview:discovery-mode";
     private const string GeoMode = "geo";
     private const string ZipMode = "zip";
 

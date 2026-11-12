@@ -176,7 +176,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
     }
 
 
-    private async Task<bool> EntityExistsAsync(TableClient tableClient, string partitionKey, string rowKey)
+    private static async Task<bool> EntityExistsAsync(TableClient tableClient, string partitionKey, string rowKey)
     {
         try
         {

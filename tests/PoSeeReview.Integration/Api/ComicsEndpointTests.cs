@@ -38,6 +38,8 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
         public bool IsSuccessStatusCode => StatusCode == HttpStatusCode.OK;
     }
 
+    private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
+
     private async Task<StreamResult> GenerateAsync(string placeId, bool forceRegenerate = false)
     {
         var url = $"/api/comics/{placeId}/stream" + (forceRegenerate ? "?forceRegenerate=true" : "");
@@ -50,7 +52,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
 
         // The last data: frame is the outcome — `complete` carries the comic, `error` its status.
         var last = body.Split('\n').Last(l => l.StartsWith("data:", StringComparison.Ordinal))["data:".Length..].Trim();
-        var evt = JsonSerializer.Deserialize<ComicGenerationEventDto>(last, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var evt = JsonSerializer.Deserialize<ComicGenerationEventDto>(last, WebJsonOptions)!;
         return evt.Kind == ComicGenerationEventDto.CompleteKind
             ? new StreamResult(HttpStatusCode.OK, evt.Comic, last)
             : new StreamResult((HttpStatusCode)evt.ErrorStatus, null, last);

@@ -91,8 +91,8 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         // re-run that search and leave geolocation alone — the older posee_location_enabled
         // flag could only say "auto-request GPS", so a ZIP user was re-prompted every visit.
         await page.EvaluateAsync(
-            "() => { localStorage.setItem('posee_discovery_mode', 'zip');"
-            + " localStorage.setItem('posee_last_search', '10001'); }");
+            "() => { localStorage.setItem('poseereview:discovery-mode', 'zip');"
+            + " localStorage.setItem('poseereview:last-search', '10001'); }");
 
         var nearbyCalls = new List<string>();
         page.Request += (_, request) =>
@@ -137,6 +137,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
     public async Task ComicRoute_WithUnknownPlace_RendersWithoutCrashing(string viewport)
     {
         var page = await HomeAsync(viewport);
+        fixture.AllowNotFoundPath(page, "/api/comics/ChIJDefinitelyNotARealPlace");
 
         await page.GotoAsync($"{fixture.BaseUrl}/comic/ChIJDefinitelyNotARealPlace");
 

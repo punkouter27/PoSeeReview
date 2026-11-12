@@ -50,7 +50,7 @@ public sealed class AccessibilityUiTests(PlaywrightFixture fixture)
 
         if (discoveryLayout is not null)
         {
-            await page.EvaluateAsync("layout => localStorage.setItem('posee_discovery_layout', layout)", discoveryLayout);
+            await page.EvaluateAsync("layout => localStorage.setItem('poseereview:discovery-layout', layout)", discoveryLayout);
         }
 
         await page.GotoAsync($"{fixture.BaseUrl}{route}");

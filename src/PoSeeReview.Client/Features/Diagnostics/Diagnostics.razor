@@ -8,7 +8,7 @@
 @using Radzen.Blazor
 @inject Microsoft.AspNetCore.Components.WebAssembly.Hosting.IWebAssemblyHostEnvironment HostEnvironment
 
-<PageTitle>Diagnostics - PoSeeReview</PageTitle>
+<PageTitle>Diagnostics · PoSeeReview</PageTitle>
 
 @if (HostEnvironment.Environment != "Development")
 {
@@ -57,7 +57,7 @@ else
                         </div>
                     </div>
 
-                    <RadzenDataGrid TItem="HealthCheckStatusDto" Data="@healthStatus.Checks" AllowSorting="true" Density="Density.Compact">
+                    <RadzenDataGrid TItem="HealthCheckStatusDto" Data="@healthStatus.Checks" AllowSorting="true" AllowPaging="true" PageSize="20" Density="Density.Compact">
                         <Columns>
                             <RadzenDataGridColumn Property="@nameof(HealthCheckStatusDto.Name)" Title="Check" MinWidth="12rem">
                                 <Template Context="check">@FormatCheckName(check.Name)</Template>
@@ -117,7 +117,7 @@ else
                     <RadzenTabsItem Text="Config">
                     <div class="diagnostics-section">
                         <h2 class="visually-hidden">Configuration values</h2>
-                        <RadzenDataGrid TItem="ConfigurationValueDto" Data="@diagnosticsSnapshot.Config" AllowSorting="true" Density="Density.Compact">
+                        <RadzenDataGrid TItem="ConfigurationValueDto" Data="@diagnosticsSnapshot.Config" AllowSorting="true" AllowPaging="true" PageSize="20" Density="Density.Compact">
                             <Columns>
                                 <RadzenDataGridColumn Property="@nameof(ConfigurationValueDto.Key)" Title="Key" MinWidth="12rem" />
                                 <RadzenDataGridColumn Property="@nameof(ConfigurationValueDto.Value)" Title="Value" />

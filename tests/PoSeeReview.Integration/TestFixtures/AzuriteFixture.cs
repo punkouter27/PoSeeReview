@@ -21,6 +21,7 @@ public class AzuriteFixture : IAsyncLifetime
     public string ConnectionString { get; private set; } = string.Empty;
 
     // Always available once InitializeAsync completes — no skip logic needed
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Public fixture instance member")]
     public bool IsAzuriteAvailable => true;
 
     public async Task InitializeAsync()
@@ -39,6 +40,7 @@ public class AzuriteFixture : IAsyncLifetime
     /// Kept for backwards compatibility with existing test usages — always a no-op now
     /// because the container is guaranteed to be running after InitializeAsync.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Public fixture instance member")]
     public void EnsureAzuriteAvailable() { /* Testcontainers guarantees availability */ }
 
     /// <summary>

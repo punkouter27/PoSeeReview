@@ -10,7 +10,7 @@
         // Applied before CSS paints so a pinned choice never flashes the other scheme. Follows
         // the device until the user pins Light or Dark on the Settings page.
         (function () {
-            var theme = localStorage.getItem('posee_theme');
+            var theme = localStorage.getItem('poseereview:theme');
             if (theme === 'light' || theme === 'dark') {
                 document.documentElement.dataset.theme = theme;
             }
@@ -19,10 +19,10 @@
                 set: function (value) {
                     if (value === 'light' || value === 'dark') {
                         document.documentElement.dataset.theme = value;
-                        localStorage.setItem('posee_theme', value);
+                        localStorage.setItem('poseereview:theme', value);
                     } else {
                         delete document.documentElement.dataset.theme;
-                        localStorage.removeItem('posee_theme');
+                        localStorage.removeItem('poseereview:theme');
                     }
                 }
             };
@@ -36,6 +36,8 @@
          @layer page. That is the only way to put framework-generated CSS in a layer, and it is
          what stops a scoped sheet from silently overriding a shared primitive. Do NOT re-add a
          separate <link> for it — that would load it unlayered, where it beats every layer. -->
+    <link rel="stylesheet" href="css/po-tokens.css" />
+    <link rel="stylesheet" href="css/po-motion.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
 

@@ -145,7 +145,7 @@ if (-not $SkipAzureCli) {
 # ── 5. Verify project builds ──────────────────────────────────────────────────
 Write-Step "Verifying project builds..."
 try {
-    $buildOutput = dotnet build "$PSScriptRoot\..\PoSeeReview.sln" --verbosity quiet 2>&1
+    $buildOutput = dotnet build "$PSScriptRoot\..\PoSeeReview.slnx" --verbosity quiet 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "Solution build failed. Run 'dotnet build' for details."
     } else {

@@ -1,4 +1,4 @@
-namespace PoSeeReview.Client.Components;
+namespace PoSeeReview.Client.Features.Discovery;
 
 /// <summary>Where the user left the map after panning or zooming it.</summary>
 public readonly record struct MapArea(double Lat, double Lng, double Zoom);

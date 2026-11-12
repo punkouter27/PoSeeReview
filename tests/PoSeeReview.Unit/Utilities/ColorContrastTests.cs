@@ -5,7 +5,7 @@ using Xunit;
 namespace PoSeeReview.Unit.Utilities;
 
 /// <summary>
-/// Guards the palette against WCAG regressions by parsing the real token values out of app.css.
+/// Guards the palette against WCAG regressions by parsing the real token values out of po-tokens.css.
 /// <para>
 /// This exists because the light palette silently shipped failing contrast: <c>--color-accent</c>
 /// measured 2.15:1 on a white card and <c>--color-success</c> 2.54:1, against a 4.5:1 minimum,
@@ -29,20 +29,20 @@ public class ColorContrastTests
         // Walk up from the test binary to the repo root; the client's stylesheet is the source of
         // truth for every token in the app.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PoSeeReview.sln")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PoSeeReview.slnx")))
         {
             dir = dir.Parent;
         }
 
         Assert.True(dir is not null, "Could not locate the repository root from the test output directory.");
 
-        var path = Path.Combine(dir!.FullName, "src", "PoSeeReview.Client", "wwwroot", "css", "app.css");
-        Assert.True(File.Exists(path), $"app.css not found at {path}");
+        var path = Path.Combine(dir!.FullName, "src", "PoSeeReview.Client", "wwwroot", "css", "po-tokens.css");
+        Assert.True(File.Exists(path), $"po-tokens.css not found at {path}");
         return File.ReadAllText(path);
     });
 
     /// <summary>
-    /// Reads a token's value from a specific block of app.css. `blockAnchor` picks the light
+    /// Reads a token's value from a specific block of po-tokens.css. `blockAnchor` picks the light
     /// (:root) or dark ([data-theme="dark"]) declaration, since the same token is declared in
     /// both and a naive search would always return the first.
     /// </summary>
@@ -67,7 +67,7 @@ public class ColorContrastTests
 
         double Channel(int offset)
         {
-            var v = int.Parse(hex.Substring(offset, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255.0;
+            var v = int.Parse(hex.AsSpan(offset, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255.0;
             return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
         }
 

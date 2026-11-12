@@ -1,0 +1,21 @@
+/* Shared motion tokens & reduced-motion guard for PoSeeReview. */
+
+@keyframes po-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+.po-pop {
+    animation: po-pop 280ms var(--ease-out) both;
+}
+
+@keyframes po-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .po-pop {
+        animation: none;
+    }
+}

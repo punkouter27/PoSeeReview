@@ -19,15 +19,8 @@
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>Not found - PoSeeReview</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <StateCard Icon="🗺️" Title="This page got a 1-star review" Heading1="true">
-                    <ChildContent>It doesn't exist — or maybe it closed down.</ChildContent>
-                    <Actions>
-                        <a href="" class="btn btn-primary">Back to home</a>
-                        <a href="leaderboard" class="btn btn-secondary">Hall of Fame</a>
-                    </Actions>
-                </StateCard>
+                <NotFound />
             </LayoutView>
         </NotFound>
     </Router>

@@ -118,6 +118,10 @@ public sealed class GeminiComicService : IImageGenerationService
     /// 429 body used to file a quota error as a content refusal and flag the restaurant.
     /// </para>
     /// </summary>
+    private static readonly string[] SafetyCategories =
+        ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"];
+    private static readonly string[] ImageResponseModalities = ["IMAGE"];
+
     private async Task<byte[]> GenerateAsync(string prompt, string aspectRatio, CancellationToken cancellationToken)
     {
         var body = new
@@ -129,12 +133,12 @@ public sealed class GeminiComicService : IImageGenerationService
             // The adjustable filters all the way open: the owner wants the comic drawn as the
             // reviews describe it. Google's fixed image-safety check still applies; when it
             // refuses, the refusal is shown and reported (ImageDeclinedException), never hidden.
-            safetySettings = new[] { "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT" }
+            safetySettings = SafetyCategories
                 .Select(category => new { category, threshold = "BLOCK_NONE" }),
             generationConfig = new
             {
                 // Without this the model may answer with prose about the picture it would draw.
-                responseModalities = new[] { "IMAGE" },
+                responseModalities = ImageResponseModalities,
                 imageConfig = new { aspectRatio }
             }
         };

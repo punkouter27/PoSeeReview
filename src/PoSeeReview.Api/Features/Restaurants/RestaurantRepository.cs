@@ -16,7 +16,7 @@ namespace PoSeeReview.Api.Features.Restaurants;
 /// </summary>
 public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
 {
-    private new readonly ILogger<RestaurantRepository> _logger;
+    private readonly ILogger<RestaurantRepository> _logger;
     private const int CacheExpirationHours = 24;
 
     public RestaurantRepository(
@@ -60,8 +60,7 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
     /// </summary>
     public async Task UpsertRestaurantAsync(Restaurant restaurant)
     {
-        if (restaurant == null)
-            throw new ArgumentNullException(nameof(restaurant));
+        ArgumentNullException.ThrowIfNull(restaurant);
 
         restaurant.CachedAt = DateTimeOffset.UtcNow;
 
@@ -77,7 +76,7 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
     /// <summary>
     /// Maps domain Restaurant to Azure Table Storage entity
     /// </summary>
-    private RestaurantEntity ToEntity(Restaurant restaurant)
+    private static RestaurantEntity ToEntity(Restaurant restaurant)
     {
         return new RestaurantEntity
         {
@@ -99,7 +98,7 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
     /// <summary>
     /// Maps Azure Table Storage entity to domain Restaurant
     /// </summary>
-    private Restaurant FromEntity(RestaurantEntity entity)
+    private static Restaurant FromEntity(RestaurantEntity entity)
     {
         return new Restaurant
         {
@@ -121,7 +120,7 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
     /// <summary>
     /// Checks if cached data is still valid (within 24 hours)
     /// </summary>
-    private bool IsCacheValid(DateTimeOffset cachedAt)
+    private static bool IsCacheValid(DateTimeOffset cachedAt)
     {
         return DateTimeOffset.UtcNow - cachedAt < TimeSpan.FromHours(CacheExpirationHours);
     }

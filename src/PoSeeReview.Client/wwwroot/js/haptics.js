@@ -6,7 +6,7 @@
 // Every call is a no-op on failure: iOS exposes no Vibration API, some engines throw without
 // transient user activation, and the OS can disable it. None of those is worth reporting.
 
-const STORAGE_KEY = 'posee_haptics_enabled';
+const STORAGE_KEY = 'poseereview:haptics-enabled';
 
 const PATTERNS = {
     tap: [10],
@@ -87,6 +87,7 @@ export const haptics = {
     },
 
     cancel() {
+        if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
         try { navigator.vibrate?.(0); } catch { /* nothing to cancel */ }
     },
 

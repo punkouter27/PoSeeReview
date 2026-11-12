@@ -174,6 +174,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
             CancellationToken cancellationToken = default)
             => Task.FromResult<(double lat, double lon)?>(null);
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Interface stub signature")]
         public Task<Restaurant?> GetRestaurantDetailsAsync(
             string placeId,
             CancellationToken cancellationToken = default)

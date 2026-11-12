@@ -28,6 +28,7 @@ public sealed class ComicLoopUiTests(PlaywrightFixture fixture)
     public async Task ComicLoop_TapToOutcome_ThenBackResetsToDiscovery(string viewport)
     {
         var page = await fixture.NewPageAsync(viewport);
+        fixture.AllowNotFoundPath(page, "/api/comics/");
         await page.GotoAsync($"{fixture.BaseUrl}/login");
         await page.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
         await page.GetByRole(AriaRole.Button, new() { NameRegex = GuestButton }).ClickAsync();
@@ -37,8 +38,8 @@ public sealed class ComicLoopUiTests(PlaywrightFixture fixture)
         // being asked for location. The ZIP matches SCRIPTS/ui-check.mjs so both exercise the
         // same place, and the second viewport is then a cache hit rather than a second spend.
         await page.EvaluateAsync(
-            "() => { localStorage.setItem('posee_discovery_mode', 'zip');"
-            + " localStorage.setItem('posee_last_search', '20020'); }");
+            "() => { localStorage.setItem('poseereview:discovery-mode', 'zip');"
+            + " localStorage.setItem('poseereview:last-search', '20020'); }");
         await page.ReloadAsync();
         await page.Locator(".index-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
 

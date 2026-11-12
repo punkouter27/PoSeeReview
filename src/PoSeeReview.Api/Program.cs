@@ -29,7 +29,7 @@ if (!isTestMode)
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
         .Enrich.FromLogContext()
-        .WriteTo.Console()
+        .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
         .CreateBootstrapLogger();
 }
 
@@ -41,6 +41,11 @@ try
     }
 
     var builder = WebApplication.CreateBuilder(args);
+
+    if (builder.Environment.IsEnvironment(HostEnvironments.Test))
+    {
+        builder.WebHost.UseStaticWebAssets();
+    }
 
     builder.ConfigureAzureKeyVault(isTestMode);
 
@@ -126,7 +131,7 @@ try
     // Must run before anything that reads the client IP/scheme (rate limiter, logging, redirects).
     app.UseForwardedHeaders();
 
-    if (!app.Environment.IsDevelopment())
+    if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Test"))
     {
         app.UseHsts();
     }

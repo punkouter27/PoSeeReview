@@ -32,7 +32,7 @@ public class GoogleMapsServiceTests
         Assert.Throws<ArgumentException>(() => ValidateCoordinates(lat, lon));
     }
 
-    private void ValidateCoordinates(double latitude, double longitude)
+    private static void ValidateCoordinates(double latitude, double longitude)
     {
         if (latitude < -90 || latitude > 90)
             throw new ArgumentException("Latitude must be between -90 and 90", nameof(latitude));

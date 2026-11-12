@@ -9,7 +9,9 @@ using Azure.Storage.Blobs;
 using Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using PoSeeReview.Api.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PoSeeReview.Api.Features.Diagnostics;
@@ -107,7 +109,7 @@ public static class InfrastructureServiceCollectionExtensions
         var remasterProvider = ParseImageProvider(configuration, AiRemasterProviderConfigurationKey, AiImageProvider.Gemini);
 
         // A local model's output is not what the product publishes, and a laptop is not a server.
-        if ((imageProvider == AiImageProvider.Local || remasterProvider == AiImageProvider.Local) && !environment.IsDevelopment())
+        if ((imageProvider == AiImageProvider.Local || remasterProvider == AiImageProvider.Local) && !environment.IsDevelopment() && !environment.IsEnvironment("Test"))
         {
             throw new InvalidOperationException(
                 $"{AiImageProvider.Local} is a Development-only image provider; it cannot run in {environment.EnvironmentName}.");
@@ -329,6 +331,15 @@ public static class InfrastructureServiceCollectionExtensions
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(45));
         services.AddScoped<ILiveComicLookup, LiveComicLookup>();
         services.AddScoped<ILeaderboardService, LeaderboardService>();
+
+        if (environment.IsEnvironment(HostEnvironments.Test) && configuration.GetValue<bool>("UseMockData"))
+        {
+            services.AddSingleton<TestMockRestaurantService>();
+            services.Replace(ServiceDescriptor.Singleton<IRestaurantService>(sp =>
+                sp.GetRequiredService<TestMockRestaurantService>()));
+            services.AddSingleton<IMockable>(sp => sp.GetRequiredService<TestMockRestaurantService>());
+            services.AddMockedAiBoundaries(configuration);
+        }
 
         return services;
     }

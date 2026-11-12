@@ -92,7 +92,7 @@ internal static class ReportsEndpoints
                 telemetryClient.TrackEvent("ComicAutoHidden", new Dictionary<string, string>
                 {
                     ["PlaceId"] = placeId.Value,
-                    ["ReportCount"] = distinctReporters.ToString()
+                    ["ReportCount"] = distinctReporters.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 });
             }
 

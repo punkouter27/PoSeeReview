@@ -1,7 +1,6 @@
-@using System.Net.Http.Json
 @using PoSeeReview.Client.Services
 @using PoSeeReview.Shared.Dtos
-@inject HttpClient Http
+@inject ApiClient ApiClient
 @inject NavigationManager Navigation
 @inject DiscoveryState Discovery
 @implements IDisposable
@@ -45,10 +44,10 @@
                             title="@(auth.User.Identity?.Name ?? "Account")"
                             aria-label="@($"{auth.User.Identity?.Name ?? "User"}, account menu")">
                         <span class="nav-user-dot" aria-hidden="true"></span>
-                        <span class="nav-user-email nav-user-label">@(auth.User.Identity?.Name ?? "User")</span>
+                        <span class="nav-user-email nav-user-label">@AccountMenu.DisplayName(auth.User.Identity?.Name)</span>
                     </button>
                     <div id="account-menu" class="popover-menu nav-account-menu" popover @key="Navigation.Uri">
-                        <p class="popover-menu-title">@(auth.User.Identity?.Name ?? "User")</p>
+                        <p class="popover-menu-title">@AccountMenu.DisplayName(auth.User.Identity?.Name)</p>
                         <NavLink class="popover-menu-item" href="my-comics">
                             <span aria-hidden="true">🗂️</span> My comics
                         </NavLink>
@@ -72,15 +71,7 @@
     {
         Navigation.LocationChanged += OnLocationChanged;
 
-        try
-        {
-            var mockStatus = await Http.GetFromJsonAsync("diag/mock-status", AppJsonContext.Default.MockStatusDto);
-            _isMockData = mockStatus?.IsMockActive ?? false;
-        }
-        catch (HttpRequestException)
-        {
-            _isMockData = false;
-        }
+        _isMockData = (await ApiClient.GetMockStatusAsync())?.IsMockActive ?? false;
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>

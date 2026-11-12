@@ -48,6 +48,18 @@ public class DiagnosticsSnapshotQueryHandler(
         "Serilog"
     ];
 
+    private static readonly string[] DiagnosticKeyNames =
+    [
+        "KeyVault:Uri",
+        "ApplicationInsights:ConnectionString",
+        "GoogleMaps:ApiKey",
+        "AzureOpenAI:Endpoint",
+        "AzureOpenAI:ApiKey",
+        "ConnectionStrings:Storage",
+        "ConnectionStrings:AzureTableStorage",
+        "ConnectionStrings:AzureBlobStorage"
+    ];
+
     public async Task<DiagnosticsSnapshotDto> ExecuteAsync(CancellationToken cancellationToken)
     {
         // /diag is anonymous so platform probes can reach it, but the full configuration
@@ -89,17 +101,7 @@ public class DiagnosticsSnapshotQueryHandler(
             logger.LogError(ex, "Failed to gather dependency status for diagnostics snapshot");
         }
 
-        var keyStatus = new[]
-        {
-            "KeyVault:Uri",
-            "ApplicationInsights:ConnectionString",
-            "GoogleMaps:ApiKey",
-            "AzureOpenAI:Endpoint",
-            "AzureOpenAI:ApiKey",
-            "ConnectionStrings:Storage",
-            "ConnectionStrings:AzureTableStorage",
-            "ConnectionStrings:AzureBlobStorage"
-        }
+        var keyStatus = DiagnosticKeyNames
         .Select(key => new ConfigurationKeyStatusDto
         {
             Key = key,

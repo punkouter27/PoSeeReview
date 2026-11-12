@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PoSeeReview.Api/PoSeeReview.Api.csproj" />
+    <Project Path="src/PoSeeReview.Client/PoSeeReview.Client.csproj" />
+    <Project Path="src/PoSeeReview.Shared/PoSeeReview.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PoSeeReview.Unit/PoSeeReview.Unit.csproj" />
+    <Project Path="tests/PoSeeReview.Integration/PoSeeReview.Integration.csproj" />
+    <Project Path="tests/PoSeeReview.E2EAPI/PoSeeReview.E2EAPI.csproj" />
+    <Project Path="tests/PoSeeReview.E2EUI/PoSeeReview.E2EUI.csproj" />
+  </Folder>
+</Solution>

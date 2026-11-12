@@ -22,7 +22,7 @@ namespace PoSeeReview.Client.Services;
 public sealed class BoardMemoryService(IJSRuntime js)
 {
     /// <summary>One entry per region, so switching country does not report every row as new.</summary>
-    private const string StorageKeyPrefix = "posee_board_ranks_";
+    private const string StorageKeyPrefix = "poseereview:board-ranks:";
 
     /// <summary>
     /// Rows kept per region. The board itself shows ten; keeping a few more means a row that

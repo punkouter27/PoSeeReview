@@ -387,8 +387,8 @@ public partial class ComicGenerationService : IComicGenerationService
         {
             ["PlaceId"] = placeId.Value,
             ["RestaurantName"] = restaurant.Name,
-            ["StrangenessScore"] = strangenessScore.ToString(),
-            ["PanelCount"] = panelCount.ToString()
+            ["StrangenessScore"] = strangenessScore.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["PanelCount"] = panelCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
         });
 
         overallStopwatch.Stop();

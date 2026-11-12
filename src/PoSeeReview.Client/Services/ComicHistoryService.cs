@@ -79,7 +79,7 @@ public sealed class ComicHistoryEntry
 public sealed class ComicHistoryService(IJSRuntime jsRuntime, ILogger<ComicHistoryService> logger)
 {
     /// <summary>Storage key, sharing the app's existing <c>posee_</c> prefix.</summary>
-    private const string StorageKey = "posee_comic_history";
+    private const string StorageKey = "poseereview:comic-history";
 
     /// <summary>
     /// How many comics are remembered. Bounded because <c>localStorage</c> is a small, synchronous
