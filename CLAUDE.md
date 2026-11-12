@@ -13,7 +13,7 @@ browser). See [README.md](README.md) for the PRD.
 
 ```powershell
 dotnet restore
-dotnet build PoSeeReview.sln
+dotnet build PoSeeReview.slnx
 dotnet run   --project src/PoSeeReview.Api --launch-profile https   # HTTP 5000 / HTTPS 5001
 dotnet watch --project src/PoSeeReview.Api --launch-profile https   # code-only changes
 ```
@@ -32,7 +32,7 @@ DLL-lock failures on the next build.
 
 ### Tests
 
-Four tiers, all xUnit. `dotnet test PoSeeReview.sln` runs everything, but E2EUI needs a live app.
+Four tiers, all xUnit. `dotnet test PoSeeReview.slnx` runs everything, but E2EUI needs a live app.
 
 ```powershell
 dotnet test tests/PoSeeReview.Unit          # pure unit

@@ -188,7 +188,7 @@ All diagrams are self-contained HTML files rendered by Mermaid.js with the cathr
 
 ```powershell
 dotnet restore
-dotnet build PoSeeReview.sln
+dotnet build PoSeeReview.slnx
 dotnet run --project src/PoSeeReview.Api --launch-profile https
 ```
 
