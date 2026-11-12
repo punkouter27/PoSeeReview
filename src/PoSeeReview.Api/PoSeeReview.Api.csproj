@@ -46,7 +46,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PoSeeReview.Unit" />
     <InternalsVisibleTo Include="PoSeeReview.Integration" />
-    <!-- SCRIPTS/prompt-eval.cs: a file-based app is named after its file. -->
+    <!-- scripts/prompt-eval.cs: a file-based app is named after its file. -->
     <InternalsVisibleTo Include="prompt-eval" />
   </ItemGroup>
 

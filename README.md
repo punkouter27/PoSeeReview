@@ -93,7 +93,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 | Graphics & audio | One hand-written WebGL2 backdrop shader on a shared rAF loop with a frame-budget tier (`off`/`lite`/`full`, `full` by default — `lite` is the calm one: the ink reveal and glass only, while the stamp, confetti, springy score, board and pin animations wait for `full`); an optional WebGPU compute particle layer (ink motes); 2D-canvas confetti and ink splats; Web Audio synthesis, no audio assets. Every extra (sound, haptics, map sounds, ink motes) is on by default at full volume and can be switched off on `/settings` |
 | Maps | MapLibre GL JS 5.24.0 (UMD, jsDelivr, SRI-pinned, loaded only when a map opens) over OpenFreeMap vector tiles — no key, no per-load billing |
 | Alerting | `infra/alerts.bicep`: Http5xx, AI spend, in-band generation failures, fail-open guards, image refusals, moderation queue → email action group |
-| Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `SCRIPTS/lighthouserc.json`) in the deploy smoke job |
+| Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `scripts/lighthouserc.json`) in the deploy smoke job |
 | Build stamp | `YYMMDD` from the HEAD commit date (`Directory.Build.targets`), shown bottom-right on every page and as `buildStamp` on `/diag` |
 
 ## Documentation Suite
@@ -213,13 +213,13 @@ The same post-deploy checks CI runs (Blazor render tree, `/health`) can be run b
 ```powershell
 # Post-deploy smoke (NET_RULES 5.4) — the deploy workflow runs this automatically
 $env:BASE_URL = "https://<fqdn>"
-node SCRIPTS/post-deploy-smoke.mjs
+node scripts/post-deploy-smoke.mjs
 ```
 
 CI then runs Lighthouse against `/login` (three runs, median). Layout shift above 0.1 or an accessibility score under 0.9 fails the run; performance and LCP only warn, because an F1 cold start swings them. Reports are uploaded as the `lighthouse` artifact.
 
 ```powershell
-npx @lhci/cli@0.15.1 autorun --config=SCRIPTS/lighthouserc.json --collect.url="https://<fqdn>/login"
+npx @lhci/cli@0.15.1 autorun --config=scripts/lighthouserc.json --collect.url="https://<fqdn>/login"
 ```
 
 The full C# Playwright UI suite targets a running app via `E2E_BASE_URL` (it includes `AccessibilityUiTests`, axe-core over the main pages):

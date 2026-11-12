@@ -15,7 +15,7 @@
 // was brought to 91 by deleting 34 methods that asserted nothing about production code
 // (placeholder stubs and tests that called a private helper defined in the test file).
 //
-// Usage: node SCRIPTS/check-test-quota.mjs [--json]
+// Usage: node scripts/check-test-quota.mjs [--json]
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

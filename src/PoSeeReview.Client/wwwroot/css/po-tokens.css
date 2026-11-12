@@ -1,4 +1,4 @@
-/* PoSeeReview design tokens (Rule 5): light-dark() + :root[data-theme] mapped onto --rz-* Radzen variables. */
+/* PoSeeReview design tokens map onto --rz-* Radzen variables with explicit theme selection. */
 
 @font-face {
     font-family: 'Inter';
@@ -342,6 +342,8 @@
     }
 
     :root[data-theme="dark"] {
+        color-scheme: dark;
+
         --color-brand: #A78BFA;
         --color-brand-ink: #A78BFA;
         --color-brand-dark: #0F021F;
@@ -402,5 +404,46 @@
         --glass-edge: rgba(167, 139, 250, 0.28);
         --glass-shade: rgba(0, 0, 0, 0.40);
         --glass-light: rgba(196, 181, 253, 0.10);
+    }
+
+    :root[data-theme="light"] {
+        color-scheme: light;
+    }
+
+    /* Auto keeps the OS color scheme; pinned choices set it explicitly above.
+       Modern browsers use these paired tokens while the existing theme rules are
+       the fallback for browsers without light-dark(). */
+    @supports (color: light-dark(black, white)) {
+        :root {
+            --color-brand: light-dark(#7C3AED, #A78BFA);
+            --color-brand-ink: light-dark(#7C3AED, #A78BFA);
+            --color-accent: light-dark(#F59E0B, #FBBF24);
+            --color-accent-ink: light-dark(#9B6407, #FBBF24);
+            --color-surface: light-dark(#F8F7FF, #12101A);
+            --color-card: light-dark(#ffffff, #1C1926);
+            --color-text-primary: light-dark(#1e1e2e, #ECEAF5);
+        }
+
+        :root[data-theme="dark"] {
+            --color-brand: light-dark(#7C3AED, #A78BFA);
+            --color-brand-ink: light-dark(#7C3AED, #A78BFA);
+            --color-accent: light-dark(#F59E0B, #FBBF24);
+            --color-accent-ink: light-dark(#9B6407, #FBBF24);
+            --color-surface: light-dark(#F8F7FF, #12101A);
+            --color-card: light-dark(#ffffff, #1C1926);
+            --color-text-primary: light-dark(#1e1e2e, #ECEAF5);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --color-brand: light-dark(#7C3AED, #A78BFA);
+                --color-brand-ink: light-dark(#7C3AED, #A78BFA);
+                --color-accent: light-dark(#F59E0B, #FBBF24);
+                --color-accent-ink: light-dark(#9B6407, #FBBF24);
+                --color-surface: light-dark(#F8F7FF, #12101A);
+                --color-card: light-dark(#ffffff, #1C1926);
+                --color-text-primary: light-dark(#1e1e2e, #ECEAF5);
+            }
+        }
     }
 }

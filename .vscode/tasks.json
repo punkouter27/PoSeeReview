@@ -44,7 +44,7 @@
     {
       "label": "start-azurite",
       "type": "shell",
-      "command": "pwsh -NoProfile -File SCRIPTS/start-azurite.ps1",
+      "command": "pwsh -NoProfile -File scripts/start-azurite.ps1",
       "problemMatcher": []
     },
     {

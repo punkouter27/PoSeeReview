@@ -11,11 +11,11 @@
 // script for humour, drawability and faithfulness to the reviews, and counts invented facts. It
 // needs the Azure endpoint and key even when the scorer under test is Ollama.
 //
-//   dotnet run SCRIPTS/prompt-eval.cs                                 # Ollama, configured model
-//   dotnet run SCRIPTS/prompt-eval.cs -- --model gemma3:4b --runs 3
+//   dotnet run scripts/prompt-eval.cs                                 # Ollama, configured model
+//   dotnet run scripts/prompt-eval.cs -- --model gemma3:4b --runs 3
 //   $env:AZURE_OPENAI_ENDPOINT = "..."; $env:AZURE_OPENAI_API_KEY = "..."
-//   dotnet run SCRIPTS/prompt-eval.cs -- --provider azure              # paid, ~$0.0005 per call
-//   dotnet run SCRIPTS/prompt-eval.cs -- --provider azure --judge gpt-5.4-mini [--verbose]
+//   dotnet run scripts/prompt-eval.cs -- --provider azure              # paid, ~$0.0005 per call
+//   dotnet run scripts/prompt-eval.cs -- --provider azure --judge gpt-5.4-mini [--verbose]
 //
 // Not a test: it calls a model, and its verdict is a spread, not a pass/fail.
 
@@ -33,7 +33,7 @@ using PoSeeReview.Api.Telemetry;
 var provider = Arg("--provider") ?? "ollama";
 var runs = int.Parse(Arg("--runs") ?? "3");
 var judgeDeployment = Arg("--judge");
-var casesPath = Path.Combine(AppContext.GetData("EntryPointFileDirectoryPath") as string ?? "SCRIPTS", "prompt-eval.json");
+var casesPath = Path.Combine(AppContext.GetData("EntryPointFileDirectoryPath") as string ?? "scripts", "prompt-eval.json");
 var cases = JsonSerializer.Deserialize<List<EvalCase>>(File.ReadAllText(casesPath), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
 var telemetry = new TelemetryClient(new TelemetryConfiguration());

@@ -14,4 +14,4 @@ the real pipeline over real tables and blobs belongs in `PoSeeReview.Integration
 dotnet test tests/PoSeeReview.E2EAPI
 ```
 
-Quota: 25 tests, enforced by `SCRIPTS/check-test-quota.mjs`.
+Quota: 25 tests, enforced by `scripts/check-test-quota.mjs`.

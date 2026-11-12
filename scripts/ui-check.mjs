@@ -1,5 +1,5 @@
 // UI/UX and pipeline regression check. Run against a live app:
-//     $env:BASE_URL = "https://localhost:5001"; node SCRIPTS/ui-check.mjs
+//     $env:BASE_URL = "https://localhost:5001"; node scripts/ui-check.mjs
 //
 // Covers the cascade-layer restructure (scoped CSS still applies, shared primitives win,
 // Bootstrap gone), the design tokens, mobile overflow, and the two pipeline bugs this was

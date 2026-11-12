@@ -35,7 +35,7 @@ public sealed class ComicLoopUiTests(PlaywrightFixture fixture)
         await page.Locator(".index-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
 
         // Resume a typed-ZIP discovery, the same way a returning user lands on cards without
-        // being asked for location. The ZIP matches SCRIPTS/ui-check.mjs so both exercise the
+        // being asked for location. The ZIP matches scripts/ui-check.mjs so both exercise the
         // same place, and the second viewport is then a cache hit rather than a second spend.
         await page.EvaluateAsync(
             "() => { localStorage.setItem('poseereview:discovery-mode', 'zip');"

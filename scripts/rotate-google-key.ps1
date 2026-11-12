@@ -30,7 +30,7 @@
 
 .EXAMPLE
     # After copying the new key from the Google Cloud Console:
-    .\SCRIPTS\rotate-google-key.ps1
+    .\scripts\rotate-google-key.ps1
 #>
 
 [CmdletBinding()]
@@ -49,7 +49,7 @@ function Write-Fail { param([string]$Message) Write-Host "  [FAIL] $Message" -Fo
 Write-Step "Pre-flight checks"
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-    throw "Azure CLI ('az') is not on PATH. Run SCRIPTS\setup.ps1 first."
+    throw "Azure CLI ('az') is not on PATH. Run scripts\setup.ps1 first."
 }
 
 $account = az account show --query "user.name" -o tsv 2>$null

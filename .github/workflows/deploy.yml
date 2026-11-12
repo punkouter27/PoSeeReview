@@ -9,7 +9,7 @@ on:
     branches: [master]
     # A docs-only or infra-only push must not recycle the live App Service and burn a smoke run.
     # The failure this workflow guards against is /health never returning 200, which a typo in a
-    # markdown file cannot cause. SCRIPTS/** is deliberately NOT ignored — the smoke job executes
+    # markdown file cannot cause. scripts/** is deliberately NOT ignored — the smoke job executes
     # post-deploy-smoke.mjs, so a change there does want a run.
     paths-ignore:
       - '**.md'
@@ -51,7 +51,7 @@ jobs:
       # Published first so a suite that quietly grew past its cap fails the run before the
       # three-minute publish. `dotnet publish` cannot catch this — it never reads tests/.
       - name: Check test tier quotas
-        run: node SCRIPTS/check-test-quota.mjs
+        run: node scripts/check-test-quota.mjs
       - name: Run unit tests
         run: dotnet test tests/PoSeeReview.Unit -c Release
       - run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release -o publish
@@ -174,14 +174,14 @@ jobs:
 
       # NET_RULES 5.4: Blazor render tree init, /health, and masked config from /diag.
       - name: Run smoke checks
-        run: node SCRIPTS/post-deploy-smoke.mjs
+        run: node scripts/post-deploy-smoke.mjs
 
       # Budgets that fail the run: layout shift (the boot splash once cost 0.20 CLS on every
       # load) and the accessibility score. Performance and LCP only warn: an F1 cold start and a
       # WASM boot under mobile throttling swing them run to run (LCP 3.2s to 19s on one deploy).
       # /login because it is the one page an anonymous run can render. Reports stay with the run.
       - name: Lighthouse budgets
-        run: npx --yes @lhci/cli@0.15.1 autorun --config=SCRIPTS/lighthouserc.json --collect.url="$BASE_URL/login"
+        run: npx --yes @lhci/cli@0.15.1 autorun --config=scripts/lighthouserc.json --collect.url="$BASE_URL/login"
 
       - uses: actions/upload-artifact@v7
         if: always()

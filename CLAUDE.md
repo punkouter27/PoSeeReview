@@ -44,14 +44,14 @@ dotnet test tests/PoSeeReview.Unit --filter "FullyQualifiedName~GeoUtilsTests"  
 ```
 
 Tier quotas: Unit 100 / Integration 50 / E2EAPI 25 / E2EUI 25, counted in `[Fact]`/`[Theory]`
-attributes and enforced in CI by `SCRIPTS/check-test-quota.mjs`. A new test in a full tier
+attributes and enforced in CI by `scripts/check-test-quota.mjs`. A new test in a full tier
 replaces one. Playwright browsers install via
 `pwsh tests/PoSeeReview.E2EUI/bin/Debug/net10.0/playwright.ps1 install chromium` after a build.
 
 ### Local storage
 
 ```powershell
-pwsh SCRIPTS/start-azurite.ps1   # Docker image if Docker is up, else `npx azurite@3`; ports 10000-10002
+pwsh scripts/start-azurite.ps1   # Docker image if Docker is up, else `npx azurite@3`; ports 10000-10002
 ```
 
 Development defaults to Azurite (`"Storage:UseAzurite": true` in `appsettings.Development.json`), so
@@ -71,13 +71,13 @@ segment rather than skipping a fixed one.
 applied by hand — see [infra/README.md](infra/README.md).
 
 ```powershell
-$env:BASE_URL = "https://app-poseereview2.azurewebsites.net"; node SCRIPTS/post-deploy-smoke.mjs
+$env:BASE_URL = "https://app-poseereview2.azurewebsites.net"; node scripts/post-deploy-smoke.mjs
 ```
 
-`SCRIPTS/setup.ps1` is the first-run bootstrap (WinGet/Docker/Azure CLI checks).
-`SCRIPTS/rotate-google-key.ps1` copies a new Google Maps key from the clipboard into kv-poshared2
+`scripts/setup.ps1` is the first-run bootstrap (WinGet/Docker/Azure CLI checks).
+`scripts/rotate-google-key.ps1` copies a new Google Maps key from the clipboard into kv-poshared2
 (`GoogleMaps--ApiKey` and `PoSeeReview--GoogleMaps--ApiKey`).
-`SCRIPTS/ui-check.mjs` (`$env:BASE_URL=…; node SCRIPTS/ui-check.mjs`) is a Playwright regression
+`scripts/ui-check.mjs` (`$env:BASE_URL=…; node scripts/ui-check.mjs`) is a Playwright regression
 pass over a live app — it performs **one real, paid** comic generation.
 
 ## Architecture
@@ -243,9 +243,9 @@ user message is only `<reviews>` — interleaving rules with reviews tripped Azu
 Judge a prompt change with the golden set:
 
 ```powershell
-dotnet run SCRIPTS/prompt-eval.cs -- --model gemma3:4b      # Ollama, free
-dotnet run SCRIPTS/prompt-eval.cs -- --provider azure        # needs AZURE_OPENAI_ENDPOINT/_API_KEY
-dotnet run SCRIPTS/prompt-eval.cs -- --provider azure --judge gpt-5.4-mini --verbose   # + writing grades
+dotnet run scripts/prompt-eval.cs -- --model gemma3:4b      # Ollama, free
+dotnet run scripts/prompt-eval.cs -- --provider azure        # needs AZURE_OPENAI_ENDPOINT/_API_KEY
+dotnet run scripts/prompt-eval.cs -- --provider azure --judge gpt-5.4-mini --verbose   # + writing grades
 ```
 
 It reports in-band, spread, grounded panels and blunted terms; `--judge` adds funny / drawable /
