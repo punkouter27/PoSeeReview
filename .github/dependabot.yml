@@ -1,5 +1,9 @@
-# Keeps the NuGet packages (all named in Directory.Packages.props) and the pinned GitHub Actions in the workflows up to date.
-# One pull request a week for each, with the small updates grouped, so they are easy to review together.
+# SAME FILE IN EVERY PO .NET WEB REPO (reference copy: PoTraffic; copy it with
+# PoPunkouterSoftware/scripts/sync-ci.ps1). One grouped pull request a week per ecosystem.
+#
+# NuGet major versions are ignored for every package: the apps target .NET 10, and a major bump
+# (ASP.NET Core 11, Microsoft.OpenApi 3, ...) needs a deliberate upgrade, not a weekly PR that
+# can only fail. Action majors are allowed, so every repo's workflow moves forward together.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -7,16 +11,11 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Microsoft.AspNetCore.OpenApi 10 needs Microsoft.OpenApi 2.x; 3.x fails restore (NU1608). Lift with .NET 11.
-      - dependency-name: Microsoft.OpenApi
-        update-types: ["version-update:semver-major"]
-      # 3.x is the OpenTelemetry rewrite: Serilog.Sinks.ApplicationInsights 5 needs < 3.0 (NU1608) and
-      # ITelemetryInitializer is gone. A migration, not a bump.
-      - dependency-name: Microsoft.ApplicationInsights*
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
-      minor-and-patch:
-        update-types: [minor, patch]
+      nuget:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

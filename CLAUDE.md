@@ -44,7 +44,7 @@ dotnet test tests/PoSeeReview.Unit --filter "FullyQualifiedName~GeoUtilsTests"  
 ```
 
 Tier quotas: Unit 100 / Integration 50 / E2EAPI 25 / E2EUI 25, counted in `[Fact]`/`[Theory]`
-attributes and enforced in CI by `scripts/check-test-quota.mjs`. A new test in a full tier
+attributes and enforced in CI by `scripts/check-test-quota.mjs` (run from `scripts/ci-checks.ps1`). A new test in a full tier
 replaces one. Playwright browsers install via
 `pwsh tests/PoSeeReview.E2EUI/bin/Debug/net10.0/playwright.ps1 install chromium` after a build.
 
@@ -65,13 +65,16 @@ segment rather than skipping a fixed one.
 
 ### Deploy & smoke
 
-`git push origin master` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
-`build` (test-quota check + unit tests + publish) → `deploy` (App Service `app-poseereview2`, RG
-`PoSeeReview`) → `smoke`. Integration and E2E suites run locally only. Infra under `infra/` is
-applied by hand — see [infra/README.md](infra/README.md).
+`git push origin master` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml), the
+shared Po workflow (byte-identical in every Po .NET web repo — never edit it here): `build` (unit
+tests, then `scripts/ci-checks.ps1` = test-quota check, publish) → `deploy` (App Service
+`app-poseereview2`, RG `PoSeeReview`, from repo variables), health gate (`/health/live` serving this
+commit, then `/health`), then `scripts/post-deploy-smoke.ps1` (Playwright smoke + Lighthouse budgets);
+any failure after go-live rolls back. Integration and E2E suites run locally only. Infra under
+`infra/` is applied only by the manual `infra.yml` workflow — see [infra/README.md](infra/README.md).
 
 ```powershell
-$env:BASE_URL = "https://app-poseereview2.azurewebsites.net"; node scripts/post-deploy-smoke.mjs
+pwsh scripts/post-deploy-smoke.ps1 -BaseUrl https://app-poseereview2.azurewebsites.net
 ```
 
 `scripts/setup.ps1` is the first-run bootstrap (WinGet/Docker/Azure CLI checks).
@@ -560,8 +563,8 @@ its own 30-entry cache so `/my-comics` works offline, and a 404 or 451 evicts th
 `GET /api/comics/cached` (which places are drawn, plus their `scores` for map pins);
 `/health` (+ `/live`, `/ready`; the Google Maps check is key-presence only — it used to fire a
 billed call per anonymous hit; `skia_imaging` proves the native lib and fonts load). App Service
-probes `/health/live` (dependency-free); the deploy's smoke job polls `/health`, so an Unhealthy
-check fails a deploy without recycling the instance; `/diag` (masked keys, integration status, Dev **and** Prod — behind
+probes `/health/live` (dependency-free); the deploy's health gate polls `/health`, so an Unhealthy
+check fails the deploy and rolls it back; `/diag` (masked keys, integration status, Dev **and** Prod — behind
 `UserAgentValidationMiddleware`, so anonymous scripted fetches get a 400); `/diag/mock-status`
 drives the client's "USING MOCK DATA" banner.
 

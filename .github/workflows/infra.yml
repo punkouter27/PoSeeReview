@@ -1,0 +1,58 @@
+name: Infra
+
+# SAME FILE IN EVERY PO .NET WEB REPO WITH infra/main.bicep. The reference copy is PoTraffic's;
+# copy it with PoPunkouterSoftware/scripts/sync-ci.ps1, never edit one repo's copy.
+#
+# Manual only, on purpose: a code deploy (deploy.yml) never applies Bicep. Run it with apply off
+# to see the what-if, then again with apply on. The scope (subscription or resource group) is read
+# from main.bicep's targetScope; parameters come from the first infra/*.bicepparam, else
+# infra/main.parameters.json, else none.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply the change (off = what-if only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write   # azure/login OIDC
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  infra:
+    name: Infra (${{ inputs.apply && 'apply' || 'what-if' }})
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: ${{ inputs.apply && 'Apply' || 'What-if' }}
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          LOCATION: ${{ vars.AZURE_LOCATION || 'eastus2' }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          scope=$(grep -m1 -oE "^targetScope *= *'[a-zA-Z]+" infra/main.bicep | sed "s/.*'//")
+          params=()
+          bicepparam=$(ls infra/*.bicepparam 2>/dev/null | head -1)
+          if [ -n "$bicepparam" ]; then params=(--parameters "$bicepparam")
+          elif [ -f infra/main.parameters.json ]; then params=(--parameters @infra/main.parameters.json); fi
+          verb=what-if; [ "$APPLY" = "true" ] && verb=create
+          if [ "$scope" = "subscription" ]; then
+            az deployment sub "$verb" --location "$LOCATION" --template-file infra/main.bicep "${params[@]}"
+          else
+            [ -n "$RG" ] || { echo "::error::Repo variable AZURE_RESOURCE_GROUP is not set."; exit 1; }
+            az deployment group "$verb" --resource-group "$RG" --template-file infra/main.bicep "${params[@]}"
+          fi

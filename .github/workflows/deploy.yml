@@ -1,76 +1,105 @@
 name: Build & Deploy
 
-# Lightweight pipeline: tier-quota check + unit tests, publish, deploy to App Service, smoke.
-# The Integration / E2E suites run locally. If a deploy issue arises, prefer trimming this file
-# further over adding functionality.
+# SAME FILE IN EVERY PO .NET WEB REPO. The reference copy is PoTraffic's. Never edit it in one
+# repo only: change PoTraffic's, then copy it everywhere with PoPunkouterSoftware/scripts/sync-ci.ps1.
+# The weekly conventions check (PoPunkouterSoftware) fails any repo whose copy differs.
+#
+# Everything that differs between repos lives outside this file:
+#   repo variables  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   GitHub OIDC sign-in
+#                   AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP                    what is deployed, where
+#                   HEALTH_PATH (optional, default /health)                    the dependency-health JSON route
+#   hook scripts    scripts/ci-checks.ps1                 extra build-time checks, after the unit tests
+#                   scripts/ci-package.ps1 -PublishDir    adds files to the package before upload
+#                   scripts/pre-deploy.ps1 -BaseUrl       optional live-site preparation after quota check
+#                   scripts/post-deploy-smoke.ps1 -BaseUrl  checks the live site after the health gate
+#                   (each hook is optional: the step is skipped when the file does not exist)
+# Layout it relies on: one *.slnx at the root, global.json, src/*.Api/*.csproj, tests/*.Unit/*.csproj.
 
 on:
   push:
     branches: [master]
-    # A docs-only or infra-only push must not recycle the live App Service and burn a smoke run.
-    # The failure this workflow guards against is /health never returning 200, which a typo in a
-    # markdown file cannot cause. scripts/** is deliberately NOT ignored — the smoke job executes
-    # post-deploy-smoke.mjs, so a change there does want a run.
-    paths-ignore:
-      - '**.md'
-      - 'infra/**'
-  # Pull requests (Dependabot's too) get the build and tests; only a push to master deploys.
+  # Pull requests (Dependabot's too) get the build and tests; only master deploys.
   pull_request:
   workflow_dispatch:
 
-env:
-  DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
-  AZURE_RESOURCE_GROUP: PoSeeReview
-  API_PROJECT_PATH: src/PoSeeReview.Api/PoSeeReview.Api.csproj
-
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: deploy-${{ github.repository }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-${{ github.ref }}
+  # A newer PR build may replace an older one. A deploy is never cancelled part-way: that could
+  # leave a half-deployed site that nothing rolls back.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
 
 jobs:
   build:
-    name: Build
+    name: Build & test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # MinVer versions the build from git tags; a shallow clone has none
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          global-json-file: global.json
       - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', 'global.json') }}
           restore-keys: nuget-${{ runner.os }}-
-      # Tier quotas (NET_RULES 5.1: Unit 100 / Integration 50 / E2EAPI 25 / E2EUI 25).
-      # Published first so a suite that quietly grew past its cap fails the run before the
-      # three-minute publish. `dotnet publish` cannot catch this — it never reads tests/.
-      - name: Check test tier quotas
-        run: node scripts/check-test-quota.mjs
-      - name: Run unit tests
-        run: dotnet test tests/PoSeeReview.Unit -c Release
-      - run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release -o publish
+      - name: Build
+        run: dotnet build *.slnx -c Release
+      - name: Unit tests
+        run: for p in tests/*.Unit/*.csproj; do dotnet test "$p" -c Release --no-build; done
+      - name: Repo checks (scripts/ci-checks.ps1)
+        if: hashFiles('scripts/ci-checks.ps1') != ''
+        shell: pwsh
+        run: ./scripts/ci-checks.ps1
+      - name: Publish
+        run: dotnet publish src/*.Api/*.csproj -c Release --no-build -o publish
+      - name: Package extras (scripts/ci-package.ps1)
+        if: hashFiles('scripts/ci-package.ps1') != ''
+        shell: pwsh
+        run: ./scripts/ci-package.ps1 -PublishDir publish
       - uses: actions/upload-artifact@v7
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
         with:
           name: webapp
           path: publish
           retention-days: 1
 
   deploy:
-    name: Deploy to Azure App Service
-    runs-on: ubuntu-latest
+    name: Deploy
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    timeout-minutes: 20
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write   # azure/login OIDC (federated, no stored secret)
     environment:
       name: production
       url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    env:
+      APP: ${{ vars.AZURE_WEBAPP_NAME }}
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+      BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+      HEALTH_PATH: ${{ vars.HEALTH_PATH || '/health' }}
     steps:
+      - name: Check the repo variables
+        run: |
+          [ -n "$APP" ] || { echo "::error::Repo variable AZURE_WEBAPP_NAME is not set."; exit 1; }
+          [ -n "$RG" ]  || { echo "::error::Repo variable AZURE_RESOURCE_GROUP is not set."; exit 1; }
+
+      # Only scripts/: the deploy job needs the smoke hook and nothing else.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
       - uses: actions/download-artifact@v8
         with:
           name: webapp
@@ -81,24 +110,28 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # Same step in every Po web repo. F1 gives the app about 60 CPU-minutes a day; once spent, Azure stops the
-      # site (usageState Exceeded) until 00:00 UTC and refuses the package with a bare 403. Say what it is.
+      # F1 gives the app about 60 CPU-minutes a day; once spent, Azure stops the site (usageState
+      # Exceeded) until 00:00 UTC and refuses the package with a bare 403. Say what it is.
       - name: Check the F1 daily CPU quota
         run: |
-          usage=$(az webapp show -g "${{ github.event.repository.name }}" -n "${{ vars.AZURE_WEBAPP_NAME }}" --query usageState -o tsv)
+          usage=$(az webapp show -g "$RG" -n "$APP" --query usageState -o tsv)
           if [ "$usage" = "Exceeded" ]; then
-            echo "::error::${{ vars.AZURE_WEBAPP_NAME }} has used up its F1 daily CPU quota, so Azure refuses the package until 00:00 UTC. Rerun after that."
+            echo "::error::$APP has used up its F1 daily CPU quota, so Azure refuses the package until 00:00 UTC. Rerun after that."
             exit 1
           fi
 
-      # Same pair in every Po web repo: keep the live build, and put it back if anything fails once the
-      # new package is live (see "Roll back to the previous build" at the end of this job).
+      - name: Prepare the live site (scripts/pre-deploy.ps1)
+        if: hashFiles('scripts/pre-deploy.ps1') != ''
+        shell: pwsh
+        run: ./scripts/pre-deploy.ps1 -BaseUrl "$env:BASE_URL"
+
+      # Keep the live build so it can be put back if anything fails once the new one is live.
       - name: Back up the live site
         id: backup
         run: |
           token=$(az account get-access-token --query accessToken -o tsv)
           if curl -fsS --max-time 300 -H "Authorization: Bearer $token" -o previous.zip \
-               "https://${{ vars.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/zip/site/wwwroot/" && [ -s previous.zip ]; then
+               "https://$APP.scm.azurewebsites.net/api/zip/site/wwwroot/" && [ -s previous.zip ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
             echo "Backed up $(du -h previous.zip | cut -f1) of the live site."
           else
@@ -106,86 +139,48 @@ jobs:
             echo "ok=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # The startup command (two runtimeconfig.json files defeat auto-detection) is pinned by
-      # appCommandLine in infra/modules/appservice.bicep, and a site setting survives deploys.
       - uses: azure/webapps-deploy@v3
         id: deploy
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          resource-group-name: ${{ env.AZURE_RESOURCE_GROUP }}
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          resource-group-name: ${{ vars.AZURE_RESOURCE_GROUP }}
           package: publish
 
-      # Same gate in every Po web repo: the new build is the one answering (X-Commit on /health/live is this
-      # commit, not the old instance still serving), then its dependencies answer (/health).
-      - name: Health gate (this commit on /health/live, then /health)
-        shell: bash
+      # The deploy step succeeds once App Service accepts the package, which says nothing about
+      # whether the app starts. First the new build must be the one answering (X-Commit on
+      # /health/live is this commit, not the old instance), then its dependencies must answer.
+      - name: Health gate (this commit on /health/live, then HEALTH_PATH)
         run: |
-          base="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
-          for attempt in $(seq 1 60); do
-            commit=$(curl -s -D - -o /dev/null --max-time 30 "$base/health/live" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-commit" {print $2}' || true)
+          for attempt in $(seq 1 40); do
+            commit=$(curl -s -D - -o /dev/null --max-time 20 "$BASE_URL/health/live" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-commit" {print $2}' || true)
             [ "$commit" = "$GITHUB_SHA" ] && { echo "/health/live serves $GITHUB_SHA (attempt $attempt)"; break; }
-            [ "$attempt" = "60" ] && { echo "::error::/health/live still serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1; }
-            sleep 15
-          done
-          for attempt in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$base/health" || echo 000)
-            [ "$code" = "200" ] && { echo "/health -> 200 (attempt $attempt)"; exit 0; }
-            sleep 15
-          done
-          echo "::error::/health never returned 200 (last: $code)"; exit 1
-
-      - name: Roll back to the previous build
-        if: failure() && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
-        run: |
-          az webapp deploy -g "${{ github.event.repository.name }}" -n "${{ vars.AZURE_WEBAPP_NAME }}" \
-            --src-path previous.zip --type zip --clean true
-          echo "::error title=Rolled back::${{ github.sha }} failed after it went live; the previous build is live again."
-
-  smoke:
-    name: Post-deploy smoke
-    runs-on: ubuntu-latest
-    needs: deploy
-    timeout-minutes: 10
-    env:
-      BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      # App Service needs a moment to recycle after a package swap; poll /health rather
-      # than sleeping a fixed amount so a fast deploy is not penalised.
-      - name: Wait for the app to come back up
-        run: |
-          for attempt in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/health" || echo 000)
-            echo "attempt $attempt: /health -> $code"
-            [ "$code" = "200" ] && exit 0
+            [ "$attempt" = "40" ] && { echo "::error::/health/live still serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1; }
             sleep 10
           done
-          echo "::error::/health never returned 200 after the deploy"
-          exit 1
+          for attempt in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE_URL$HEALTH_PATH" || echo 000)
+            [ "$code" = "200" ] && { echo "$HEALTH_PATH -> 200 (attempt $attempt)"; exit 0; }
+            sleep 10
+          done
+          echo "::error::$HEALTH_PATH never returned 200 (last: $code)"; exit 1
 
-      - name: Install Playwright
+      - name: Post-deploy smoke (scripts/post-deploy-smoke.ps1)
+        if: hashFiles('scripts/post-deploy-smoke.ps1') != ''
+        shell: pwsh
+        run: ./scripts/post-deploy-smoke.ps1 -BaseUrl "$env:BASE_URL"
+
+      # Runs on a cancel or a timeout too, not only on a failure: either can strand a half-good build.
+      - name: Roll back to the previous build
+        if: (failure() || cancelled()) && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
         run: |
-          npm install --no-save playwright@1.49.0
-          npx playwright install --with-deps chromium
+          az webapp deploy -g "$RG" -n "$APP" --src-path previous.zip --type zip --clean true
+          echo "::error title=Rolled back::${{ github.sha }} failed after it went live; the previous build is live again."
 
-      # NET_RULES 5.4: Blazor render tree init, /health, and masked config from /diag.
-      - name: Run smoke checks
-        run: node scripts/post-deploy-smoke.mjs
-
-      # Budgets that fail the run: layout shift (the boot splash once cost 0.20 CLS on every
-      # load) and the accessibility score. Performance and LCP only warn: an F1 cold start and a
-      # WASM boot under mobile throttling swing them run to run (LCP 3.2s to 19s on one deploy).
-      # /login because it is the one page an anonymous run can render. Reports stay with the run.
-      - name: Lighthouse budgets
-        run: npx --yes @lhci/cli@0.15.1 autorun --config=scripts/lighthouserc.json --collect.url="$BASE_URL/login"
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: lighthouse
-          path: .lighthouseci
-          retention-days: 7
+      - name: Tell ntfy about the rollback
+        if: (failure() || cancelled()) && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          [ -n "$NTFY_TOPIC" ] || { echo "No NTFY_TOPIC secret; the CI watcher will still report the red run."; exit 0; }
+          curl -fsS -H "Title: ${{ github.event.repository.name }} rolled back" -H "Tags: rewind" \
+            -d "${{ github.sha }} failed after going live; the previous build is back." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
