@@ -35,7 +35,7 @@ public class LeaderboardRepository : ILeaderboardRepository
     /// Gets top N entries for a region, sorted by strangeness score descending
     /// Leverages inverted RowKey for efficient sorting
     /// </summary>
-    public async Task<List<LeaderboardEntry>> GetTopEntriesAsync(RegionCode region, int limit)
+    public async Task<List<LeaderboardEntry>> GetTopEntriesAsync(RegionCode region, int limit, PlaceCategory? category = null)
     {
         if (region.IsEmpty)
             throw new ArgumentException("Region cannot be empty", nameof(region));
@@ -52,9 +52,13 @@ public class LeaderboardRepository : ILeaderboardRepository
             var filter = TableClient.CreateQueryFilter<LeaderboardEntity>(
                 e => e.PartitionKey == partitionKey);
 
+            // Both boards share the partition, so a category is filtered here rather than in the
+            // query: rows written before categories have no column, and a server-side filter on a
+            // missing property matches nothing. The partition is already in score order, so
+            // skipping the other board's rows still yields this board's top N.
             var query = _tableClient.QueryAsync<LeaderboardEntity>(
                 filter: filter,
-                maxPerPage: limit
+                maxPerPage: category is null ? limit : 100
             );
 
             var entries = new List<LeaderboardEntry>();
@@ -62,6 +66,9 @@ public class LeaderboardRepository : ILeaderboardRepository
 
             await foreach (var entity in query)
             {
+                if (category is { } wanted && entity.CategoryValue != wanted)
+                    continue;
+
                 entries.Add(entity.ToDomain(rank++));
 
                 if (entries.Count >= limit)
@@ -82,7 +89,7 @@ public class LeaderboardRepository : ILeaderboardRepository
     private const int MaxGlobalScanRows = 500;
 
     /// <inheritdoc />
-    public async Task<List<LeaderboardEntry>> GetTopEntriesGlobalAsync(int limit)
+    public async Task<List<LeaderboardEntry>> GetTopEntriesGlobalAsync(int limit, PlaceCategory? category = null)
     {
         if (limit < 1 || limit > 50)
             throw new ArgumentException("Limit must be between 1 and 50", nameof(limit));
@@ -99,6 +106,9 @@ public class LeaderboardRepository : ILeaderboardRepository
 
             await foreach (var entity in query)
             {
+                if (category is { } wanted && entity.CategoryValue != wanted)
+                    continue;
+
                 entries.Add(entity.ToDomain(0));
 
                 if (entries.Count >= MaxGlobalScanRows)

@@ -1,4 +1,5 @@
 using PoSeeReview.Shared.Dtos;
+using PoSeeReview.Shared.Enums;
 
 namespace PoSeeReview.Client.Services;
 
@@ -13,15 +14,22 @@ public sealed class DiscoveryState
 
     public List<RestaurantDto> Restaurants { get; private set; } = [];
 
+    /// <summary>Restaurants or apartments — what the results are, and what the comic page goes Back to.</summary>
+    public PlaceCategory Category { get; private set; } = PlaceCategory.Restaurant;
+
+    /// <summary>Where a nearby search was centred, so switching category can repeat it; null for a text search.</summary>
+    public (double Lat, double Lng)? Center { get; private set; }
+
     /// <summary>Raised by <see cref="Clear"/>, so a discovery page already on screen drops its results too.</summary>
     public event Action? Cleared;
 
-    public void Set(string? query, List<RestaurantDto> restaurants) => (Query, Restaurants) = (query, restaurants);
+    public void Set(string? query, List<RestaurantDto> restaurants, PlaceCategory category = PlaceCategory.Restaurant, (double Lat, double Lng)? center = null) =>
+        (Query, Restaurants, Category, Center) = (query, restaurants, category, center);
 
-    /// <summary>Back to the landing — what the brand link does.</summary>
+    /// <summary>Back to the landing — what the brand link does. The category is a preference, so it stays.</summary>
     public void Clear()
     {
-        Set(null, []);
+        Set(null, [], Category);
         Cleared?.Invoke();
     }
 }

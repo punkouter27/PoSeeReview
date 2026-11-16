@@ -1,3 +1,5 @@
+using PoSeeReview.Shared.Enums;
+
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
@@ -18,9 +20,10 @@ public interface IChatCompletionService
     /// Analyzes a list of restaurant reviews to determine strangeness and create a narrative
     /// </summary>
     /// <param name="reviews">List of review texts to analyze</param>
+    /// <param name="category">Which rubric scores them: restaurant strangeness, or apartment strangeness and horror</param>
     /// <param name="cancellationToken">Cancels the (potentially slow) model call when the caller abandons the request</param>
     /// <returns>Score, panel count, narrative, and one caption per panel.</returns>
     /// <exception cref="ArgumentException">If reviews list is empty</exception>
-    Task<StrangenessAnalysis> AnalyzeStrangenessAsync(List<string> reviews, CancellationToken cancellationToken = default);
+    Task<StrangenessAnalysis> AnalyzeStrangenessAsync(List<string> reviews, PlaceCategory category = PlaceCategory.Restaurant, CancellationToken cancellationToken = default);
 
 }

@@ -1,3 +1,4 @@
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Shared.Contracts;
@@ -15,11 +16,12 @@ public interface IRestaurantService
     /// <param name="latitude">User latitude (-90 to 90)</param>
     /// <param name="longitude">User longitude (-180 to 180)</param>
     /// <param name="limit">Maximum results to return (default 10)</param>
+    /// <param name="category">Restaurants or apartments; each searches its own Google place types</param>
     /// <param name="cancellationToken">Cancels the lookup</param>
     /// <returns>List of restaurants with distance from user</returns>
     /// <exception cref="ArgumentException">Invalid coordinates</exception>
     /// <exception cref="HttpRequestException">Google Maps API failure</exception>
-    Task<List<Restaurant>> GetNearbyRestaurantsAsync(double latitude, double longitude, int limit = 10, CancellationToken cancellationToken = default);
+    Task<List<Restaurant>> GetNearbyRestaurantsAsync(double latitude, double longitude, int limit = 10, PlaceCategory category = PlaceCategory.Restaurant, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets detailed restaurant information by place identifier.

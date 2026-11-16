@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
 
+using PoSeeReview.Shared.Enums;
+
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
@@ -76,6 +78,7 @@ public sealed class OllamaChatService : IChatCompletionService
     /// <inheritdoc />
     public async Task<StrangenessAnalysis> AnalyzeStrangenessAsync(
         List<string> reviews,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         if (reviews == null || reviews.Count == 0)
@@ -91,6 +94,7 @@ public sealed class OllamaChatService : IChatCompletionService
             // A local instruct model has no reasoning budget sharing the allowance, so the
             // typed MaxOutputTokenCount property is the correct wire parameter here.
             isReasoningModel: false,
+            category,
             cancellationToken);
 
         _costTracker.Track(ProviderLabel, _options.ChatModel, result.InputTokens, result.OutputTokens);

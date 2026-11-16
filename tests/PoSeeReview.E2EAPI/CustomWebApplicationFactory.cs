@@ -161,6 +161,7 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
             double latitude,
             double longitude,
             int limit = 10,
+            PoSeeReview.Shared.Enums.PlaceCategory category = PoSeeReview.Shared.Enums.PlaceCategory.Restaurant,
             CancellationToken cancellationToken = default)
             => Task.FromResult(new List<Restaurant>());
 

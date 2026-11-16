@@ -32,12 +32,19 @@ internal static class RestaurantsEndpoints
         IWebHostEnvironment env,
         IConfiguration config,
         HttpContext http,
-        int limit = 10)
+        int limit = 10,
+        string? category = null)
     {
         if (!latitude.HasValue || !longitude.HasValue)
         {
             return Results.Problem(statusCode: 400, title: "Bad Request",
                 detail: "Both latitude and longitude are required");
+        }
+
+        if (!PlaceCategories.TryParse(category, out var kind))
+        {
+            return Results.Problem(statusCode: 400, title: "Bad Request",
+                detail: "Category must be 'restaurant' or 'apartment'");
         }
 
         try
@@ -68,7 +75,7 @@ internal static class RestaurantsEndpoints
                 return Results.Ok(devResponse);
             }
 
-            var restaurants = await restaurantService.GetNearbyRestaurantsAsync(lat, lon, limit, http.RequestAborted);
+            var restaurants = await restaurantService.GetNearbyRestaurantsAsync(lat, lon, limit, kind, http.RequestAborted);
 
             var restaurantDtos = restaurants.Select(r => new RestaurantDto
             {
@@ -80,7 +87,8 @@ internal static class RestaurantsEndpoints
                 AverageRating = r.AverageRating,
                 TotalReviews = r.TotalReviews,
                 Region = r.Region.Value,
-                Distance = GeoUtils.CalculateDistance(lat, lon, r.Latitude, r.Longitude)
+                Distance = GeoUtils.CalculateDistance(lat, lon, r.Latitude, r.Longitude),
+                Category = r.Category.ToWire()
             }).ToList();
 
             var response = new NearbyRestaurantsResponse
@@ -146,7 +154,8 @@ internal static class RestaurantsEndpoints
         IWebHostEnvironment env,
         IConfiguration config,
         HttpContext http,
-        int limit = 10)
+        int limit = 10,
+        string? category = null)
     {
         if (string.IsNullOrWhiteSpace(location))
         {
@@ -180,6 +189,6 @@ internal static class RestaurantsEndpoints
         }
 
         return await GetNearbyRestaurants(coordinates.Value.lat, coordinates.Value.lon,
-            restaurantService, logger, env, config, http, limit);
+            restaurantService, logger, env, config, http, limit, category);
     }
 }

@@ -1,3 +1,4 @@
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Shared.Contracts;
@@ -57,4 +58,7 @@ public class Restaurant
     /// Timestamp when data was cached (for 24-hour expiration)
     /// </summary>
     public DateTimeOffset CachedAt { get; set; }
+
+    /// <summary>Restaurant or apartment, from the Google place types (or the search that found it).</summary>
+    public PlaceCategory Category { get; set; } = PlaceCategory.Restaurant;
 }

@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject FxService Fx
 @inject ComicHistoryService History
+@inject DiscoveryState Discovery
 @inject IJSRuntime JS
 
 <PageTitle>@(_comic?.RestaurantName ?? "Comic") · PoSeeReview</PageTitle>
@@ -256,7 +257,9 @@
 
     // Both recovery cards leave the comic entirely, so they must name the same destination
     // GoBack() actually navigates to.
-    private string BackLabel => From == "leaderboard" ? "Back to Hall of Fame" : "Back to Restaurants";
+    private string BackLabel => From == "leaderboard"
+        ? "Back to Hall of Fame"
+        : Discovery.Category == PlaceCategory.Apartment ? "Back to Apartments" : "Back to Restaurants";
 
     /// <summary>
     /// Why generation is unavailable. Personal exhaustion and app-wide exhaustion read
@@ -513,7 +516,7 @@
             {
                 System.Net.HttpStatusCode.BadRequest => (
                     "No reviews to draw from",
-                    "We couldn't find any usable reviews for this restaurant, so there's nothing to build a comic out of. Try another place!"),
+                    "We couldn't find any usable reviews for this place, so there's nothing to build a comic out of. Try another place!"),
 
                 // Rejected before the paid image call, and the reservation is refunded.
                 System.Net.HttpStatusCode.UnprocessableEntity when tooNormal => (
@@ -537,8 +540,8 @@
                         : ex.Message),
 
                 System.Net.HttpStatusCode.NotFound => (
-                    "Restaurant not found",
-                    "We couldn't find this restaurant. It might have closed or the Google Maps data is unavailable."),
+                    "Place not found",
+                    "We couldn't find this place. It might have closed or the Google Maps data is unavailable."),
 
                 _ => (
                     "Generation failed",

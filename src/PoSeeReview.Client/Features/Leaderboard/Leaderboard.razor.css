@@ -1,6 +1,13 @@
 /* Rows are the shared `.comic-row` (app.css) and the links are `.link-button`; only the links
    under the board and the medal that fills each row's leading slot live here. */
 
+/* Restaurants / Apartments, beside the view drawer at the header's far end. */
+.board-kind {
+    display: flex;
+    gap: var(--space-2xs);
+    margin-inline-start: auto;
+}
+
 .board-more {
     display: flex;
     flex-wrap: wrap;

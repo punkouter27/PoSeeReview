@@ -11,6 +11,9 @@ namespace PoSeeReview.Shared.Dtos;
 /// </summary>
 public sealed class HallOfFameResponse
 {
+    /// <summary>The archive shown: "restaurant" or "apartment".</summary>
+    public string Category { get; set; } = "restaurant";
+
     /// <summary>Region the archive was drawn from.</summary>
     public string Region { get; set; } = string.Empty;
 

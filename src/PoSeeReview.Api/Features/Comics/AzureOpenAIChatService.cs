@@ -3,6 +3,8 @@ using Azure.AI.OpenAI;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Options;
 
+using PoSeeReview.Shared.Enums;
+
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
@@ -41,7 +43,7 @@ public class AzureOpenAIChatService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<StrangenessAnalysis> AnalyzeStrangenessAsync(List<string> reviews, CancellationToken cancellationToken = default)
+    public async Task<StrangenessAnalysis> AnalyzeStrangenessAsync(List<string> reviews, PlaceCategory category = PlaceCategory.Restaurant, CancellationToken cancellationToken = default)
     {
         if (reviews == null || reviews.Count == 0)
             throw new ArgumentException("Reviews list cannot be empty", nameof(reviews));
@@ -54,6 +56,7 @@ public class AzureOpenAIChatService : IChatCompletionService
             temperature: 0.3f,
             maxCompletionTokens: _options.MaxCompletionTokens,
             isReasoningModel: _options.IsReasoningModel,
+            category,
             cancellationToken);
 
         _telemetryClient.GetMetric("AzureOpenAI.Chat.Requests").TrackValue(1);

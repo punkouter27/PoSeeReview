@@ -1,4 +1,5 @@
 @using PoSeeReview.Shared.Dtos
+@using PoSeeReview.Shared.Enums
 @inject FxService Fx
 
 @* data-cached is the hook for the card's material (see "READY vs COSTS SOMETHING" in app.css).
@@ -138,7 +139,7 @@
     {
         return IsEnabled
             ? (IsLoading ? "Opening comic" : IsCached ? "Open comic" : "Click to generate a comic based on reviews")
-            : "This restaurant has no reviews yet, so there's nothing to draw from";
+            : $"This {PlaceCategories.FromWire(Restaurant.Category).Noun()} has no reviews yet, so there's nothing to draw from";
     }
 
     /// <summary>

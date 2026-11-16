@@ -132,6 +132,7 @@ public sealed class AnalysisRepository(
         public int Absurdity { get; set; }
         public int Specificity { get; set; }
         public int StoryPotential { get; set; }
+        public int Horror { get; set; }
         public int PanelCount { get; set; }
         public string Narrative { get; set; } = string.Empty;
         public string CaptionsJson { get; set; } = string.Empty;
@@ -156,6 +157,7 @@ public sealed class AnalysisRepository(
                 Absurdity = a.Ratings?.Absurdity ?? 0,
                 Specificity = a.Ratings?.Specificity ?? 0,
                 StoryPotential = a.Ratings?.StoryPotential ?? 0,
+                Horror = a.Ratings?.Horror ?? 0,
                 PanelCount = a.PanelCount,
                 Narrative = a.Narrative,
                 CaptionsJson = JsonSerializer.Serialize(a.Captions ?? []),
@@ -174,7 +176,7 @@ public sealed class AnalysisRepository(
                 Narrative,
                 Read<string[]>(CaptionsJson),
                 Read<string[]>(ScenesJson),
-                new StrangenessRatings(Absurdity, Specificity, StoryPotential),
+                new StrangenessRatings(Absurdity, Specificity, StoryPotential, Horror),
                 [.. Enumerable.Range(1, Math.Clamp(PanelCount, 1, 2))
                     .Select(panel => (IReadOnlyList<int>)[.. sources.Where(s => s.Panel == panel).Select(s => s.ReviewNumber)])]);
 

@@ -3,6 +3,7 @@
 @implements IDisposable
 @using PoSeeReview.Client.Services
 @using PoSeeReview.Shared.Dtos
+@using PoSeeReview.Shared.Enums
 @using Microsoft.JSInterop
 @using System.Net
 @inject GeolocationService GeolocationService
@@ -26,7 +27,9 @@
             @if (_restaurants.Count == 0)
             {
                 <header class="app-header">
-                    <h1>Turn a restaurant's wildest reviews into a comic</h1>
+                    <h1>@(_category == PlaceCategory.Apartment
+                        ? "Turn an apartment's worst reviews into a comic"
+                        : "Turn a restaurant's wildest reviews into a comic")</h1>
                 </header>
             }
             else
@@ -49,6 +52,20 @@
                "New search", the count and the List/Map switch. Its "Near me" is the map's too:
                with the map showing it searches quietly and keeps the pins on screen. *@
             <div class="location-prompt glass @(HasResults ? "location-prompt--compact" : "")">
+                @* What to look for. Switching with results on screen re-runs the same search for
+                   the other kind of place; a miss keeps the current results and the old choice. *@
+                <div class="layout-toggle category-toggle" role="group" aria-label="What to search for">
+                    @foreach (var (kind, label, icon) in Kinds)
+                    {
+                        <button type="button" class="chip-toggle @(_category == kind ? "chip-toggle--active" : "")"
+                                aria-pressed="@(_category == kind ? "true" : "false")"
+                                disabled="@(IsBusy && _category != kind)"
+                                data-testid="@($"category-{kind.ToWire()}")"
+                                @onclick="() => SwitchCategoryAsync(kind)">
+                            <span aria-hidden="true">@icon</span> @label
+                        </button>
+                    }
+                </div>
                 <div class="search-row">
                     @if (_flowState != LocationFlowState.Denied)
                     {
@@ -81,7 +98,7 @@
                     @if (HasResults)
                     {
                         <div class="results-meta">
-                            <span class="results-count">@_restaurants.Count restaurant@(_restaurants.Count == 1 ? "" : "s") found</span>
+                            <span class="results-count">@_restaurants.Count @(_restaurants.Count == 1 ? Noun : Nouns) found</span>
                             @if (!_mapUnavailable)
                             {
                                 <div class="layout-toggle" role="group" aria-label="Show results as">
@@ -198,7 +215,7 @@
                still the card's own button. The picked place moves to the top of the cards. *@
             <div class="discovery-split">
                 <SectionBoundary Message="The map couldn't be shown.">
-                <MapView Pins="@MapPins" SelectedId="@_selectedPlaceId" Label="Restaurants on a map"
+                <MapView Pins="@MapPins" SelectedId="@_selectedPlaceId" Label="@($"{Kinds.First(k => k.Kind == _category).Label} on a map")"
                          Origin="@_me" KeepCamera="@_keepCamera"
                          OnSelect="SelectPlace" OnAreaMoved="AreaMovedAsync"
                          OnUnavailable="MapUnavailable">
@@ -271,6 +288,23 @@
 
     /// <summary>Which entry point produced the current results, so a retry repeats it.</summary>
     private enum DiscoveryAttempt { None, Location, Search }
+
+    /// <summary>Restaurants or apartments: what every search on this page looks for.</summary>
+    private PlaceCategory _category = PlaceCategory.Restaurant;
+
+    private static readonly (PlaceCategory Kind, string Label, string Icon)[] Kinds =
+    [
+        (PlaceCategory.Restaurant, "Restaurants", "🍽️"),
+        (PlaceCategory.Apartment, "Apartments", "🏢"),
+    ];
+
+    private string Noun => _category.Noun();
+    private string Nouns => _category.PluralNoun();
+
+    private const string CategoryKey = "poseereview:discovery-category";
+
+    /// <summary>Where the last nearby search was centred, so switching category can repeat it.</summary>
+    private (double Lat, double Lng)? _lastCenter;
 
     private LocationFlowState _flowState = LocationFlowState.Idle;
     private DiscoveryAttempt _lastAttempt = DiscoveryAttempt.None;
@@ -435,16 +469,17 @@
         StateHasChanged();
         try
         {
-            var response = await ApiClient.GetNearbyRestaurantsAsync(latitude, longitude);
+            var response = await ApiClient.GetNearbyRestaurantsAsync(latitude, longitude, category: _category);
             if (response is null || response.Stale || response.Restaurants.Count == 0)
             {
                 Toast.Show(response?.Stale == true
-                    ? response.StaleReason ?? "Restaurant search is temporarily unavailable."
-                    : "No restaurants found here. Try another spot.");
+                    ? response.StaleReason ?? "Search is temporarily unavailable."
+                    : $"No {Nouns} found here. Try another spot.");
                 await Fx.PlayEmptyAsync();
                 return;
             }
 
+            _lastCenter = (latitude, longitude);
             _keepCamera = origin == ResultsOrigin.Area;
             SetRestaurantResults(response.Restaurants);
             if (origin == ResultsOrigin.Area)
@@ -543,7 +578,7 @@
     {
         try
         {
-            var board = await ApiClient.GetLeaderboardAsync(string.Empty, 5);
+            var board = await ApiClient.GetLeaderboardAsync(string.Empty, 5, _category);
             _topComics = board?.Entries.Where(e => !string.IsNullOrWhiteSpace(e.ComicBlobUrl)).ToList();
             StateHasChanged();
         }
@@ -575,6 +610,8 @@
 
         if (Discovery.Restaurants.Count > 0 && (Q is null || Q == Discovery.Query))
         {
+            _category = Discovery.Category;
+            _lastCenter = Discovery.Center;
             _restaurants = Discovery.Restaurants;
             _searchQuery = _lastSearch = Discovery.Query ?? string.Empty;
             _lastAttempt = Discovery.Query is null ? DiscoveryAttempt.Location : DiscoveryAttempt.Search;
@@ -587,6 +624,7 @@
             return;
         }
 
+        await RestoreCategoryAsync();
         _ = LoadTopComicsAsync();
         await LoadRecentAsync();
 
@@ -617,6 +655,102 @@
 
     private Task RememberDiscoveryModeAsync(string mode) =>
         JS.InvokeVoidAsync("localStorage.setItem", DiscoveryModeKey, mode).AsTask();
+
+    /// <summary>The last kind searched outlives the visit; storage that throws just means restaurants.</summary>
+    private async Task RestoreCategoryAsync()
+    {
+        try
+        {
+            _category = PlaceCategories.FromWire(await JS.InvokeAsync<string?>("localStorage.getItem", CategoryKey));
+        }
+        catch (JSException) { }
+    }
+
+    /// <summary>
+    /// Restaurants ⇄ apartments. With nothing on screen it only changes what the next search and
+    /// the landing board look for. With results it repeats the same search — same text, or same
+    /// centre — for the other kind; a miss says so and leaves the current results and choice
+    /// alone, so the toggle never disagrees with what is listed.
+    /// </summary>
+    private async Task SwitchCategoryAsync(PlaceCategory category)
+    {
+        if (category == _category || IsBusy)
+        {
+            return;
+        }
+
+        await Fx.UnlockAudioAsync();
+        var previous = _category;
+        _category = category;
+
+        if (!HasResults)
+        {
+            await RememberCategoryAsync();
+            _topComics = null;
+            _ = LoadTopComicsAsync();
+            if (_lastAttempt == DiscoveryAttempt.Search && _flowState == LocationFlowState.Error && !string.IsNullOrWhiteSpace(_lastSearch))
+            {
+                _searchQuery = _lastSearch;
+                await SearchByLocationAsync();
+            }
+
+            return;
+        }
+
+        _areaSearching = true;
+        StateHasChanged();
+        try
+        {
+            var isText = _origin == ResultsOrigin.Text && !string.IsNullOrWhiteSpace(_lastSearch);
+            NearbyRestaurantsResponse? response = isText
+                ? await ApiClient.SearchRestaurantsByLocationAsync(_lastSearch, category: category)
+                : _lastCenter is { } center
+                    ? await ApiClient.GetNearbyRestaurantsAsync(center.Lat, center.Lng, category: category)
+                    : null;
+
+            if (response is null || response.Stale || response.Restaurants.Count == 0)
+            {
+                _category = previous;
+                Toast.Show(response?.Stale == true
+                    ? response.StaleReason ?? "Search is temporarily unavailable."
+                    : $"No {category.PluralNoun()} found here. Try another spot.");
+                await Fx.PlayEmptyAsync();
+                return;
+            }
+
+            await RememberCategoryAsync();
+            _keepCamera = _origin == ResultsOrigin.Area;
+            SetRestaurantResults(response.Restaurants);
+            if (_origin == ResultsOrigin.Area)
+            {
+                foreach (var place in _restaurants)
+                {
+                    place.Distance = 0;
+                }
+            }
+
+            await AfterResultsAsync(isText ? _lastSearch : null);
+        }
+        catch (Exception ex)
+        {
+            _category = previous;
+            Toast.Show(DescribeFailure(ex, DiscoveryAttempt.Location, string.Empty));
+            await Fx.PlayErrorAsync();
+        }
+        finally
+        {
+            _areaSearching = false;
+        }
+    }
+
+    private async Task RememberCategoryAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", CategoryKey, _category.ToWire());
+        }
+        catch (JSException) { }
+    }
 
     /// <summary>
     /// Disarms the geolocation entry point after a refusal so the next visit does not re-prompt
@@ -685,7 +819,7 @@
             _origin = ResultsOrigin.Me;
             await RememberDiscoveryModeAsync(GeoMode);
 
-            _loadingMessage = "Finding nearby restaurants...";
+            _loadingMessage = $"Finding nearby {Nouns}...";
             StateHasChanged();
 
             await LoadNearbyRestaurantsAsync(result.Latitude, result.Longitude);
@@ -707,11 +841,11 @@
     {
         try
         {
-            var response = await ApiClient.GetNearbyRestaurantsAsync(latitude, longitude);
+            var response = await ApiClient.GetNearbyRestaurantsAsync(latitude, longitude, category: _category);
 
             if (response == null)
             {
-                await FailEmptyAsync("No restaurants found nearby. Try a different location.");
+                await FailEmptyAsync($"No {Nouns} found nearby. Try a different location.");
                 return;
             }
 
@@ -719,17 +853,18 @@
             {
                 // Dev short-circuit or upstream unavailable — explain the why instead of "no results".
                 Fail(response.StaleReason
-                    ?? "Restaurant search is temporarily unavailable. " +
+                    ?? "Search is temporarily unavailable. " +
                        "Add a real Google Maps API key to appsettings.Development.json to enable nearby search.");
                 return;
             }
 
             if (response.Restaurants.Count == 0)
             {
-                await FailEmptyAsync("No restaurants found nearby. Try a different location.");
+                await FailEmptyAsync($"No {Nouns} found nearby. Try a different location.");
                 return;
             }
 
+            _lastCenter = (latitude, longitude);
             SetRestaurantResults(response.Restaurants);
             _flowState = LocationFlowState.Ready;
             await AfterResultsAsync(query: null);
@@ -756,16 +891,16 @@
         _origin = ResultsOrigin.Text;
         _lastSearch = searchTerm;
         _flowState = LocationFlowState.Loading;
-        _loadingMessage = $"Searching restaurants near {searchTerm}...";
+        _loadingMessage = $"Searching {Nouns} near {searchTerm}...";
         StateHasChanged();
 
         try
         {
-            var response = await ApiClient.SearchRestaurantsByLocationAsync(searchTerm);
+            var response = await ApiClient.SearchRestaurantsByLocationAsync(searchTerm, category: _category);
 
             if (response == null)
             {
-                await FailEmptyAsync("No restaurants found for that location. Try a different city or ZIP code.");
+                await FailEmptyAsync($"No {Nouns} found for that location. Try a different city or ZIP code.");
                 return;
             }
 
@@ -775,13 +910,13 @@
             if (response.Stale)
             {
                 Fail(response.StaleReason
-                    ?? "Restaurant search is temporarily unavailable. Please try again later.");
+                    ?? "Search is temporarily unavailable. Please try again later.");
                 return;
             }
 
             if (response.Restaurants.Count == 0)
             {
-                await FailEmptyAsync("No restaurants found for that location. Try a different city or ZIP code.");
+                await FailEmptyAsync($"No {Nouns} found for that location. Try a different city or ZIP code.");
                 return;
             }
 
@@ -809,7 +944,7 @@
     /// <param name="query">The text searched; null for a location search.</param>
     private async Task AfterResultsAsync(string? query)
     {
-        Discovery.Set(query, _restaurants);
+        Discovery.Set(query, _restaurants, _category, _lastCenter);
 
         // replace: a search is a state of this page, not a page visit, so Back leaves discovery
         // rather than stepping through every search made on it.
@@ -853,14 +988,14 @@
     /// useful to a user nor safe to show, so every arm now returns copy this app wrote.
     /// </para>
     /// </summary>
-    private static string DescribeFailure(Exception exception, DiscoveryAttempt attempt, string searchTerm) =>
+    private string DescribeFailure(Exception exception, DiscoveryAttempt attempt, string searchTerm) =>
         exception switch
         {
             HttpRequestException { StatusCode: HttpStatusCode.NotFound } when attempt == DiscoveryAttempt.Search =>
-                $"No restaurants found near “{searchTerm}”. Try a more specific city name or ZIP code.",
+                $"No {Nouns} found near “{searchTerm}”. Try a more specific city name or ZIP code.",
 
             HttpRequestException { StatusCode: HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway } =>
-                "The restaurant search service is temporarily unavailable. Please try again in a few minutes.",
+                "The search service is temporarily unavailable. Please try again in a few minutes.",
 
             HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests } =>
                 "Too many requests. Please wait a moment before trying again.",
@@ -869,9 +1004,9 @@
                 "The request timed out. Please check your connection and try again.",
 
             _ when attempt == DiscoveryAttempt.Search =>
-                "Failed to search restaurants. Please try again later.",
+                $"Failed to search {Nouns}. Please try again later.",
 
-            _ => "Failed to load restaurants. Please try again later."
+            _ => $"Failed to load {Nouns}. Please try again later."
         };
 
 
@@ -953,7 +1088,7 @@
 
         if (_restaurants.Count == 0)
         {
-            Fail("We couldn't find any restaurants there. Try a busier area.");
+            Fail($"We couldn't find any {Nouns} there. Try a busier area.");
         }
     }
 

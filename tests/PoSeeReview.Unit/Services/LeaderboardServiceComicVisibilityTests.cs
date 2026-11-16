@@ -1,3 +1,4 @@
+using PoSeeReview.Shared.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -21,7 +22,7 @@ public sealed class LeaderboardServiceComicVisibilityTests
     {
         var region = RegionCode.From("US");
         var repo = new Mock<ILeaderboardRepository>();
-        repo.Setup(r => r.GetTopEntriesAsync(region, 50)).ReturnsAsync(
+        repo.Setup(r => r.GetTopEntriesAsync(region, 50, It.IsAny<PlaceCategory?>())).ReturnsAsync(
         [
             Entry(1, "with-comic", 90, "https://blob.example/comic.png"),
             Entry(2, "no-comic", 80, ""),
@@ -45,7 +46,7 @@ public sealed class LeaderboardServiceComicVisibilityTests
     {
         var region = RegionCode.From("US");
         var repo = new Mock<ILeaderboardRepository>();
-        repo.Setup(r => r.GetTopEntriesAsync(region, 50)).ReturnsAsync(
+        repo.Setup(r => r.GetTopEntriesAsync(region, 50, It.IsAny<PlaceCategory?>())).ReturnsAsync(
         [
             Entry(1, "gone", 95, "https://blob.example/comics/gone.png"),
             Entry(2, "kept", 60, "https://blob.example/comics/kept.png"),
@@ -68,7 +69,7 @@ public sealed class LeaderboardServiceComicVisibilityTests
     {
         var region = RegionCode.From("US");
         var repo = new Mock<ILeaderboardRepository>();
-        repo.Setup(r => r.GetTopEntriesAsync(region, 50)).ReturnsAsync(
+        repo.Setup(r => r.GetTopEntriesAsync(region, 50, It.IsAny<PlaceCategory?>())).ReturnsAsync(
         [
             Entry(1, "expired", 95, "https://blob.example/a.png"),
             Entry(2, "live", 60, "https://blob.example/b.png"),
@@ -94,7 +95,7 @@ public sealed class LeaderboardServiceComicVisibilityTests
             .ToList();
 
         var repo = new Mock<ILeaderboardRepository>();
-        repo.Setup(r => r.GetTopEntriesAsync(region, 50)).ReturnsAsync(seeded);
+        repo.Setup(r => r.GetTopEntriesAsync(region, 50, It.IsAny<PlaceCategory?>())).ReturnsAsync(seeded);
 
         var blobs = new Mock<IBlobStorageService>();
         blobs.Setup(b => b.BlobExistsAsync(It.IsAny<string>())).ReturnsAsync(true);

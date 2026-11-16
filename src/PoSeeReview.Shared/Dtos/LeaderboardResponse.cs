@@ -6,6 +6,9 @@ namespace PoSeeReview.Shared.Dtos;
 /// </summary>
 public class LeaderboardResponse
 {
+    /// <summary>The board shown: "restaurant" or "apartment".</summary>
+    public string Category { get; set; } = "restaurant";
+
     /// <summary>
     /// ISO 3166-1 alpha-2 country code for this leaderboard
     /// </summary>

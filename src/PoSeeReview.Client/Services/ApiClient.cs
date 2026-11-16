@@ -28,11 +28,12 @@ public class ApiClient
         double latitude,
         double longitude,
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            $"/api/restaurants/nearby?latitude={latitude}&longitude={longitude}&limit={limit}");
+            $"/api/restaurants/nearby?latitude={latitude}&longitude={longitude}&limit={limit}&category={category.ToWire()}");
         using var httpResponse = await _httpClient.SendAsync(request, cancellationToken);
 
         await EnsureSuccessAsync(httpResponse, "Nearby restaurant search failed", cancellationToken);
@@ -170,9 +171,10 @@ public class ApiClient
     public async Task<NearbyRestaurantsResponse?> SearchRestaurantsByLocationAsync(
         string locationQuery,
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
-        var url = $"/api/restaurants/search?location={Uri.EscapeDataString(locationQuery)}&limit={limit}";
+        var url = $"/api/restaurants/search?location={Uri.EscapeDataString(locationQuery)}&limit={limit}&category={category.ToWire()}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -252,13 +254,14 @@ public class ApiClient
     public async Task<LeaderboardResponse?> GetLeaderboardAsync(
         string region = "US",
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         try
         {
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                $"/api/leaderboard?region={region}&limit={limit}");
+                $"/api/leaderboard?region={region}&limit={limit}&category={category.ToWire()}");
             using var response = await _httpClient.SendAsync(request, cancellationToken);
             await EnsureSuccessAsync(response, "Leaderboard request failed", cancellationToken);
             return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.LeaderboardResponse, cancellationToken);
@@ -276,13 +279,14 @@ public class ApiClient
     public async Task<HallOfFameResponse?> GetWeeklyHallOfFameAsync(
         int weeks = 4,
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         try
         {
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                $"/api/leaderboard/weekly?weeks={weeks}&limit={limit}");
+                $"/api/leaderboard/weekly?weeks={weeks}&limit={limit}&category={category.ToWire()}");
             using var response = await _httpClient.SendAsync(request, cancellationToken);
             await EnsureSuccessAsync(response, "Weekly archive request failed", cancellationToken);
             return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.HallOfFameResponse, cancellationToken);

@@ -228,6 +228,19 @@ The painter draws the scorer's shot list: each panel's `scene` is a numbered lin
 `ComicImagePrompt`. The comic keeps the three ratings (`Breakdown`) and per-panel `Sources`
 (review position + stars, never text or author); neither is shown in the UI any more.
 
+**Two kinds of place: restaurants and apartments** (`Shared/Enums/PlaceCategory.cs`, wire
+`"restaurant"`/`"apartment"`, `?category=` on `/api/restaurants/*` and `/api/leaderboard*`). Search
+uses `GoogleMapsService.SearchTypesFor` (apartments: `apartment_building`, `apartment_complex`,
+`condominium_complex`, `housing_complex`); Place Details reads `types` and `CategoryFromTypes`
+decides (housing that is not also a `restaurant`). The category rides on the cached place, the
+comic, the board row and the archive row as a `Category` string column — absent on older rows,
+which read as restaurant, so the boards filter **in memory**, never in the OData query (a filter
+on a missing property matches nothing). Apartments use `ChatPrompts.ApartmentAnalysisSystemMessage`
+(also kept above 1024 tokens) with a fourth rating, `horror`; their score's base is
+max(absurdity, horror), so "the worst or the strangest" both rank. Each category has its own live
+board and weekly archive (`?kind=apartments` on `/leaderboard`); remastering reads both. The
+audio comic has an apartment cast (`AudioComicService.ApartmentSystemMessage`).
+
 **The verdict is cached apart from the comic** (`AnalysisRepository`, table `PoSeeReviewAnalyses`,
 keyed by place + a hash of the masked reviews + `PromptVersion`). A redraw keeps its score; a
 too-ordinary verdict is cached too, which is what `/api/comics/cached` returns as `forecasts`.
@@ -293,8 +306,8 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 - **An image refusal is a refusal.** `ImageDeclinedException` → 422, a flag carrying the reason, and
   an alert. Never redraw a substitute scene under the reviews' score.
 - **Audio comic** (`AudioComicService`, `AudioComic.razor`, `js/audio-comic.js`): "Listen in",
-  tap-to-record, then cached per comic id as `audio/{comicId}.v3.wav|.json` in the comics container
-  (bump `ScriptVersion` when the prompt changes; older recordings are simply not read). One chat
+  tap-to-record, then cached per comic id as `audio/{comicId}.v4.wav|.json` in the comics container
+  (bump `ScriptVersion` when the prompt or the mix changes; older recordings are simply not read). Each speaker gets one gain to `TargetRms` (-20 dBFS, gated like EBU R128) with a tanh soft limiter, so voices match without flattening a character's whisper vs shout. One chat
   call (`AzureOpenAI:AudioScriptDeployment`) writes a **make-believe visit**, overheard — no
   narrator and not a retelling of the comic (both the user's call): two or three archetypes
   (Regular, Server, …) live one invented visit stitched from details across up to ten reviews —

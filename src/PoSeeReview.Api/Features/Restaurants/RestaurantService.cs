@@ -31,6 +31,7 @@ public class RestaurantService : IRestaurantService
         double latitude,
         double longitude,
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         if (!_googleMapsService.ValidateCoordinates(latitude, longitude))
@@ -50,7 +51,7 @@ public class RestaurantService : IRestaurantService
         // Not written to the restaurant cache: the cache is only ever read for a place's
         // reviews, a search result has none, and upserting it wiped the reviews a comic had
         // already paid Place Details for.
-        var restaurants = await _googleMapsService.SearchNearbyAsync(latitude, longitude, cancellationToken: cancellationToken);
+        var restaurants = await _googleMapsService.SearchNearbyAsync(latitude, longitude, category, cancellationToken: cancellationToken);
 
         // Return top N by distance
         return restaurants

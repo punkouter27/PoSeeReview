@@ -60,6 +60,12 @@ public class ComicEntity : ITableEntity
     public int? Specificity { get; set; }
     public int? StoryPotential { get; set; }
 
+    /// <summary>Apartment rubric only; null on restaurant and older rows.</summary>
+    public int? Horror { get; set; }
+
+    /// <summary>"restaurant" or "apartment"; absent on rows drawn before apartments, which read as restaurant.</summary>
+    public string? Category { get; set; }
+
     /// <summary>Per-panel source reviews as JSON. Absent on older rows.</summary>
     public string SourcesJson { get; set; } = string.Empty;
 
@@ -92,6 +98,8 @@ public class ComicEntity : ITableEntity
             Absurdity = comic.Breakdown?.Absurdity,
             Specificity = comic.Breakdown?.Specificity,
             StoryPotential = comic.Breakdown?.StoryPotential,
+            Horror = comic.Breakdown is { Horror: > 0 } b ? b.Horror : null,
+            Category = comic.Category.ToWire(),
             SourcesJson = comic.Sources.Length == 0 ? string.Empty : JsonSerializer.Serialize(comic.Sources),
             ImageModel = comic.ImageModel,
             RemasterState = comic.RemasterState == Shared.Enums.RemasterState.None ? string.Empty : comic.RemasterState.ToString()
@@ -118,8 +126,9 @@ public class ComicEntity : ITableEntity
             Captions = ReadStrings(CaptionsJson),
             Scenes = ReadStrings(ScenesJson),
             Breakdown = Absurdity is { } a && Specificity is { } s && StoryPotential is { } p
-                ? new ComicScoreBreakdown(a, s, p)
+                ? new ComicScoreBreakdown(a, s, p, Horror ?? 0)
                 : null,
+            Category = PlaceCategories.FromWire(Category),
             Sources = ReadJson<ComicSource[]>(SourcesJson) ?? [],
             ImageModel = ImageModel,
             RemasterState = Enum.TryParse<RemasterState>(RemasterState, out var remaster) ? remaster : Shared.Enums.RemasterState.None,

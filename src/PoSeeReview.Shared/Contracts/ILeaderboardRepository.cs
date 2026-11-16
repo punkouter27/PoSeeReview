@@ -1,3 +1,4 @@
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Shared.Contracts;
@@ -14,16 +15,18 @@ public interface ILeaderboardRepository
     /// </summary>
     /// <param name="region">Geographic region code</param>
     /// <param name="limit">Maximum number of entries to return</param>
+    /// <param name="category">Only this board; null reads both.</param>
     /// <returns>List of leaderboard entries sorted by score (highest first)</returns>
-    Task<List<LeaderboardEntry>> GetTopEntriesAsync(RegionCode region, int limit);
+    Task<List<LeaderboardEntry>> GetTopEntriesAsync(RegionCode region, int limit, PlaceCategory? category = null);
 
     /// <summary>
     /// Retrieves the top N entries across every region. A cross-partition scan, honest at this
     /// app's volume and capped well below anything that could timeout.
     /// </summary>
     /// <param name="limit">Maximum number of entries to return</param>
+    /// <param name="category">Only this board; null reads both.</param>
     /// <returns>List of leaderboard entries sorted by score (highest first)</returns>
-    Task<List<LeaderboardEntry>> GetTopEntriesGlobalAsync(int limit);
+    Task<List<LeaderboardEntry>> GetTopEntriesGlobalAsync(int limit, PlaceCategory? category = null);
 
     /// <summary>
     /// Gets a specific leaderboard entry by place identifier and region.

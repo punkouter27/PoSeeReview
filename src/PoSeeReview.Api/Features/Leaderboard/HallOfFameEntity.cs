@@ -2,6 +2,7 @@ using System.Globalization;
 using Azure;
 using Azure.Data.Tables;
 using PoSeeReview.Shared.Contracts;
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Api.Features.Leaderboard;
@@ -79,6 +80,12 @@ public class HallOfFameEntity : ITableEntity
 
     public DateTimeOffset ArchivedAt { get; set; }
 
+    /// <summary>"restaurant" or "apartment"; rows archived before apartments have none and read as restaurant.</summary>
+    public string? Category { get; set; }
+
+    /// <summary>The archive this row belongs to.</summary>
+    public PlaceCategory CategoryValue => PlaceCategories.FromWire(Category);
+
     /// <summary>Projects a live leaderboard entry into an archive row for the given week.</summary>
     public static HallOfFameEntity FromEntry(LeaderboardEntry entry, string weekKey, DateTimeOffset archivedAt)
     {
@@ -95,7 +102,8 @@ public class HallOfFameEntity : ITableEntity
             WeekKey = weekKey,
             StrangenessScore = entry.StrangenessScore,
             ComicBlobUrl = entry.ComicBlobUrl,
-            ArchivedAt = archivedAt
+            ArchivedAt = archivedAt,
+            Category = entry.Category.ToWire()
         };
     }
 }

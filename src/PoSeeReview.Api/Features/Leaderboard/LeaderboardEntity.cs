@@ -89,6 +89,12 @@ public class LeaderboardEntity : ITableEntity
     /// <inheritdoc cref="Latitude"/>
     public double? Longitude { get; set; }
 
+    /// <summary>"restaurant" or "apartment"; rows written before apartments have none and read as restaurant.</summary>
+    public string? Category { get; set; }
+
+    /// <summary>The board this row ranks on.</summary>
+    public PlaceCategory CategoryValue => PlaceCategories.FromWire(Category);
+
     /// <summary>
     /// Converts domain LeaderboardEntry to Table Storage entity
     /// </summary>
@@ -108,7 +114,8 @@ public class LeaderboardEntity : ITableEntity
             ComicBlobUrl = entry.ComicBlobUrl,
             LastUpdated = entry.LastUpdated,
             Latitude = entry.Latitude,
-            Longitude = entry.Longitude
+            Longitude = entry.Longitude,
+            Category = entry.Category.ToWire()
         };
     }
 
@@ -128,7 +135,8 @@ public class LeaderboardEntity : ITableEntity
             ComicBlobUrl = ComicBlobUrl,
             LastUpdated = LastUpdated,
             Latitude = Latitude,
-            Longitude = Longitude
+            Longitude = Longitude,
+            Category = CategoryValue
         };
     }
 

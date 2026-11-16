@@ -1,4 +1,5 @@
 using PoSeeReview.Shared.Contracts;
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Api.Testing;
@@ -87,6 +88,38 @@ internal sealed class TestMockRestaurantService : IRestaurantService, IMockable
                     Text = "Two miniature goats graded everyone's latte foam art with tiny wooden paddles on the patio."
                 }
             ]
+        },
+        new Restaurant
+        {
+            PlaceId = PlaceId.From("ChIJMockDrippingTower004"),
+            Name = "Belltown Drip Tower Apartments",
+            Address = "2201 3rd Ave, Seattle, WA 98121",
+            Latitude = 47.6139,
+            Longitude = -122.3438,
+            Region = RegionCode.From("US-WA-Seattle"),
+            AverageRating = 1.9,
+            TotalReviews = 61,
+            CachedAt = DateTimeOffset.UtcNow,
+            Category = PlaceCategory.Apartment,
+            Reviews =
+            [
+                new Review
+                {
+                    AuthorName = "Sam",
+                    Rating = 1,
+                    StrangenessScore = 80,
+                    Time = DateTimeOffset.UtcNow.AddDays(-4),
+                    Text = "The ceiling in my bathroom rained for three weeks. Maintenance's fix was a kiddie pool and a laminated sign that said 'indoor water feature'."
+                },
+                new Review
+                {
+                    AuthorName = "Riley",
+                    Rating = 2,
+                    StrangenessScore = 66,
+                    Time = DateTimeOffset.UtcNow.AddDays(-12),
+                    Text = "The building manager holds a mandatory 'gratitude hour' in the lobby every Sunday where tenants must thank the elevator."
+                }
+            ]
         }
     ];
 
@@ -94,6 +127,7 @@ internal sealed class TestMockRestaurantService : IRestaurantService, IMockable
         double latitude,
         double longitude,
         int limit = 10,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         if (limit <= 0)
@@ -101,7 +135,7 @@ internal sealed class TestMockRestaurantService : IRestaurantService, IMockable
             return Task.FromResult(new List<Restaurant>());
         }
 
-        return Task.FromResult(Catalog.Take(limit).ToList());
+        return Task.FromResult(Catalog.Where(r => r.Category == category).Take(limit).ToList());
     }
 
     public Task<Restaurant> GetRestaurantByPlaceIdAsync(

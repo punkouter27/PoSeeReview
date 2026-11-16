@@ -4,7 +4,7 @@ namespace PoSeeReview.Shared.Contracts;
 /// The scorer's three 0-10 ratings behind a comic's score. Kept so the page can say why a place
 /// scored what it did; absent on comics drawn before they were stored.
 /// </summary>
-public sealed record ComicScoreBreakdown(int Absurdity, int Specificity, int StoryPotential);
+public sealed record ComicScoreBreakdown(int Absurdity, int Specificity, int StoryPotential, int Horror = 0);
 
 /// <summary>
 /// One review a panel was drawn from: which panel, the review's position in what the scorer was

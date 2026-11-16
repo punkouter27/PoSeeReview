@@ -39,6 +39,9 @@ public class RestaurantEntity : ITableEntity
     /// </summary>
     public DateTimeOffset CachedAt { get; set; }
 
+    /// <summary>"restaurant" or "apartment"; absent on rows cached before apartments, which read as restaurant.</summary>
+    public string? Category { get; set; }
+
     /// <summary>Prefix for the per-region partition key.</summary>
     public const string PartitionKeyPrefix = "RESTAURANT";
 

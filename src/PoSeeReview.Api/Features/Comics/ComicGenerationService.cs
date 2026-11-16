@@ -162,7 +162,7 @@ public partial class ComicGenerationService : IComicGenerationService
             _logger.LogWarning("Insufficient reviews for placeId: {PlaceId}. Found {Count}, need {Minimum}",
                 placeId, reviews.Count, _options.MinimumReviewsRequired);
             throw new InsufficientReviewsException(
-                $"Restaurant must have at least {_options.MinimumReviewsRequired} reviews to generate a comic. Found {reviews.Count}.");
+                $"This {restaurant.Category.Noun()} must have at least {_options.MinimumReviewsRequired} reviews to generate a comic. Found {reviews.Count}.");
         }
 
         // Prioritize 1-star reviews (most interesting), then add higher ratings if needed
@@ -180,7 +180,7 @@ public partial class ComicGenerationService : IComicGenerationService
         {
             _logger.LogWarning("Insufficient appropriate reviews after filtering for placeId: {PlaceId}", placeId);
             throw new InsufficientReviewsException(
-                $"Restaurant does not have enough appropriate reviews for comic generation.");
+                $"This {restaurant.Category.Noun()} does not have enough appropriate reviews for comic generation.");
         }
 
         // Limit to top N reviews for analysis (cost control)
@@ -189,7 +189,7 @@ public partial class ComicGenerationService : IComicGenerationService
         // Analyze strangeness and generate narrative with panel count
         progress?.Report(ComicGenerationPhase.AnalyzingStrangeness);
         var analysisStopwatch = Stopwatch.StartNew();
-        var (analysis, sources) = await AnalyzeAsync(placeId, restaurant.Name, reviewsForAnalysis, cancellationToken);
+        var (analysis, sources) = await AnalyzeAsync(placeId, restaurant.Name, restaurant.Category, reviewsForAnalysis, cancellationToken);
         analysisStopwatch.Stop();
 
         var strangenessScore = analysis.StrangenessScore;
@@ -205,7 +205,7 @@ public partial class ComicGenerationService : IComicGenerationService
             _logger.LogWarning("Strangeness analysis returned an empty narrative for placeId {PlaceId}", placeId);
             _telemetryClient.GetMetric("Comics.EmptyNarrative").TrackValue(1);
             throw new InsufficientReviewsException(
-                "We couldn't turn these reviews into a story. Try another restaurant.");
+                $"We couldn't turn these reviews into a story. Try another {restaurant.Category.Noun()}.");
         }
 
         _logger.LogInformation("Strangeness score: {Score}, Panel count: {PanelCount}, Narrative length: {Length}",
@@ -338,7 +338,8 @@ public partial class ComicGenerationService : IComicGenerationService
             Captions = [.. captions],
             Scenes = [.. scenes],
             PromptVersion = _options.PromptVersion,
-            Breakdown = analysis.Ratings is { } r ? new ComicScoreBreakdown(r.Absurdity, r.Specificity, r.StoryPotential) : null,
+            Breakdown = analysis.Ratings is { } r ? new ComicScoreBreakdown(r.Absurdity, r.Specificity, r.StoryPotential, r.Horror) : null,
+            Category = restaurant.Category,
             Sources = sources,
             ImageModel = _imageGenerationService.Model ?? string.Empty
         };
@@ -359,7 +360,8 @@ public partial class ComicGenerationService : IComicGenerationService
                 ComicBlobUrl = blobUrl,
                 LastUpdated = DateTimeOffset.UtcNow,
                 Latitude = restaurant.Latitude,
-                Longitude = restaurant.Longitude
+                Longitude = restaurant.Longitude,
+                Category = restaurant.Category
             };
 
             await _leaderboardService.UpsertEntryAsync(leaderboardEntry);
@@ -387,6 +389,7 @@ public partial class ComicGenerationService : IComicGenerationService
         {
             ["PlaceId"] = placeId.Value,
             ["RestaurantName"] = restaurant.Name,
+            ["Category"] = restaurant.Category.ToWire(),
             ["StrangenessScore"] = strangenessScore.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["PanelCount"] = panelCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
         });
@@ -447,7 +450,7 @@ public partial class ComicGenerationService : IComicGenerationService
     /// grey out a place before anyone pays to find out again.
     /// </summary>
     private async Task<(StrangenessAnalysis Analysis, ComicSource[] Sources)> AnalyzeAsync(
-        PlaceId placeId, string restaurantName, List<PreparedReview> reviews, CancellationToken cancellationToken)
+        PlaceId placeId, string restaurantName, PlaceCategory category, List<PreparedReview> reviews, CancellationToken cancellationToken)
     {
         var hash = HashReviews(reviews);
 
@@ -461,7 +464,7 @@ public partial class ComicGenerationService : IComicGenerationService
         }
 
         _logger.LogInformation("Analyzing {Count} reviews for strangeness", reviews.Count);
-        var analysis = await _chatService.AnalyzeStrangenessAsync([.. reviews.Select(r => r.Text)], cancellationToken);
+        var analysis = await _chatService.AnalyzeStrangenessAsync([.. reviews.Select(r => r.Text)], category, cancellationToken);
 
         // The panel's citations are the only grounding signal there is; a panel citing nothing
         // is a scene the model may have invented, and its rate is what a prompt change should move.

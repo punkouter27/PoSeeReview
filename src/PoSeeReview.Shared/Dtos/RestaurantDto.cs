@@ -49,4 +49,7 @@ public class RestaurantDto
     /// Distance from user in kilometers (calculated from search coordinates)
     /// </summary>
     public double Distance { get; set; }
+
+    /// <summary>"restaurant" or "apartment".</summary>
+    public string Category { get; set; } = "restaurant";
 }

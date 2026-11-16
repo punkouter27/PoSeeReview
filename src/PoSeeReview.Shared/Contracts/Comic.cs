@@ -99,4 +99,7 @@ public class Comic
 
     /// <summary>Whether this comic has been redrawn by the remaster model, or tried and could not be.</summary>
     public RemasterState RemasterState { get; set; } = RemasterState.None;
+
+    /// <summary>Restaurant or apartment: which rubric scored it and which board it ranks on.</summary>
+    public PlaceCategory Category { get; set; } = PlaceCategory.Restaurant;
 }

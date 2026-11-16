@@ -54,8 +54,14 @@ internal static partial class LeaderboardEndpoints
         HttpContext http,
         int weeks = 4,
         int limit = 10,
-        string? region = null)
+        string? region = null,
+        string? category = null)
     {
+        if (!PlaceCategories.TryParse(category, out var kind))
+        {
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid category",
+                detail: "Category must be restaurant or apartment.");
+        }
         // Same sentinel as the live board: absent means every region's archive, merged per week.
         var isGlobal = string.IsNullOrWhiteSpace(region);
 
@@ -79,7 +85,7 @@ internal static partial class LeaderboardEndpoints
 
         var regionCode = isGlobal ? new RegionCode(string.Empty) : RegionCode.From(region);
         var now = timeProvider.GetUtcNow();
-        var response = new HallOfFameResponse { Region = isGlobal ? "ALL" : region!.ToUpperInvariant() };
+        var response = new HallOfFameResponse { Region = isGlobal ? "ALL" : region!.ToUpperInvariant(), Category = kind.ToWire() };
         var withheld = new Dictionary<string, bool>(StringComparer.Ordinal);
 
         for (var offset = 0; offset < weeks; offset++)
@@ -88,8 +94,8 @@ internal static partial class LeaderboardEndpoints
             var weekKey = HallOfFameEntity.WeekKeyFor(instant);
 
             var entities = isGlobal
-                ? await hallOfFame.GetWeekGlobalAsync(weekKey, limit, http.RequestAborted)
-                : await hallOfFame.GetWeekAsync(regionCode, weekKey, limit, http.RequestAborted);
+                ? await hallOfFame.GetWeekGlobalAsync(weekKey, limit, kind, http.RequestAborted)
+                : await hallOfFame.GetWeekAsync(regionCode, weekKey, limit, kind, http.RequestAborted);
 
             var week = new HallOfFameWeekDto
             {
@@ -203,8 +209,14 @@ internal static partial class LeaderboardEndpoints
         ILeaderboardService leaderboardService,
         ILogger<ILeaderboardService> logger,
         int limit = 10,
-        string? region = null)
+        string? region = null,
+        string? category = null)
     {
+        if (!PlaceCategories.TryParse(category, out var kind))
+        {
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid category",
+                detail: "Category must be restaurant or apartment.");
+        }
         // No region is now the worldwide board — the page has no picker to send one. A scoped
         // board stays available by URL (?region=US). RegionCode.From maps empty to US, which is
         // exactly the wrong default here, so the emptiness is resolved before it reaches the id.
@@ -230,11 +242,12 @@ internal static partial class LeaderboardEndpoints
                 isGlobal ? "all regions" : $"region {region}", limit);
 
             var regionCode = isGlobal ? new RegionCode(string.Empty) : RegionCode.From(region);
-            var entries = await leaderboardService.GetTopComicsAsync(regionCode, limit);
+            var entries = await leaderboardService.GetTopComicsAsync(regionCode, limit, kind);
 
             var response = new LeaderboardResponse
             {
                 Region = isGlobal ? "ALL" : region!.ToUpperInvariant(),
+                Category = kind.ToWire(),
                 Entries = entries.Select(e => new LeaderboardEntryDto
                 {
                     Rank = e.Rank,

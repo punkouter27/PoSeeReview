@@ -1,5 +1,6 @@
 using System.Text.Json;
 using OpenAI.Chat;
+using PoSeeReview.Shared.Enums;
 
 namespace PoSeeReview.Api.Features.Comics;
 
@@ -19,6 +20,7 @@ internal static class OpenAiWireChat
         float temperature,
         int? maxCompletionTokens,
         bool isReasoningModel,
+        PlaceCategory category,
         CancellationToken cancellationToken)
     {
         var validReviews = (reviews ?? []).Where(r => !string.IsNullOrWhiteSpace(r)).ToList();
@@ -29,13 +31,13 @@ internal static class OpenAiWireChat
 
         var messages = new List<ChatMessage>
         {
-            new SystemChatMessage(ChatPrompts.AnalysisSystemMessage),
+            new SystemChatMessage(ChatPrompts.SystemMessageFor(category)),
             new UserChatMessage(ChatPrompts.BuildAnalysisPrompt(validReviews))
         };
 
         var response = await client.CompleteChatAsync(
             messages,
-            ChatTokenBudget.Build(temperature, maxCompletionTokens, isReasoningModel),
+            ChatTokenBudget.Build(temperature, maxCompletionTokens, isReasoningModel, category),
             cancellationToken);
 
         var completion = response.Value;
@@ -52,7 +54,7 @@ internal static class OpenAiWireChat
             ?? throw new InvalidOperationException("Failed to parse chat response");
 
         return new Result(
-            ChatPrompts.ToAnalysis(result, validReviews.Count),
+            ChatPrompts.ToAnalysis(result, validReviews.Count, category),
             completion.Usage?.InputTokenCount ?? 0,
             completion.Usage?.OutputTokenCount ?? 0,
             completion.Usage?.InputTokenDetails?.CachedTokenCount ?? 0);

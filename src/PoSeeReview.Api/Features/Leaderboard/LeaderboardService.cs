@@ -53,7 +53,7 @@ public class LeaderboardService : ILeaderboardService
     /// <summary>
     /// Gets top N comics for a region, with rank numbers assigned
     /// </summary>
-    public async Task<List<LeaderboardEntry>> GetTopComicsAsync(RegionCode region, int limit = 10)
+    public async Task<List<LeaderboardEntry>> GetTopComicsAsync(RegionCode region, int limit = 10, PlaceCategory category = PlaceCategory.Restaurant)
     {
         // An empty region is now the worldwide board rather than a caller error: the page has no
         // region picker any more, and RegionCode.From maps empty to US, so the sentinel has to be
@@ -72,8 +72,8 @@ public class LeaderboardService : ILeaderboardService
             // Probe the full page size so expired-blob rows (empty ComicBlobUrl after the
             // existence check) do not occupy the slots the Hall of Fame actually paints.
             var entries = region.IsEmpty
-                ? await _repository.GetTopEntriesGlobalAsync(MaxProbeCount)
-                : await _repository.GetTopEntriesAsync(region, MaxProbeCount);
+                ? await _repository.GetTopEntriesGlobalAsync(MaxProbeCount, category)
+                : await _repository.GetTopEntriesAsync(region, MaxProbeCount, category);
 
             // A hidden or suppressed place must not keep its name, score and artwork on the
             // board. The gate fails open, so a storage blip shows the board rather than emptying it.

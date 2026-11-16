@@ -139,6 +139,15 @@
     animation: none;
 }
 
+/* Restaurants / Apartments. Above the field on the landing; first in the strip with results. */
+.category-toggle {
+    margin-block-end: var(--space-xs);
+}
+
+.location-prompt--compact .category-toggle {
+    margin-block-end: 0;
+}
+
 .location-prompt--compact .search-row {
     flex: 1 1 26rem;
     /* The count and List/Map switch live in this row now; wrap lets them drop to a second line

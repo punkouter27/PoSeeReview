@@ -15,6 +15,7 @@ internal static class ComicMapping
     public static ComicDto ToDto(this Comic comic, bool? isCached = null) => new()
     {
         ComicId = comic.Id.Value,
+        Category = comic.Category.ToWire(),
         PlaceId = comic.PlaceId.Value,
         RestaurantName = comic.RestaurantName,
         Narrative = comic.Narrative,

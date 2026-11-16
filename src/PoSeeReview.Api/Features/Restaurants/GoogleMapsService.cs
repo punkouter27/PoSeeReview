@@ -135,12 +135,14 @@ public partial class GoogleMapsService
     /// </summary>
     /// <param name="latitude">Search center latitude</param>
     /// <param name="longitude">Search center longitude</param>
+    /// <param name="category">Restaurants or apartments; picks the Google place types searched</param>
     /// <param name="radiusMeters">Search radius in meters (default 5000m = 5km)</param>
     /// <param name="cancellationToken">Cancels the upstream Places call</param>
-    /// <returns>List of restaurants with basic metadata</returns>
+    /// <returns>List of places with basic metadata</returns>
     public async Task<List<Restaurant>> SearchNearbyAsync(
         double latitude,
         double longitude,
+        PlaceCategory category = PlaceCategory.Restaurant,
         int radiusMeters = 5000,
         CancellationToken cancellationToken = default)
     {
@@ -150,13 +152,13 @@ public partial class GoogleMapsService
         }
 
         _logger.LogInformation(
-            "Searching nearby restaurants at ({Latitude}, {Longitude}) within {Radius}m",
-            latitude, longitude, radiusMeters);
+            "Searching nearby {Category} at ({Latitude}, {Longitude}) within {Radius}m",
+            category.PluralNoun(), latitude, longitude, radiusMeters);
 
         // Google Places API (New) endpoint - requires API key in header, not query string
         var requestBody = new
         {
-            includedTypes = new[] { "restaurant" },
+            includedTypes = SearchTypesFor(category),
             maxResultCount = 20,
             // DISTANCE, not the API's POPULARITY default.
             //
@@ -216,9 +218,34 @@ public partial class GoogleMapsService
             AverageRating = p.Rating ?? 0,
             TotalReviews = p.UserRatingCount ?? 0,
             Region = DetermineRegion(latitude, longitude),
-            CachedAt = DateTimeOffset.UtcNow
+            CachedAt = DateTimeOffset.UtcNow,
+            Category = category
         }).ToList() ?? new List<Restaurant>();
     }
+
+    /// <summary>
+    /// Google Places (New) Table A types for homes people rent. Condos and generic housing
+    /// complexes are included because tenants review them the same way, and Google files many
+    /// rental buildings under them rather than as apartments.
+    /// </summary>
+    internal static readonly string[] ApartmentTypes =
+        ["apartment_building", "apartment_complex", "condominium_complex", "housing_complex"];
+
+    private static string[] SearchTypesFor(PlaceCategory category) =>
+        category == PlaceCategory.Apartment ? ApartmentTypes : ["restaurant"];
+
+    /// <summary>
+    /// A place is an apartment when Google types it as housing and not as somewhere to eat — a
+    /// tower with a restaurant on the ground floor is still scored as the restaurant it was
+    /// found as. A place Google types as neither is a restaurant, which every place was before
+    /// apartments existed.
+    /// </summary>
+    internal static PlaceCategory CategoryFromTypes(IReadOnlyCollection<string>? types) =>
+        types is not null
+        && types.Any(t => ApartmentTypes.Contains(t, StringComparer.OrdinalIgnoreCase))
+        && !types.Any(t => string.Equals(t, "restaurant", StringComparison.OrdinalIgnoreCase))
+            ? PlaceCategory.Apartment
+            : PlaceCategory.Restaurant;
 
     /// <summary>
     /// Determines region code from coordinates (simplified implementation)
@@ -292,7 +319,7 @@ public partial class GoogleMapsService
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://places.googleapis.com/v1/places/{Uri.EscapeDataString(placeId.Value)}");
         request.Headers.Add("X-Goog-Api-Key", _apiKey);
-        request.Headers.Add("X-Goog-FieldMask", "id,displayName,formattedAddress,location,rating,userRatingCount,reviews");
+        request.Headers.Add("X-Goog-FieldMask", "id,displayName,formattedAddress,location,rating,userRatingCount,types,reviews");
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -336,6 +363,7 @@ public partial class GoogleMapsService
             TotalReviews = place.UserRatingCount ?? 0,
             Region = DetermineRegion(place.Location?.Latitude ?? 0, place.Location?.Longitude ?? 0),
             CachedAt = DateTimeOffset.UtcNow,
+            Category = CategoryFromTypes(place.Types),
             Reviews = place.Reviews?.Select(r => new Review
             {
                 AuthorName = r.AuthorAttribution?.DisplayName ?? "Anonymous",

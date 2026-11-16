@@ -75,7 +75,7 @@ internal static class ComicsEndpoints
         instance: http.Request.Path);
 
     private static string WithheldDetail(bool isSuppressed) => isSuppressed
-        ? "This restaurant has been removed from PoSeeReview after a takedown or a review."
+        ? "This place has been removed from PoSeeReview after a takedown or a review."
         : "This comic is unavailable while it is being reviewed.";
 
     /// <summary>
@@ -109,7 +109,7 @@ internal static class ComicsEndpoints
 
             InsufficientStrangenessException => (
                 StatusCodes.Status422UnprocessableEntity, "Unprocessable Entity",
-                "This restaurant's reviews are too ordinary to make a good comic. Try a place with weirder reviews!",
+                "This place's reviews are too ordinary to make a good comic. Try a place with weirder reviews!",
                 "https://tools.ietf.org/html/rfc4918#section-11.2", "insufficient_strangeness"),
 
             _ => (

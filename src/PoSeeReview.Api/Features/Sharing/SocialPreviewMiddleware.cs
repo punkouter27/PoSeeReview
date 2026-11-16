@@ -154,7 +154,7 @@ internal sealed class SocialPreviewMiddleware(RequestDelegate next, ILogger<Soci
         var text = narrative.Trim();
         if (text.Length == 0)
         {
-            return "A comic strip drawn from real restaurant reviews.";
+            return "A comic strip drawn from real Google reviews.";
         }
 
         return text.Length <= 200 ? text : text[..200].TrimEnd() + "…";

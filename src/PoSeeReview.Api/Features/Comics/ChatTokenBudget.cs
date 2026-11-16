@@ -1,5 +1,7 @@
 using OpenAI.Chat;
 
+using PoSeeReview.Shared.Enums;
+
 namespace PoSeeReview.Api.Features.Comics;
 
 /// <summary>
@@ -35,7 +37,8 @@ internal static class ChatTokenBudget
     public static ChatCompletionOptions Build(
         float temperature,
         int? maxCompletionTokens,
-        bool isReasoningModel)
+        bool isReasoningModel,
+        PlaceCategory category = PlaceCategory.Restaurant)
     {
         var options = new ChatCompletionOptions
         {
@@ -43,7 +46,7 @@ internal static class ChatTokenBudget
             // The schema, not json_object, for every provider: Azure enforces it, and Ollama's
             // OpenAI-compatible endpoint accepts it and constrains decoding the same way.
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                "comic_analysis", ChatPrompts.AnalysisJsonSchema, jsonSchemaIsStrict: true)
+                "comic_analysis", ChatPrompts.JsonSchemaFor(category), jsonSchemaIsStrict: true)
         };
 
         var cap = maxCompletionTokens ?? DefaultMaxCompletionTokens;

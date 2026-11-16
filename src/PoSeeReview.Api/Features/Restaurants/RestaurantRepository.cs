@@ -91,7 +91,8 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
             AverageRating = restaurant.AverageRating,
             TotalReviews = restaurant.TotalReviews,
             ReviewsJson = JsonSerializer.Serialize(restaurant.Reviews),
-            CachedAt = restaurant.CachedAt
+            CachedAt = restaurant.CachedAt,
+            Category = restaurant.Category.ToWire()
         };
     }
 
@@ -113,7 +114,8 @@ public class RestaurantRepository : TableStorageRepository<RestaurantEntity>
             Reviews = string.IsNullOrWhiteSpace(entity.ReviewsJson)
                 ? new List<Review>()
                 : JsonSerializer.Deserialize<List<Review>>(entity.ReviewsJson) ?? new List<Review>(),
-            CachedAt = entity.CachedAt
+            CachedAt = entity.CachedAt,
+            Category = PlaceCategories.FromWire(entity.Category)
         };
     }
 

@@ -1,3 +1,4 @@
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Shared.Contracts;
@@ -54,4 +55,7 @@ public class LeaderboardEntry
 
     /// <inheritdoc cref="Latitude"/>
     public double? Longitude { get; set; }
+
+    /// <summary>Which board the row belongs to; restaurants and apartments rank separately.</summary>
+    public PlaceCategory Category { get; set; } = PlaceCategory.Restaurant;
 }

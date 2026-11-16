@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @implements IAsyncDisposable
 @using PoSeeReview.Shared.Dtos
+@using PoSeeReview.Shared.Enums
 @using PoSeeReview.Client.Services
 @inject ApiClient ApiClient
 @inject ILogger<Leaderboard> Logger
@@ -22,6 +23,19 @@
            Class="leaderboard-container">
 
     <Header>
+        @* Two boards: restaurants and apartments never rank against each other. In the URL
+           (?kind=apartments) so a shared link opens the right one. *@
+        <div class="board-kind" role="group" aria-label="Which board">
+            @foreach (var (kind, label, icon) in Kinds)
+            {
+                <button type="button" class="chip-toggle @(_category == kind ? "chip-toggle--active" : "")"
+                        aria-pressed="@(_category == kind ? "true" : "false")"
+                        data-testid="@($"board-{kind.ToWire()}")"
+                        @onclick="() => SwitchCategoryAsync(kind)">
+                    <span aria-hidden="true">@icon</span> @label
+                </button>
+            }
+        </div>
         @* Every view of the board behind one control: a native popover that slides in from the
            side on a desktop and rises as a bottom sheet on a phone (.popover-menu--drawer). Each
            item also closes it (popovertargetaction="hide"). No refresh button: the board re-reads
@@ -113,12 +127,12 @@
     {
         <StateCard Icon="🤔" Title="No weird stories yet">
             <ChildContent>Nothing strange on the board right now. Go find one — the weirder the better.</ChildContent>
-            <Actions><a href="/" class="btn btn-primary">Find restaurants</a></Actions>
+            <Actions><a href="/" class="btn btn-primary">Find @_category.PluralNoun()</a></Actions>
         </StateCard>
     }
     else if (_layout == BoardLayout.Map && BoardPins.Count > 0)
     {
-        <h2 class="visually-hidden">Top 10 strangest restaurants on a map</h2>
+        <h2 class="visually-hidden">Top 10 strangest @_category.PluralNoun() on a map</h2>
         <MapView Pins="@BoardPins" SelectedId="@_selectedPlaceId" Label="The board on a map"
                  OnSelect="id => _selectedPlaceId = id"
                  OnUnavailable="() => { _mapUnavailable = true; _layout = BoardLayout.List; }" />
@@ -142,7 +156,7 @@
     }
     else
     {
-        <h2 class="visually-hidden">Top 10 strangest restaurants</h2>
+        <h2 class="visually-hidden">Top 10 strangest @_category.PluralNoun()</h2>
         <ol class="comic-rows" @ref="_stage">
             @foreach (var entry in leaderboardEntries)
             {
@@ -208,6 +222,40 @@
     /// <summary>`?view=week` opens the archive tab.</summary>
     [SupplyParameterFromQuery(Name = "view")]
     public string? View { get; set; }
+
+    /// <summary>`?kind=apartments` opens the apartment board; anything else is restaurants.</summary>
+    [SupplyParameterFromQuery(Name = "kind")]
+    public string? Kind { get; set; }
+
+    private PlaceCategory _category = PlaceCategory.Restaurant;
+
+    private static readonly (PlaceCategory Kind, string Label, string Icon)[] Kinds =
+    [
+        (PlaceCategory.Restaurant, "Restaurants", "🍽️"),
+        (PlaceCategory.Apartment, "Apartments", "🏢"),
+    ];
+
+    /// <summary>Last-seen ranks are per board; the restaurant board keeps its original key.</summary>
+    private string MemoryKey => _category == PlaceCategory.Apartment ? "GLOBAL-APARTMENT" : "GLOBAL";
+
+    /// <summary>Restaurants ⇄ apartments: a different board, so everything shown is dropped and re-read.</summary>
+    private async Task SwitchCategoryAsync(PlaceCategory category)
+    {
+        if (category == _category || isLoading)
+        {
+            return;
+        }
+
+        _category = category;
+        leaderboardEntries = null;
+        _archive = null;
+        _deltas = [];
+        _selectedPlaceId = null;
+        errorMessage = null;
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("kind", category == PlaceCategory.Apartment ? "apartments" : null), replace: true);
+
+        await (_scope == BoardScope.Weekly ? LoadArchiveAsync() : LoadLeaderboardAsync());
+    }
 
     /// <summary>Weeks of archive requested at once.</summary>
     private const int ArchiveWeeks = 6;
@@ -312,6 +360,7 @@
     protected override async Task OnInitializedAsync()
     {
         _scope = string.Equals(View, "week", StringComparison.OrdinalIgnoreCase) ? BoardScope.Weekly : BoardScope.Live;
+        _category = PlaceCategories.FromWire(Kind);
 
         await (_scope == BoardScope.Weekly ? LoadArchiveAsync() : LoadLeaderboardAsync());
         _ = PollAsync();
@@ -363,7 +412,7 @@
     {
         if (quiet)
         {
-            _archive = await ApiClient.GetWeeklyHallOfFameAsync(ArchiveWeeks, TopTen) ?? _archive;
+            _archive = await ApiClient.GetWeeklyHallOfFameAsync(ArchiveWeeks, TopTen, _category) ?? _archive;
             return;
         }
 
@@ -372,7 +421,7 @@
 
         try
         {
-            _archive = await ApiClient.GetWeeklyHallOfFameAsync(ArchiveWeeks, TopTen);
+            _archive = await ApiClient.GetWeeklyHallOfFameAsync(ArchiveWeeks, TopTen, _category);
             if (_archive is null)
             {
                 errorMessage = "Unable to load the weekly archive. Please try again later.";
@@ -405,7 +454,7 @@
         if (quiet)
         {
             // GetLeaderboardAsync returns null on failure; BoardMemory never throws.
-            if (await ApiClient.GetLeaderboardAsync(string.Empty, TopTen) is { } fresh)
+            if (await ApiClient.GetLeaderboardAsync(string.Empty, TopTen, _category) is { } fresh)
             {
                 leaderboardEntries = fresh.Entries.Where(e => !string.IsNullOrWhiteSpace(e.ComicBlobUrl)).ToList();
                 await ReportBoardChangeAsync(keepDeltasIfStill: true);
@@ -423,7 +472,7 @@
             // A scoped board is still available by URL (?region=US) for direct deep links.
             Logger.LogInformation("Fetching Hall of Fame top {Limit} (worldwide)", TopTen);
 
-            var response = await ApiClient.GetLeaderboardAsync(string.Empty, TopTen);
+            var response = await ApiClient.GetLeaderboardAsync(string.Empty, TopTen, _category);
 
             if (response != null)
             {
@@ -495,7 +544,7 @@
             return;
         }
 
-        var previous = await BoardMemory.GetAsync("GLOBAL");
+        var previous = await BoardMemory.GetAsync(MemoryKey);
         var shown = _deltas;
 
         _deltas = [];
@@ -513,7 +562,7 @@
             }
         }
 
-        await BoardMemory.SaveAsync("GLOBAL", entries.Select(e => (e.PlaceId, e.Rank)));
+        await BoardMemory.SaveAsync(MemoryKey, entries.Select(e => (e.PlaceId, e.Rank)));
         _movesPending = _deltas.Count > 0;
 
         if (keepDeltasIfStill)

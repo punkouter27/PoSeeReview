@@ -33,4 +33,5 @@ public sealed record StrangenessAnalysis(
     IReadOnlyList<IReadOnlyList<int>>? PanelSources = null);
 
 /// <summary>The model's three ratings, kept so the page can say why a score is what it is.</summary>
-public sealed record StrangenessRatings(int Absurdity, int Specificity, int StoryPotential);
+/// <param name="Horror">How bad living there sounds, 0-10. Apartments only; 0 for a restaurant.</param>
+public sealed record StrangenessRatings(int Absurdity, int Specificity, int StoryPotential, int Horror = 0);

@@ -69,6 +69,9 @@ public partial class GoogleMapsService
         [JsonPropertyName("userRatingCount")]
         public int? UserRatingCount { get; set; }
 
+        [JsonPropertyName("types")]
+        public List<string>? Types { get; set; }
+
         [JsonPropertyName("reviews")]
         public List<PlaceReview>? Reviews { get; set; }
 

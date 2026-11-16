@@ -5,6 +5,9 @@ namespace PoSeeReview.Shared.Dtos;
 /// </summary>
 public class ComicDto
 {
+    /// <summary>"restaurant" or "apartment".</summary>
+    public string Category { get; set; } = "restaurant";
+
     /// <summary>
     /// Unique identifier for the comic
     /// </summary>

@@ -138,7 +138,7 @@ public sealed class AiPipelineTests
 
         var comic = await harness.Service.GenerateComicAsync(harness.PlaceId, forceRegenerate: true);
 
-        harness.Chat.Verify(c => c.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        harness.Chat.Verify(c => c.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Equal(66, comic.StrangenessScore);
         Assert.Equal(new ComicScoreBreakdown(7, 8, 9), comic.Breakdown);
     }
@@ -276,7 +276,7 @@ public sealed class AiPipelineTests
                 ]
             });
 
-            Chat.Setup(c => c.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(
+            Chat.Setup(c => c.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>())).ReturnsAsync(
                 new StrangenessAnalysis(70, 2, "A goat runs the till.", ["A goat rings up.", "Change in hay."], ["Goat at till.", "Hay as change."],
                     new StrangenessRatings(7, 8, 9), [[1], [2]]));
 

@@ -153,7 +153,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync(expiredComic);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(75, 3, "A restaurant where waiters dress as dinosaurs and food is served in shoes."));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new byte[] { 1, 2, 3, 4 });
@@ -201,7 +201,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync(cachedComic);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(75, 3, "Test narrative"));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new byte[] { 1, 2, 3, 4 });
@@ -240,7 +240,7 @@ public class ComicGenerationServiceTests
         var result = await service.GenerateComicAsync(placeId, forceRegenerate: true);
 
         Assert.Equal(ComicCacheState.Cached, result.CacheState);
-        _mockOpenAIService.Verify(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOpenAIService.Verify(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockImageGenerationService.Verify(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -260,7 +260,7 @@ public class ComicGenerationServiceTests
                 Region = RegionCode.From("US"),
                 Reviews = [new Review { Text = "A goat served the soup.", Rating = 1 }]
             });
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(80, 2, "A goat serves soup."));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([1, 2, 3]);
@@ -323,7 +323,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync((Comic?)null);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(72, 2, string.Empty));
 
         // Act & Assert
@@ -359,7 +359,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync((Comic?)null);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(50, 2, "Narrative"));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new byte[] { 1, 2, 3, 4 });
@@ -388,7 +388,7 @@ public class ComicGenerationServiceTests
         _mockComicRepository.Setup(x => x.GetByPlaceIdAsync(placeId)).ReturnsAsync((Comic?)null);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(placeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Restaurant { PlaceId = placeId, Name = "Storyboard Diner", Reviews = reviews });
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(88, 2, "Narrative", ["Panel one.", "Panel two."]));
 
         var reports = new List<ComicGenerationProgress>();
@@ -441,7 +441,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync((Comic?)null);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(70, 3, "Narrative"));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new byte[] { 1, 2, 3, 4 });
@@ -501,7 +501,7 @@ public class ComicGenerationServiceTests
             .ReturnsAsync((Comic?)null);
         _mockRestaurantService.Setup(x => x.GetRestaurantByPlaceIdAsync(PlaceId.From(placeId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<CancellationToken>()))
+        _mockOpenAIService.Setup(x => x.AnalyzeStrangenessAsync(It.IsAny<List<string>>(), It.IsAny<PlaceCategory>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrangenessAnalysis(80, 4, "Narrative"));
         _mockImageGenerationService.Setup(x => x.GenerateComicImageAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new byte[] { 1, 2, 3, 4 });

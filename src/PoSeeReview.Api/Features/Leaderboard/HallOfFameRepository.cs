@@ -3,6 +3,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.Options;
 using PoSeeReview.Api.Storage;
 using PoSeeReview.Shared.Contracts;
+using PoSeeReview.Shared.Enums;
 using PoSeeReview.Shared.Ids;
 
 namespace PoSeeReview.Api.Features.Leaderboard;
@@ -77,6 +78,7 @@ public sealed class HallOfFameRepository(
         RegionCode region,
         string weekKey,
         int limit,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         var partitionKey = HallOfFameEntity.PartitionKeyFor(region, weekKey);
@@ -86,8 +88,14 @@ public sealed class HallOfFameRepository(
 
         // The inverted RowKey means Table Storage already returns these in descending score
         // order, so this is a prefix read rather than a sort.
-        await foreach (var entity in _table.QueryAsync<HallOfFameEntity>(filter, maxPerPage: limit, cancellationToken: cancellationToken))
+        // Filtered in memory, as on the live board: older rows carry no Category column.
+        await foreach (var entity in _table.QueryAsync<HallOfFameEntity>(filter, maxPerPage: 100, cancellationToken: cancellationToken))
         {
+            if (entity.CategoryValue != category)
+            {
+                continue;
+            }
+
             entries.Add(entity);
             if (entries.Count >= limit)
             {
@@ -110,6 +118,7 @@ public sealed class HallOfFameRepository(
     public async Task<List<HallOfFameEntity>> GetWeekGlobalAsync(
         string weekKey,
         int limit,
+        PlaceCategory category = PlaceCategory.Restaurant,
         CancellationToken cancellationToken = default)
     {
         var filter = TableClient.CreateQueryFilter<HallOfFameEntity>(e => e.WeekKey == weekKey);
@@ -126,6 +135,7 @@ public sealed class HallOfFameRepository(
         }
 
         return entries
+            .Where(e => e.CategoryValue == category)
             .OrderByDescending(e => e.StrangenessScore)
             .Take(limit)
             .ToList();
