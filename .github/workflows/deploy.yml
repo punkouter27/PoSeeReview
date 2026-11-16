@@ -24,7 +24,7 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
-  # Pull requests (Dependabot's too) get the build and tests; only master deploys.
+  # Pull requests get the build and tests; only master deploys.
   pull_request:
   workflow_dispatch:
     inputs:
