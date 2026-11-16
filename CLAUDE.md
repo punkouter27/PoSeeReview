@@ -71,7 +71,7 @@ tests, then `scripts/ci-checks.ps1` = test-quota check, publish) → `deploy` (A
 `app-poseereview2`, RG `PoSeeReview`, from repo variables), health gate (`/health/live` serving this
 commit, then `/health`), then `scripts/post-deploy-smoke.ps1` (Playwright smoke + Lighthouse budgets);
 any failure after go-live rolls back. Integration and E2E suites run locally only. Infra under
-`infra/` is applied only by the manual `infra.yml` workflow — see [infra/README.md](infra/README.md).
+`infra/` is applied only by a manual run of `deploy.yml` with `infra` = what-if, then apply — see [infra/README.md](infra/README.md).
 
 ```powershell
 pwsh scripts/post-deploy-smoke.ps1 -BaseUrl https://app-poseereview2.azurewebsites.net

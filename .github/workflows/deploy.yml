@@ -14,6 +14,12 @@ name: Build & Deploy
 #                   scripts/post-deploy-smoke.ps1 -BaseUrl  checks the live site after the health gate
 #                   (each hook is optional: the step is skipped when the file does not exist)
 # Layout it relies on: one *.slnx at the root, global.json, src/*.Api/*.csproj, tests/*.Unit/*.csproj.
+#
+# This is the ONLY workflow in a Po .NET web repo. Bicep (infra/main.bicep) is never applied by a
+# push: run this workflow by hand with `infra` set to what-if, then apply. That run touches infra
+# only; it does not build or deploy code. The scope (subscription or resource group) is read from
+# main.bicep's targetScope; parameters come from the first infra/*.bicepparam, else
+# infra/main.parameters.json, else none. AZURE_LOCATION (optional repo variable, default eastus2).
 
 on:
   push:
@@ -21,6 +27,12 @@ on:
   # Pull requests (Dependabot's too) get the build and tests; only master deploys.
   pull_request:
   workflow_dispatch:
+    inputs:
+      infra:
+        description: 'none = build & deploy code. what-if / apply = run infra/main.bicep only (no code deploy)'
+        type: choice
+        options: [none, what-if, apply]
+        default: none
 
 permissions:
   contents: read
@@ -36,8 +48,47 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
 
 jobs:
+  infra:
+    name: Infra (${{ inputs.infra }})
+    if: github.event_name == 'workflow_dispatch' && inputs.infra != 'none' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write   # azure/login OIDC
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check for infra/main.bicep
+        run: '[ -f infra/main.bicep ] || { echo "::error::This repo has no infra/main.bicep."; exit 1; }'
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: ${{ inputs.infra == 'apply' && 'Apply' || 'What-if' }}
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          LOCATION: ${{ vars.AZURE_LOCATION || 'eastus2' }}
+          MODE: ${{ inputs.infra }}
+        run: |
+          scope=$(grep -m1 -oE "^targetScope *= *'[a-zA-Z]+" infra/main.bicep | sed "s/.*'//")
+          params=()
+          bicepparam=$(ls infra/*.bicepparam 2>/dev/null | head -1)
+          if [ -n "$bicepparam" ]; then params=(--parameters "$bicepparam")
+          elif [ -f infra/main.parameters.json ]; then params=(--parameters @infra/main.parameters.json); fi
+          verb=what-if; [ "$MODE" = "apply" ] && verb=create
+          if [ "$scope" = "subscription" ]; then
+            az deployment sub "$verb" --location "$LOCATION" --template-file infra/main.bicep "${params[@]}"
+          else
+            [ -n "$RG" ] || { echo "::error::Repo variable AZURE_RESOURCE_GROUP is not set."; exit 1; }
+            az deployment group "$verb" --resource-group "$RG" --template-file infra/main.bicep "${params[@]}"
+          fi
+
   build:
     name: Build & test
+    # A manual infra run touches infra only. On push/PR, inputs.infra is empty.
+    if: (inputs.infra || 'none') == 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
