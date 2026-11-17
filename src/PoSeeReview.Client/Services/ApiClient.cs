@@ -404,7 +404,7 @@ public class ApiClient
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync("/diag/mock-status", AppJsonContext.Default.MockStatusDto, cancellationToken);
+            return await _httpClient.GetFromJsonAsync("/api/diag/mock-status", AppJsonContext.Default.MockStatusDto, cancellationToken);
         }
         catch (HttpRequestException)
         {
@@ -422,7 +422,7 @@ public class ApiClient
 
     public async Task<DiagnosticsSnapshotDto?> GetDiagnosticsSnapshotAsync(CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/diag");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/diag");
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, "Diagnostics request failed", cancellationToken);
         return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.DiagnosticsSnapshotDto, cancellationToken);

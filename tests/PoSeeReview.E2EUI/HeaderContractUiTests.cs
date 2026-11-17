@@ -80,9 +80,9 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
     {
         var page = await SignedInPageAsync(viewport);
 
-        // /diag/mock-status is the single source of truth (NET_RULES 4.2); the badge must
+        // /api/diag/mock-status is the single source of truth (NET_RULES 4.2); the badge must
         // agree with it rather than guessing from the environment name.
-        var status = await page.APIRequest.GetAsync($"{fixture.BaseUrl}/diag/mock-status");
+        var status = await page.APIRequest.GetAsync($"{fixture.BaseUrl}/api/diag/mock-status");
         var json = await status.JsonAsync();
         var isMockActive = json?.GetProperty("isMockActive").GetBoolean() ?? false;
 

@@ -21,14 +21,14 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
     // identified by their metadata, not listed.
     private static readonly string[] AnonymousAllowList =
     [
+        "/api/diag/",
+        "/api/diag/mock-status",
         "/api/takedowns/",
         "/api/{**segments}",
         "/auth/login/fake",
         "/auth/login/microsoft",
         "/auth/logout",
         "/auth/me",
-        "/diag/",
-        "/diag/mock-status",
         "/duel/{**rest}",
         "/health",
         "/health/live",
@@ -84,6 +84,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
     [Theory]
     [InlineData("/auth/me")]
     [InlineData("/api/devsession")]
+    [InlineData("/api/diag")]
     [InlineData("/diag")]
     [InlineData("/health")]
     public async Task AnonymousEndpoints_WithoutSession_AreNot401(string path)

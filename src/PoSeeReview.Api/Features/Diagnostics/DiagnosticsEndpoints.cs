@@ -4,32 +4,31 @@ using PoSeeReview.Shared.Dtos;
 namespace PoSeeReview.Api.Features.Diagnostics;
 
 /// <summary>
-/// UI-less diagnostics slice. Maps the top-level <c>/diag</c> route (NET_RULES 3.2):
-/// masked configuration keys and integration statuses, active in Dev and Prod.
-/// Values are masked by the snapshot handler, so only key names and statuses leak.
+/// Diagnostics slice: <c>GET /api/diag</c> (dependency health, build stamp, environment) and
+/// <c>GET /api/diag/mock-status</c> (the USING MOCK DATA banner). Both are anonymous in every
+/// environment so the <c>/diag</c> page works signed out; the snapshot handler is what keeps the
+/// output safe. Under <c>/api</c> since 2026-11-17 so a browser navigation to <c>/diag</c> reaches
+/// the client page instead of this JSON.
 /// </summary>
 internal static class DiagnosticsEndpoints
 {
+    public const string RoutePrefix = "/api/diag";
+
     public static IEndpointRouteBuilder MapDiagnosticsEndpoints(this IEndpointRouteBuilder app)
     {
-        // UI-less ops diagnostics, active in Dev+Prod (NET_RULES 3.2). Values are masked and
-        // exception detail is environment-gated, so the route stays anonymous for platform probes.
-        var group = app.MapGroup("/diag").WithTags("Diagnostics").AllowAnonymous();
+        var group = app.MapGroup(RoutePrefix).WithTags("Diagnostics").AllowAnonymous();
 
-        group.MapGet("", async (
-            IWebHostEnvironment environment,
-            DiagnosticsSnapshotQueryHandler handler,
-            CancellationToken cancellationToken) =>
+        group.MapGet("", async (DiagnosticsSnapshotQueryHandler handler, HttpContext http, CancellationToken cancellationToken) =>
         {
-            var diagnostics = await handler.ExecuteAsync(cancellationToken);
-            diagnostics.Environment = environment.EnvironmentName;
-            return Results.Ok(diagnostics);
+            // A cached snapshot would show a stale status on Refresh.
+            http.Response.Headers.CacheControl = "no-store";
+            return Results.Ok(await handler.ExecuteAsync(cancellationToken));
         });
 
         group.MapGet("/mock-status", (IEnumerable<IMockable> mockables, IConfiguration configuration) =>
         {
             var activeMocks = mockables.Select(m => m.GetType().Name).Distinct().ToList();
-            var isMock = activeMocks.Count > 0 || configuration.GetValue<bool>("UseMockData");
+            var isMock = activeMocks.Count > 0 || configuration.GetValue<bool>(MockDataMode.ConfigurationKey);
             return Results.Ok(new MockStatusDto { IsMockActive = isMock, ActiveMocks = activeMocks });
         });
 

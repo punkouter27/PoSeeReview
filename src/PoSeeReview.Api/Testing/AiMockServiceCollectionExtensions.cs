@@ -19,7 +19,7 @@ public static class AiMockServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Surface the active mock boundary on /diag/mock-status (NET_RULES 6.5).
+        // Surface the active mock boundary on /api/diag/mock-status (NET_RULES 6.5).
         services.AddSingleton<IMockable, AiMockDelegatingHandler>();
 
         // ── Gemini / Imagen: HttpClientFactory client → message-handler boundary ──

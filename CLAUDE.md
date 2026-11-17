@@ -18,6 +18,18 @@ dotnet run   --project src/PoSeeReview.Api --launch-profile https   # HTTP 5000 
 dotnet watch --project src/PoSeeReview.Api --launch-profile https   # code-only changes
 ```
 
+**Local run with no secrets (mock mode, added 2026-11-17).** `UseMockData=true` swaps Google Maps
+for `TestMockRestaurantService` (sample Seattle places) and answers every AI call with
+`AiMockDelegatingHandler`; storage stays Azurite (`Storage:UseAzurite`, ports 10000/10002 — start
+it with `scripts/start-azurite.ps1`, or reuse an emulator already listening there). Development
+and Test only — `MockDataMode` refuses to start with it anywhere else. Blank Key Vault so no
+production secret is loaded:
+
+```bash
+KeyVault__Uri= UseMockData=true ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7208   dotnet run --project src/PoSeeReview.Api --no-launch-profile
+E2E_BASE_URL=http://localhost:7208 dotnet test tests/PoSeeReview.E2EUI   # against that app
+```
+
 Config changes (appsettings, Key Vault) need a full restart — hot reload will not pick them up.
 If another local app already holds 5000/5001, add `--urls "https://localhost:5101;http://localhost:5100"`.
 
@@ -151,7 +163,7 @@ cross-site link cannot sign anyone out), `/auth/me`.
 
 **Authz is deny-by-default**: `AddBffAuthentication` sets a `FallbackPolicy` of
 `RequireAuthenticatedUser`. Public endpoints opt out with `.AllowAnonymous()` — `/auth`, `/health*`,
-`/diag`, `/api/takedowns` (own X-Api-Key filter), `/s/{code}`, `/share/{placeId}/card.png`,
+`/api/diag` (+ `/api/diag/mock-status`), `/api/takedowns` (own X-Api-Key filter), `/s/{code}`, `/share/{placeId}/card.png`,
 OpenAPI/Scalar, and the SPA `index.html` fallback. Client `[Authorize]` is UI-only.
 
 `FakeAuthHandler` maps `X-Fake-User`/`X-Fake-Roles` to a principal in Dev/Test and throws in
@@ -164,7 +176,7 @@ button in **both** Development and Test — every E2E UI test clicks it.
   `Nullable` via `Directory.Build.props`. MinVer versions from git tags (`v` prefix). Every
   assembly also carries a `YYMMDD` build stamp (HEAD commit date, `StampBuildDate` in
   `Directory.Build.targets`): `BuildStamp.razor` shows it bottom-right in both layouts and
-  `/diag` reports it as `buildStamp`.
+  `/api/diag` reports it as `buildStamp`.
 - Key Vault `kv-poshared2` (RG `PoShared`), secrets prefix-scoped `PoSeeReview--` via
   `PrefixKeyVaultSecretManager`, `DefaultAzureCredential` throughout. The Bicep only grants read
   access to it; it never creates or writes a vault.
@@ -379,7 +391,7 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   storage throws, and both types are in `AppJsonContext`.
 - **Account menu.** `/my-comics` and `/settings` are linked from the identity badge's native
   `popover`, never from `nav.nav-links`, which `HeaderContractUiTests` pins at exactly one item (Hall of Fame — the brand link is the way home). Under 40rem every
-  `.popover-menu` is a bottom sheet over a scrim (shared layer, so callers' placement loses). `/diagnostics` and
+  `.popover-menu` is a bottom sheet over a scrim (shared layer, so callers' placement loses). `/diag` (alias `/diagnostics`) and
   `/moderation` have no nav entry.
 - **Components.** `ComicRow` is every list of comics (its `Skeleton` mode is every list's loading
   state — no spinner where rows are coming); `StateCard` is every empty/error/404 screen;
@@ -388,10 +400,13 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   layouts' whole-page `ErrorPanel`. Add to these rather than hand-rolling a layout.
 - **Report flow.** Send closes `ReportDialog` at once; `ToastService.ShowUndoableAsync` offers Undo
   for 5s and the POST leaves only when the window passes (or another toast supersedes it). There is
-  no thanks screen. A failure is said on the toast.
+  no thanks screen. A failure is said on the toast. The form is an `EditForm` validated by the
+  API's own `ComicReportRequestValidator` (Shared) through `Layout/FluentValidationValidator`
+  (the fleet forms standard, 2026-11-17): inline per-field errors, `novalidate`, and Send disabled
+  while a submit is in flight. New submitting forms follow the same pattern.
 - **Moderation on a phone.** Under 48rem `/moderation` is cards, the grid above it; both render and
   CSS picks one, so the row menu is one `ActionsFor(item, where)` template with per-layout popover ids.
-- **Radzen is operator-only.** `/moderation` and `/diagnostics` wrap their Radzen components in
+- **Radzen is operator-only.** `/moderation` and `/diag` wrap their Radzen components in
   `RadzenScope`, which loads `js/radzen-theme.js` (theme into `@layer vendor`, script) first and hosts
   `RadzenDialog`. Its `--rz-*` variables are re-pointed at app tokens at the end of `app.css`, so
   no Radzen colour needs a dark-mode copy. Keep `@using Radzen` local to those files — global, it
@@ -468,7 +483,7 @@ steps a slow device down to `lite`). Every switch is on the
   frame budget that steps the tier down after **1500ms** of sustained overrun (milliseconds, not
   frames; each frame adds at most 100ms, so a single compile stall is a hitch, not a downgrade; not persisted), tiers `off`/`lite`/`full` stamped on `<html data-fx-tier>`. `off` is forced
   by reduced motion or no WebGL2. `createSurface` gives one WebGL2 context per canvas.
-  The frame-budget readout is `/diagnostics` → Graphics (`FrameBudget`: frame time against the
+  The frame-budget readout is `/diag` → "Graphics on this device" (`FrameBudget`: frame time against the
   budget, a tier strip, the WebGPU state) or `poseeFx.stats()` in the console.
 - **`[JSImport]` for the hot path.** `FxInterop` binds fx.js's plain exports (`tapAt`, `tapCached`,
   `fillStats`) through `JSHost.ImportAsync("fx", "/js/fx.js")` — the URL `index.html` loads, so it
@@ -567,8 +582,8 @@ steps a slow device down to `lite`). Every switch is on the
 
 `manifest.webmanifest`, `service-worker.js`, `offline.html`. The worker is **network-first** because
 Blazor verifies `_framework/*` against `blazor.boot.json` integrity hashes and those files are not
-fingerprinted — cache-first means a white screen after a deploy. `/api`, `/auth`, `/diag`, `/health`
-are never cached, with one exception: `GET /api/comics/{placeId}/image` is stale-while-revalidate in
+fingerprinted — cache-first means a white screen after a deploy. `/api`, `/auth`, `/health`
+are never cached (the diagnostics JSON is `/api/diag`), with one exception: `GET /api/comics/{placeId}/image` is stale-while-revalidate in
 its own 30-entry cache so `/my-comics` works offline, and a 404 or 451 evicts the entry.
 
 ### Endpoints worth knowing
@@ -577,9 +592,18 @@ its own 30-entry cache so `/my-comics` works offline, and a 404 or 451 evicts th
 `/health` (+ `/live`, `/ready`; the Google Maps check is key-presence only — it used to fire a
 billed call per anonymous hit; `skia_imaging` proves the native lib and fonts load). App Service
 probes `/health/live` (dependency-free); the deploy's health gate polls `/health`, so an Unhealthy
-check fails the deploy and rolls it back; `/diag` (masked keys, integration status, Dev **and** Prod — behind
-`UserAgentValidationMiddleware`, so anonymous scripted fetches get a 400); `/diag/mock-status`
-drives the client's "USING MOCK DATA" banner.
+check fails the deploy and rolls it back; `GET /api/diag` (anonymous, every environment — behind
+`UserAgentValidationMiddleware`, so anonymous scripted fetches get a 400) feeds the `/diag` page;
+`/api/diag/mock-status` drives the client's "USING MOCK DATA" banner.
+
+**`/diag` (decided 2026-11-17, fleet standard).** `/diag` is the **client page** (Radzen, anonymous,
+`/diagnostics` kept as an alias): status banner, API (reachable + response time), Database / storage,
+Services (AI, Google Maps, imaging, Key Vault, Microsoft sign-in), version and environment, Refresh.
+The JSON moved from `/diag` to `/api/diag` so browser navigation reaches the page. It replaced the
+old Development-only, signed-in tabs (config dump, masked keys, machine name, user id): the
+snapshot (`DiagnosticsSnapshotQueryHandler`) now emits only fixed names/purposes, statuses,
+timings and an exception **type** — never a value, URI, id, path or message.
+`DiagnosticsEndpointTests` (Integration) checks the body against the app's own configuration.
 
 ## Conventions
 

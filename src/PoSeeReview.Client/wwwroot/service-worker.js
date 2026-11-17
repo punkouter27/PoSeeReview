@@ -25,7 +25,7 @@
 // stops running yesterday's audio.js/fx.js — network-first still answers from the runtime
 // cache whenever a request fails, and a re-deployed file the worker never re-requested stays
 // stale in that cache until this string changes.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = `posee-shell-${VERSION}`;
 const RUNTIME_CACHE = `posee-runtime-${VERSION}`;
 
@@ -74,9 +74,9 @@ self.addEventListener('activate', event => {
 /**
  * Paths that must never be served from a cache.
  *
- * `/api` and `/auth` are obvious. `/diag` is included because a cached diagnostics snapshot is
- * actively misleading — it is the page someone opens precisely when they need to know the
- * current state of the system.
+ * `/api` and `/auth` are obvious. The diagnostics snapshot (`/api/diag`) is covered by `/api/`;
+ * a cached one would be actively misleading — the `/diag` page is opened precisely when someone
+ * needs to know the current state of the system.
  *
  * `/s/` and `/share/` are here for a different reason: both resolve content that moderation can
  * withdraw. A cached short-link redirect or a cached preview card would keep serving a comic
@@ -86,7 +86,6 @@ self.addEventListener('activate', event => {
 function isNeverCached(url) {
     return url.pathname.startsWith('/api/')
         || url.pathname.startsWith('/auth/')
-        || url.pathname.startsWith('/diag')
         || url.pathname.startsWith('/health')
         || url.pathname.startsWith('/s/')
         || url.pathname.startsWith('/share/');

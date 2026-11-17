@@ -1,116 +1,83 @@
-/* Inherits --font-body like every other page. This used to pin its own system font stack,
-   which made Diagnostics the one page not rendering in the app's typeface. */
-/* Width and padding come from .page-shell--wide in the shared layer now, so there is nothing
-   to declare here. The `.diagnostics-container` rule that used to sit in this spot was dead
-   code twice over: empty, and unable to match, because the class is passed to <PageShell> and
-   the div carrying it is emitted by PageShell rather than by this component. */
+/* /diag — one column of cards, phone first. Radzen renders the card/alert roots, which carry no
+   scope attribute, so they are reached through ::deep from .diag-body (authored here). */
+.diag-body {
+    display: grid;
+    gap: var(--space-lg);
+    min-width: 0;
+}
 
-/* Health Summary */
-.health-summary {
+.diag-body ::deep .diag-banner,
+.diag-body ::deep .diag-section {
+    margin: 0;
+    min-width: 0;
+}
+
+.diag-loading {
     display: flex;
     align-items: center;
-    gap: var(--space-lg);
-    padding: var(--space-xl);
-    border-radius: var(--radius-card);
-    margin-bottom: var(--space-xl);
-    box-shadow: var(--shadow-sm);
+    gap: var(--space-md);
+    padding: var(--space-xl) 0;
 }
 
-/* Status tints come from the semantic surface tokens so they flip with the theme. The old
-   hardcoded pastels stayed light while the copy on top followed --color-text-primary into
-   near-white, which made the whole summary unreadable in dark mode. */
-.health-summary.status-healthy {
-    background: var(--color-success-surface);
-    border-left: 6px solid var(--color-success);
+.diag-section-title {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--text-lg, 1.15rem);
 }
 
-.health-summary.status-degraded {
-    background: var(--color-highlight);
-    border-left: 6px solid var(--color-accent);
-}
-
-.health-summary.status-unhealthy {
-    background: var(--color-danger-surface);
-    border-left: 6px solid var(--color-danger);
-}
-
-.status-icon {
-    font-size: var(--text-3xl);
-}
-
-.status-details h2 {
-    margin: 0 0 var(--space-xs) 0;
-    font-size: 1.75rem;
-    color: var(--color-text-primary);
-}
-
-.status-details p {
-    margin: var(--space-3xs) 0;
-    color: var(--color-text-primary);
-}
-
-.diagnostics-section {
-    padding-block: var(--space-sm);
-}
-
-/* `min(220px, 100%)` rather than a bare 220px: auto-fit tracks overflow their container when
-   the container is narrower than the floor, and the page scrolled sideways. */
-.key-grid {
+/* Name + purpose on the left, badge and timings beside it; on a phone the meta line wraps under. */
+.diag-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-    gap: 0.9rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2xs, 0.25rem) var(--space-md);
+    padding-block: var(--space-sm);
+    border-top: 1px solid var(--color-border);
 }
 
-.key-card {
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: var(--space-md);
+.diag-section-title + .diag-row {
+    border-top: 0;
 }
 
-.key-present {
-    border-left: 4px solid var(--color-success);
+.diag-row-main {
+    display: grid;
+    min-width: 0;
 }
 
-.key-missing {
-    border-left: 4px solid var(--color-danger);
-}
-
-.key-name {
-    font-size: 0.85rem;
-    color: var(--color-text-secondary);
-    margin-bottom: 0.35rem;
-}
-
-.key-value {
+.diag-row-name {
     font-weight: 600;
+}
+
+.diag-row-purpose,
+.diag-row-meta,
+.diag-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
     overflow-wrap: anywhere;
 }
 
-.error-summary {
-    cursor: pointer;
-    color: var(--color-danger);
+.diag-row-meta {
+    grid-column: 1 / -1;
+}
+
+.diag-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+    gap: var(--space-md);
+    margin: 0;
+}
+
+.diag-facts dt {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.diag-facts dd {
+    margin: 0;
     font-weight: 600;
 }
 
-.error-details {
-    background: var(--color-surface-alt);
-    padding: var(--space-md);
-    border-radius: 4px;
-    overflow-x: auto;
-    font-size: var(--text-sm);
-    margin-top: var(--space-xs);
+.diag-graphics summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding-block: var(--space-sm);
 }
-
-/* .btn / .btn-primary / .btn-secondary and .alert* are global primitives in app.css — see
-   the note there. Redefining them here is what made this page's buttons and error banner
-   look nothing like the rest of the app. */
-
-/* Responsive */
-@media (max-width: 48rem) {
-    .health-summary {
-        flex-direction: column;
-        text-align: center;
-    }
-}
-

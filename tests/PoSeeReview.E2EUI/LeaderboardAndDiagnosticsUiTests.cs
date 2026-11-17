@@ -4,8 +4,7 @@ namespace PoSeeReview.E2EUI;
 
 /// <summary>
 /// Hall of Fame and Diagnostics page coverage, ported from the former TypeScript suite.
-/// Diagnostics doubles as the UI-side check that <c>/diag</c> renders masked values only
-/// (NET_RULES 3.2).
+/// Diagnostics covers the anonymous <c>/diag</c> page (fleet standard, 2026-11-17).
 /// </summary>
 [Collection("e2e-ui")]
 [Trait("Tier", "E2EUI")]
@@ -53,7 +52,7 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
     /// The heading, the minimal default and the never-an-error-banner rule on one page load. The
     /// heading renders through PageShell (.page-hero-title / .page-shell-title). The default view
     /// is the board alone: no region, limit or view chips — one "☰ Right now" button opens the views
-    /// drawer (archive, map), and that is the page's only control.
+    /// drawer (archive, map); beside it, only the restaurants / apartments board switch.
     /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
@@ -64,25 +63,46 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
         await Assertions.Expect(page.Locator("h1.page-hero-title, h1.page-shell-title"))
             .ToHaveTextAsync("Hall of Fame");
-        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit'], .leaderboard-container .chip-toggle:not(.board-views-toggle)"))
+        await Assertions.Expect(page.Locator(".region-chips, .region-chip, .limit-select, label[for='limit'], .leaderboard-container .chip-toggle:not(.board-views-toggle):not([data-testid^='board-'])"))
             .ToHaveCountAsync(0);
+        // The restaurant / apartment board switch (two chips) is the one other control.
+        await Assertions.Expect(page.Locator(".board-kind [data-testid^='board-']")).ToHaveCountAsync(2);
         await Assertions.Expect(page.Locator(".board-views-toggle")).ToContainTextAsync("Right now");
 
         await Assertions.Expect(page.Locator(".alert-danger")).ToHaveCountAsync(0);
         await Assertions.Expect(page.Locator("#blazor-error-ui")).ToBeHiddenAsync(new() { Timeout = RenderTimeout });
     }
 
+    /// <summary>
+    /// The fleet /diag standard: reachable signed out, a status banner, API / storage / services
+    /// sections, version and environment, and no horizontal scroll at 390px. Console errors fail
+    /// the suite through the fixture. /diagnostics stays an alias of the same page.
+    /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Diagnostics_ShowsDependencyHealth(string viewport)
+    public async Task Diag_RendersSignedOut_WithEverySection(string viewport)
     {
-        var page = await SignedInAsync(viewport, "/diagnostics");
-        await page.Locator(".diagnostics-container").First
-            .WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
+        var page = await fixture.NewPageAsync(viewport);
+        await page.GotoAsync($"{fixture.BaseUrl}/diag");
 
-        // Masking is proven end to end by E2EAPI's Diag_IsAnonymous_…NeverShowsASecret and by the
-        // unit tests; the page only renders what /diag returns.
-        await Assertions.Expect(page.Locator(".health-summary, .diagnostics-section").First)
-            .ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator(".diag-banner")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator(".diag-banner")).Not.ToHaveAttributeAsync("data-status", "error");
+        foreach (var section in new[] { "api", "storage", "services", "about" })
+        {
+            await Assertions.Expect(page.Locator($"[data-section='{section}']")).ToBeVisibleAsync();
+        }
+        await Assertions.Expect(page.Locator("[data-section='storage'] .diag-row").First).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("[data-fact='version']")).Not.ToBeEmptyAsync();
+        await Assertions.Expect(page.Locator("[data-fact='environment']")).Not.ToBeEmptyAsync();
+
+        var refresh = page.GetByRole(AriaRole.Button, new() { NameRegex = new("refresh", System.Text.RegularExpressions.RegexOptions.IgnoreCase) });
+        await refresh.ClickAsync();
+        await Assertions.Expect(refresh).ToBeEnabledAsync(new() { Timeout = RenderTimeout });
+
+        var overflow = await page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth > window.innerWidth + 1");
+        Assert.False(overflow, "/diag scrolls sideways");
+
+        await page.GotoAsync($"{fixture.BaseUrl}/diagnostics");
+        await Assertions.Expect(page.Locator(".diag-banner")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 }

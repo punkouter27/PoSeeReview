@@ -3,16 +3,27 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PoSeeReview.Api.Identity;
+using PoSeeReview.Api.Configuration;
+using PoSeeReview.Api.Testing;
 using PoSeeReview.Shared.Dtos;
 
 namespace PoSeeReview.Api.Features.Diagnostics;
 
+/// <summary>
+/// Builds the anonymous <c>GET /api/diag</c> snapshot from the registered health checks plus a
+/// few configuration-presence checks (AI, Key Vault, sign-in) that have no network probe.
+/// <para>
+/// The endpoint is anonymous in every environment, so this class is the safety boundary: it
+/// emits fixed display names and purposes, statuses and timings only. A health check's own
+/// description is never copied (it could name a host), and a failure carries its exception TYPE,
+/// never the message or stack. No configuration value is read into the response.
+/// </para>
+/// </summary>
 public class DiagnosticsSnapshotQueryHandler(
     IConfiguration configuration,
     HealthCheckService healthCheckService,
-    ICurrentRequestIdentityAccessor currentRequestIdentityAccessor,
     IHostEnvironment environment,
+    TimeProvider timeProvider,
     ILogger<DiagnosticsSnapshotQueryHandler> logger)
 {
     /// <summary>The <c>YYMMDD</c> stamp Directory.Build.targets puts on every assembly.</summary>
@@ -20,179 +31,133 @@ public class DiagnosticsSnapshotQueryHandler(
         typeof(DiagnosticsSnapshotQueryHandler).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "BuildStamp")?.Value ?? "unknown";
 
-    private static readonly string[] SensitivePatterns =
-    [
-        "key", "secret", "password", "connectionstring", "token", "apikey", "credential", "clientsecret", "private"
-    ];
-
-    private static readonly string[] ExcludedKeyPrefixes =
-    [
-        "PATH", "PATHEXT", "PSModulePath", "TEMP", "TMP", "USERNAME", "USERPROFILE", "HOMEPATH", "LOCALAPPDATA", "APPDATA",
-        "PROGRAMFILES", "PROGRAMDATA", "SYSTEMROOT", "WINDIR", "GIT_", "VSCODE_", "PROCESSOR_", "COMPUTERNAME"
-    ];
-
-    private static readonly string[] AllowedKeyPrefixes =
-    [
-        "AllowedHosts",
-        "ApplicationInsights",
-        "ASPNETCORE_ENVIRONMENT",
-        "Azure",
-        "Cleanup",
-        "Comics",
-        "ConnectionStrings",
-        "DOTNET_",
-        "Google",
-        "HealthChecks",
-        "KeyVault",
-        "RateLimiting",
-        "Serilog"
-    ];
-
-    private static readonly string[] DiagnosticKeyNames =
-    [
-        "KeyVault:Uri",
-        "ApplicationInsights:ConnectionString",
-        "GoogleMaps:ApiKey",
-        "AzureOpenAI:Endpoint",
-        "AzureOpenAI:ApiKey",
-        "ConnectionStrings:Storage",
-        "ConnectionStrings:AzureTableStorage",
-        "ConnectionStrings:AzureBlobStorage"
-    ];
+    /// <summary>Display name, kind and purpose for each registered health check (Program.cs).</summary>
+    private static readonly Dictionary<string, (string Kind, string Name, string Purpose)> KnownChecks = new()
+    {
+        ["azure_table_storage"] = (DiagnosticsCheckKinds.Storage, "Table Storage", "Holds comics, the Hall of Fame, budgets and reports."),
+        ["azure_blob_storage"] = (DiagnosticsCheckKinds.Storage, "Blob Storage", "Holds comic images and recorded audio."),
+        ["google_maps_api"] = (DiagnosticsCheckKinds.Service, "Google Maps", "Finds places and reads their public reviews."),
+        ["skia_imaging"] = (DiagnosticsCheckKinds.Service, "Image rendering", "Draws captions onto comics and builds share cards.")
+    };
 
     public async Task<DiagnosticsSnapshotDto> ExecuteAsync(CancellationToken cancellationToken)
     {
-        // /diag is anonymous so platform probes can reach it, but the full configuration
-        // surface (endpoint URLs, ClientId/tenant GUIDs, masked-but-partial secret prefixes)
-        // must never leak in Production. Outside Development we return dependency health and
-        // key *existence* only — no values, no config dump.
-        var exposeConfigDetail = environment.IsDevelopment();
+        var isMock = MockDataMode.IsEnabled(configuration, environment);
+        var checks = new List<DiagnosticsCheckDto>();
+        var started = timeProvider.GetTimestamp();
 
-        var configEntries = new List<ConfigurationValueDto>();
-        if (exposeConfigDetail)
+        try
         {
-            foreach (var section in configuration.AsEnumerable())
+            var report = await healthCheckService.CheckHealthAsync(cancellationToken);
+            var checkedAt = timeProvider.GetUtcNow().UtcDateTime;
+            foreach (var (key, entry) in report.Entries)
             {
-                if (ShouldExcludeKey(section.Key) || !ShouldIncludeKey(section.Key))
-                {
-                    continue;
-                }
+                var (kind, name, purpose) = KnownChecks.TryGetValue(key, out var known)
+                    ? known
+                    : (DiagnosticsCheckKinds.Service, key, "Internal dependency.");
 
-                if (string.IsNullOrWhiteSpace(section.Value))
+                checks.Add(new DiagnosticsCheckDto
                 {
-                    continue;
-                }
-
-                configEntries.Add(new ConfigurationValueDto
-                {
-                    Key = section.Key,
-                    Value = MaskValue(section.Key, section.Value)
+                    Kind = kind,
+                    Name = name,
+                    Purpose = purpose,
+                    Status = entry.Status.ToString(),
+                    Detail = DescribeProbe(key, entry.Status, isMock),
+                    DurationMilliseconds = Math.Round(entry.Duration.TotalMilliseconds, 1),
+                    ErrorType = entry.Exception?.GetType().Name,
+                    CheckedAt = checkedAt
                 });
             }
         }
-
-        HealthReport? dependencyReport = null;
-        try
-        {
-            dependencyReport = await healthCheckService.CheckHealthAsync(cancellationToken);
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to gather dependency status for diagnostics snapshot");
+            checks.Add(new DiagnosticsCheckDto
+            {
+                Kind = DiagnosticsCheckKinds.Service,
+                Name = "Health checks",
+                Purpose = "Runs every dependency check above.",
+                Status = nameof(HealthStatus.Unhealthy),
+                Detail = "The checks could not run",
+                ErrorType = ex.GetType().Name,
+                CheckedAt = timeProvider.GetUtcNow().UtcDateTime
+            });
         }
 
-        var keyStatus = DiagnosticKeyNames
-        .Select(key => new ConfigurationKeyStatusDto
-        {
-            Key = key,
-            Exists = !string.IsNullOrWhiteSpace(configuration[key]),
-            // Masked value (partial prefix/suffix) is still identifying — Development only.
-            Value = exposeConfigDetail ? MaskValue(key, configuration[key]) : null
-        })
-        .ToList();
+        checks.AddRange(ConfigurationChecks(isMock, timeProvider.GetUtcNow().UtcDateTime));
+
+        var overall = checks.Count == 0
+            ? HealthStatus.Healthy
+            : checks.Min(c => Enum.TryParse<HealthStatus>(c.Status, out var s) ? s : HealthStatus.Unhealthy);
 
         return new DiagnosticsSnapshotDto
         {
-            Timestamp = DateTime.UtcNow,
-            Environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Unknown",
-            MachineName = Environment.MachineName,
-            OsVersion = Environment.OSVersion.ToString(),
-            DotNetVersion = Environment.Version.ToString(),
+            Timestamp = timeProvider.GetUtcNow().UtcDateTime,
+            Environment = environment.EnvironmentName,
             BuildStamp = BuildStamp,
-            ProcessId = Environment.ProcessId,
-            CurrentUserId = currentRequestIdentityAccessor.GetCurrentUserId().Value,
-            DependencyStatus = dependencyReport == null
-                ? null
-                : new DependencyStatusSummaryDto
-                {
-                    Overall = dependencyReport.Status.ToString(),
-                    Checks = dependencyReport.Entries.Select(entry => new DependencyCheckDto
-                    {
-                        Name = entry.Key,
-                        Status = entry.Value.Status.ToString(),
-                        Description = entry.Value.Description,
-                        DurationMilliseconds = entry.Value.Duration.TotalMilliseconds,
-                        // Full exception detail (types, stack) only outside Production — /diag is anonymous.
-                        Error = environment.IsDevelopment() ? entry.Value.Exception?.ToString() : null
-                    }).ToList()
-                },
-            KeyStatus = keyStatus,
-            Config = configEntries.OrderBy(entry => entry.Key).ToList()
+            Status = overall.ToString(),
+            DurationMilliseconds = Math.Round(timeProvider.GetElapsedTime(started).TotalMilliseconds, 1),
+            IsMockData = isMock,
+            Checks = checks
         };
     }
 
-    private static string? MaskValue(string key, string? value)
+    private static string DescribeProbe(string key, HealthStatus status, bool isMock) => key switch
     {
-        if (string.IsNullOrEmpty(value))
+        // The Maps check reads configuration only — a geocode probe would be a billed call.
+        "google_maps_api" when isMock => "Mocked (sample places)",
+        "google_maps_api" => status == HealthStatus.Healthy ? "Key configured" : "Key not configured",
+        _ => status switch
         {
-            return value;
+            HealthStatus.Healthy => "Working",
+            HealthStatus.Degraded => "Partly working",
+            _ => "Not reachable"
         }
+    };
 
-        var lowerKey = key.ToLowerInvariant();
-        var isSensitive = SensitivePatterns.Any(pattern => lowerKey.Contains(pattern));
-        var looksLikeSecretValue =
-            value.StartsWith("ghp_", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("gho_", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("AIza", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("DefaultEndpointsProtocol=", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("AccountKey=", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase);
-
-        if (isSensitive || looksLikeSecretValue)
-        {
-            return MaskMiddle(value);
-        }
-
-        if (value.Length > 120)
-        {
-            return string.Concat(value.AsSpan(0, 117), "...");
-        }
-
-        return value;
-    }
-
-    private static string MaskMiddle(string value)
+    /// <summary>
+    /// Services with no cheap, free probe: reported from whether they are configured. A missing
+    /// value is Degraded in Production; locally Key Vault and Microsoft sign-in are optional.
+    /// </summary>
+    private IEnumerable<DiagnosticsCheckDto> ConfigurationChecks(bool isMock, DateTime checkedAt)
     {
-        if (value.Length <= 6)
+        var isProduction = environment.IsProduction();
+
+        var chatProvider = configuration[InfrastructureServiceCollectionExtensions.AiChatProviderConfigurationKey];
+        var usesOllama = string.Equals(chatProvider, "Ollama", StringComparison.OrdinalIgnoreCase);
+        var azureAiConfigured = !string.IsNullOrWhiteSpace(configuration["AzureOpenAI:Endpoint"])
+            && !string.IsNullOrWhiteSpace(configuration["AzureOpenAI:ApiKey"]);
+        yield return Configured(
+            "AI scoring and drawing",
+            "Rates how strange the reviews are, writes the panels and draws the comic.",
+            isMock ? Mocked() : usesOllama ? (true, "Local model (Ollama)") : (azureAiConfigured, azureAiConfigured ? "Configured" : "Not configured"),
+            required: true);
+
+        var keyVaultConfigured = !string.IsNullOrWhiteSpace(configuration["KeyVault:Uri"]);
+        yield return Configured(
+            "Key Vault",
+            "Supplies the app's secrets at startup.",
+            (keyVaultConfigured || !isProduction, keyVaultConfigured ? "Configured" : "Not used (local settings)"),
+            required: isProduction);
+
+        var signInConfigured = !string.IsNullOrWhiteSpace(configuration["AzureAd:ClientId"])
+            && !string.IsNullOrWhiteSpace(configuration["AzureAd:ClientSecret"]);
+        yield return Configured(
+            "Microsoft sign-in",
+            "Lets people sign in with a Microsoft account.",
+            (signInConfigured || !isProduction, signInConfigured ? "Configured" : "Guest sign-in only (local)"),
+            required: isProduction);
+
+        DiagnosticsCheckDto Configured(string name, string purpose, (bool Ok, string Detail) state, bool required) => new()
         {
-            return new string('*', value.Length);
-        }
+            Kind = DiagnosticsCheckKinds.Service,
+            Name = name,
+            Purpose = purpose,
+            Status = (state.Ok ? HealthStatus.Healthy : required ? HealthStatus.Unhealthy : HealthStatus.Degraded).ToString(),
+            Detail = state.Detail,
+            CheckedAt = checkedAt
+        };
 
-        return string.Concat(value.AsSpan(0, 3), "***", value.AsSpan(value.Length - 3));
-    }
-
-    private static bool ShouldExcludeKey(string? key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return true;
-        }
-
-        return ExcludedKeyPrefixes.Any(prefix => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool ShouldIncludeKey(string key)
-    {
-        return AllowedKeyPrefixes.Any(prefix => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        static (bool, string) Mocked() => (true, "Mocked (no real AI calls)");
     }
 }

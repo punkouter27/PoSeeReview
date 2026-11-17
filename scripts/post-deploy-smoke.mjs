@@ -4,7 +4,7 @@
 //   1. Blazor render tree initialises (the WASM runtime boots and replaces the loading shell)
 //   2. /health responds and reports a non-failed status
 //
-// The former /diag secret-masking check was removed: /diag sits behind the unsupported-user-agent
+// The former diagnostics secret-masking check was removed: /api/diag sits behind the unsupported-user-agent
 // guard, so an anonymous scripted fetch always gets a 400 and the check could never pass here.
 //
 // Usage: BASE_URL=https://app-poseereview2.azurewebsites.net node scripts/post-deploy-smoke.mjs

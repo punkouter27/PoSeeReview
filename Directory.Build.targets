@@ -1,7 +1,7 @@
 <Project>
   <!-- The YYMMDD build stamp, on every assembly: the HEAD commit's UTC date, so a deploy is named
        by the code it shipped rather than the day CI happened to run. The client shows it in the
-       corner (BuildStamp.razor); the API reports it on /diag (DiagnosticsSnapshotQueryHandler).
+       corner (BuildStamp.razor); the API reports it on /api/diag (DiagnosticsSnapshotQueryHandler).
        rev-list rather than a log format string: its % is eaten by the cmd shell Exec uses on
        Windows. No git (a source zip, a container without .git) falls back to today's UTC date. -->
   <Target Name="StampBuildDate" BeforeTargets="GetAssemblyAttributes">

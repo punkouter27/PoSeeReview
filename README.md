@@ -66,7 +66,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 - **Caching:** Comics cache for 7 days and restaurant data for 24 hours in Azure Table Storage. SAS URLs are issued for 8 days, outliving the comic, to avoid stale URL errors within the cache window.
 - **Rate limiting:** The comic generation stream (`POST /api/comics/{placeId}/stream`) has its own `comics-post` policy, 3 per minute per signed-in user, on top of the 240/min global window per IP, plus a daily per-user and app-wide budget.
 - **Bot protection:** All requests are evaluated by `UserAgentValidationMiddleware`. Requests with missing or blocked User-Agent patterns are rejected at 400 before hitting the application layer.
-- **Sign-in required by default.** Every endpoint needs a session (Microsoft sign-in, or the guest cookie outside Production) unless it opts out: `/auth`, `/health*`, `/diag`, `/s/{code}`, `/share/{placeId}/card.png`, the SPA shell, and `POST /api/takedowns`, which carries its own `X-Api-Key`.
+- **Sign-in required by default.** Every endpoint needs a session (Microsoft sign-in, or the guest cookie outside Production) unless it opts out: `/auth`, `/health*`, `/api/diag` (the JSON behind the public `/diag` status page), `/s/{code}`, `/share/{placeId}/card.png`, the SPA shell, and `POST /api/takedowns`, which carries its own `X-Api-Key`.
 - **Security:** All secrets are stored in Azure Key Vault and resolved at startup via Managed Identity. No credentials appear in `appsettings.json` or environment variables in production.
 
 ### Success Metrics
@@ -89,12 +89,12 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 | External AI | Azure OpenAI (`gpt-5.4-nano` scorer and image QA, `gpt-5.4-mini` moderation triage, `gpt-image-1-mini` drafts), Azure AI Content Safety, Google Gemini (`gemini-2.5-flash-image` remasters), Google Maps Places. Local: Ollama (chat), any OpenAI-compatible image server (Development) |
 | Observability | Application Insights, OpenTelemetry, Serilog |
 | Imaging | SkiaSharp (caption overlay, lossy WebP, share cards); Bangers and DM Sans embedded |
-| Operator UI | Radzen.Blazor 12.0.6 on `/moderation` (DataGrid, confirm dialog) and `/diagnostics` (tabs) only, through `RadzenScope`; its `material-base` theme is fetched into the `vendor` cascade layer and re-coloured from the app's tokens by the `--rz-*` bridge in `app.css`. The trimmed assembly and the framework pieces it pulls in add ~0.97 MB brotli to the boot download |
+| Operator UI | Radzen.Blazor 12.0.6 on `/moderation` (DataGrid, confirm dialog) and `/diag` (system status; alias `/diagnostics`) only, through `RadzenScope`; its `material-base` theme is fetched into the `vendor` cascade layer and re-coloured from the app's tokens by the `--rz-*` bridge in `app.css`. The trimmed assembly and the framework pieces it pulls in add ~0.97 MB brotli to the boot download |
 | Graphics & audio | One hand-written WebGL2 backdrop shader on a shared rAF loop with a frame-budget tier (`off`/`lite`/`full`, `full` by default — `lite` is the calm one: the ink reveal and glass only, while the stamp, confetti, springy score, board and pin animations wait for `full`); an optional WebGPU compute particle layer (ink motes); 2D-canvas confetti and ink splats; Web Audio synthesis, no audio assets. Every extra (sound, haptics, map sounds, ink motes) is on by default at full volume and can be switched off on `/settings` |
 | Maps | MapLibre GL JS 5.24.0 (UMD, jsDelivr, SRI-pinned, loaded only when a map opens) over OpenFreeMap vector tiles — no key, no per-load billing |
 | Alerting | `infra/alerts.bicep`: Http5xx, AI spend, in-band generation failures, fail-open guards, image refusals, moderation queue → email action group |
 | Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `scripts/lighthouserc.json`) in the post-deploy smoke (`scripts/post-deploy-smoke.ps1`) |
-| Build stamp | `YYMMDD` from the HEAD commit date (`Directory.Build.targets`), shown bottom-right on every page and as `buildStamp` on `/diag` |
+| Build stamp | `YYMMDD` from the HEAD commit date (`Directory.Build.targets`), shown bottom-right on every page and as Version on `/diag` (`buildStamp` in `/api/diag`) |
 
 ## Documentation Suite
 
@@ -222,5 +222,13 @@ The full C# Playwright UI suite targets a running app via `E2E_BASE_URL` (it inc
 ```powershell
 $env:E2E_BASE_URL = "https://<fqdn>"
 dotnet test tests/PoSeeReview.E2EUI
+```
+
+Locally, run it against the app in **mock mode** (`UseMockData=true`, Development or Test only): sample places instead of Google Maps, every AI call answered by `AiMockDelegatingHandler`, real Azurite storage on ports 10000/10002 (`scripts/start-azurite.ps1`), Key Vault blanked so no production secret is read:
+
+```bash
+KeyVault__Uri= UseMockData=true ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7208 \
+  dotnet run --project src/PoSeeReview.Api --no-launch-profile
+E2E_BASE_URL=http://localhost:7208 dotnet test tests/PoSeeReview.E2EUI
 ```
 

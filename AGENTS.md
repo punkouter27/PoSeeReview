@@ -43,7 +43,7 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
   it; only ask when it genuinely needs their machine, credentials, or a decision.
 - **The deployed build is stamped `YYMMDD`, bottom-right.** The `StampBuildDate` target in
   `Directory.Build.targets` derives it from the HEAD commit's UTC date (today's date without git);
-  `BuildStamp.razor` shows it in both layouts and `/diag` reports it as `buildStamp`. Keep it working; don't hand-edit a version.
+  `BuildStamp.razor` shows it in both layouts and `/api/diag` reports it as `buildStamp` (shown on the `/diag` page). Keep it working; don't hand-edit a version.
 
 ## 4. UI changes & reporting
 

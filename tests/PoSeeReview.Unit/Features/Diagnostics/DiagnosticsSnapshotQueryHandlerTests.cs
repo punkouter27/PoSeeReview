@@ -4,96 +4,100 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using PoSeeReview.Api.Features.Diagnostics;
-using PoSeeReview.Api.Identity;
-using PoSeeReview.Shared.Contracts;
-using PoSeeReview.Shared.Enums;
-using PoSeeReview.Shared.Ids;
+using PoSeeReview.Shared.Dtos;
 
 namespace PoSeeReview.Unit.Features.Diagnostics;
 
 public class DiagnosticsSnapshotQueryHandlerTests
 {
-    private readonly Mock<ICurrentRequestIdentityAccessor> _identityAccessorMock = new();
     private readonly Mock<HealthCheckService> _healthCheckServiceMock = new();
 
-    private DiagnosticsSnapshotQueryHandler BuildSut(IConfiguration? config = null)
+    private DiagnosticsSnapshotQueryHandler BuildSut(string environmentName = "Development", Dictionary<string, string?>? settings = null)
     {
-        config ??= new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(settings ?? new Dictionary<string, string?>
             {
-                ["ASPNETCORE_ENVIRONMENT"] = "Development",
-                ["ApplicationInsights:ConnectionString"] = "InstrumentationKey=test-key"
+                ["AzureOpenAI:Endpoint"] = "https://secret-host.openai.azure.com/",
+                ["AzureOpenAI:ApiKey"] = "sk-very-secret-value",
+                ["KeyVault:Uri"] = "https://kv-secret.vault.azure.net/"
             })
             .Build();
 
         return new DiagnosticsSnapshotQueryHandler(
             config,
             _healthCheckServiceMock.Object,
-            _identityAccessorMock.Object,
-            Mock.Of<IHostEnvironment>(e => e.EnvironmentName == Environments.Development),
+            Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environmentName),
+            TimeProvider.System,
             NullLogger<DiagnosticsSnapshotQueryHandler>.Instance);
     }
 
     [Fact]
-    public async Task ExecuteAsync_ReturnsSnapshotWithEnvironment()
+    public async Task ExecuteAsync_ReportsEnvironment_AndNamesEachCheckInPlainEnglish()
     {
-        SetupHealthOk();
-        _identityAccessorMock.Setup(x => x.GetCurrentUserId()).Returns(UserId.From("ANON123456"));
+        SetupHealth(new Dictionary<string, HealthReportEntry>
+        {
+            ["azure_table_storage"] = new(HealthStatus.Healthy, "Reached https://acct.table.core.windows.net", TimeSpan.FromMilliseconds(12), null, null)
+        });
 
-        var sut = BuildSut();
-        var result = await sut.ExecuteAsync(default);
+        var result = await BuildSut().ExecuteAsync(default);
 
         Assert.Equal("Development", result.Environment);
+        var table = Assert.Single(result.Checks, c => c.Kind == DiagnosticsCheckKinds.Storage);
+        Assert.Equal("Table Storage", table.Name);
+        Assert.Equal("Healthy", table.Status);
+        Assert.Equal(12, table.DurationMilliseconds);
+        Assert.Contains(result.Checks, c => c.Name == "AI scoring and drawing" && c.Status == "Healthy");
     }
 
     [Fact]
-    public async Task ExecuteAsync_ReturnsCurrentUserId()
+    public async Task ExecuteAsync_NeverCopiesDescriptions_ExceptionMessages_OrConfigValues()
     {
-        SetupHealthOk();
-        _identityAccessorMock.Setup(x => x.GetCurrentUserId()).Returns(UserId.From("ANON654321"));
+        SetupHealth(new Dictionary<string, HealthReportEntry>
+        {
+            ["azure_blob_storage"] = new(HealthStatus.Unhealthy, "Account https://leaky.blob.core.windows.net failed",
+                TimeSpan.FromMilliseconds(5), new InvalidOperationException("AccountKey=abc123 at C:\\secret\\path"), null)
+        });
 
-        var sut = BuildSut();
-        var result = await sut.ExecuteAsync(default);
+        var result = await BuildSut().ExecuteAsync(default);
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
 
-        Assert.Equal("ANON654321", result.CurrentUserId);
+        Assert.Equal("Unhealthy", result.Status);
+        Assert.Contains(result.Checks, c => c.ErrorType == nameof(InvalidOperationException));
+        foreach (var leak in new[] { "leaky", "AccountKey", "sk-very-secret", "secret-host", "kv-secret", "openai.azure.com", "vault.azure.net", "C:\\" })
+        {
+            Assert.DoesNotContain(leak, json, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
-    public async Task ExecuteAsync_MasksKnownSensitiveKeyValues()
+    public async Task ExecuteAsync_MissingAiSettingsInProduction_IsUnhealthy()
     {
-        SetupHealthOk();
-        _identityAccessorMock.Setup(x => x.GetCurrentUserId()).Returns(UserId.Anonymous);
+        SetupHealth([]);
 
-        var sut = BuildSut();
-        var result = await sut.ExecuteAsync(default);
+        var result = await BuildSut("Production", []).ExecuteAsync(default);
 
-        // ApplicationInsights:ConnectionString is in keyStatus list — should be masked
-        var appInsightsKey = result.KeyStatus?.FirstOrDefault(k => k.Key == "ApplicationInsights:ConnectionString");
-        Assert.NotNull(appInsightsKey);
-        Assert.True(appInsightsKey.Exists);
-        Assert.NotEqual("InstrumentationKey=test-key", appInsightsKey.Value);
-        Assert.Contains("***", appInsightsKey.Value ?? string.Empty);
+        Assert.Equal("Unhealthy", result.Status);
+        Assert.Contains(result.Checks, c => c.Name == "AI scoring and drawing" && c.Status == "Unhealthy");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenHealthCheckThrows_DependencyStatusIsNull()
+    public async Task ExecuteAsync_WhenHealthCheckThrows_ReportsTheTypeOnly()
     {
         _healthCheckServiceMock
             .Setup(x => x.CheckHealthAsync(It.IsAny<Func<HealthCheckRegistration, bool>?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("health check failed"));
-        _identityAccessorMock.Setup(x => x.GetCurrentUserId()).Returns(UserId.Anonymous);
+            .ThrowsAsync(new InvalidOperationException("health check failed at secret-host"));
 
-        var sut = BuildSut();
-        var result = await sut.ExecuteAsync(default);
+        var result = await BuildSut().ExecuteAsync(default);
 
-        Assert.Null(result.DependencyStatus);
+        var failed = Assert.Single(result.Checks, c => c.Name == "Health checks");
+        Assert.Equal("Unhealthy", failed.Status);
+        Assert.Equal(nameof(InvalidOperationException), failed.ErrorType);
+        Assert.DoesNotContain("secret-host", System.Text.Json.JsonSerializer.Serialize(result), StringComparison.Ordinal);
     }
 
-    private void SetupHealthOk()
+    private void SetupHealth(Dictionary<string, HealthReportEntry> entries)
     {
-        var report = new HealthReport(
-            new Dictionary<string, HealthReportEntry>(),
-            TimeSpan.FromMilliseconds(1));
+        var report = new HealthReport(entries, TimeSpan.FromMilliseconds(1));
         _healthCheckServiceMock
             .Setup(x => x.CheckHealthAsync(It.IsAny<Func<HealthCheckRegistration, bool>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(report);

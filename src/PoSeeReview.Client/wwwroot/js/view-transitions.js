@@ -127,7 +127,7 @@ function clearMorphTags() {
 }
 
 /** Paths served by the Blazor router rather than by an API endpoint or a static file. */
-const NON_SPA_PREFIXES = ['/auth', '/api', '/health', '/diag', '/_framework', '/_content'];
+const NON_SPA_PREFIXES = ['/auth', '/api', '/health', '/_framework', '/_content'];
 
 function isSpaRoute(pathname) {
     if (NON_SPA_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'))) {

@@ -1,213 +1,201 @@
+@page "/diag"
 @page "/diagnostics"
-@attribute [Authorize]
+@attribute [AllowAnonymous]
+@using System.Diagnostics
 @using PoSeeReview.Client.Services
 @using PoSeeReview.Shared.Dtos
-@inject ApiClient ApiClient
-@inject ILogger<Diagnostics> Logger
 @using Radzen
 @using Radzen.Blazor
-@inject Microsoft.AspNetCore.Components.WebAssembly.Hosting.IWebAssemblyHostEnvironment HostEnvironment
+@inject ApiClient ApiClient
+@inject ILogger<Diagnostics> Logger
 
-<PageTitle>Diagnostics · PoSeeReview</PageTitle>
+@* The fleet /diag page (standard of 2026-11-17): anonymous, plain English, every environment.
+   Everything shown comes from GET /api/diag, which only ever returns statuses, timings and fixed
+   descriptions — the API's DiagnosticsSnapshotQueryHandler is the safety boundary, not this page.
+   /diagnostics is kept as an alias for old bookmarks. *@
 
-@if (HostEnvironment.Environment != "Development")
-{
-    <StateCard Icon="🔒" Title="Development only" Heading1="true">
-        <ChildContent>This page is only available in development environments.</ChildContent>
-        <Actions><a href="/" class="btn btn-primary">Back to home</a></Actions>
-    </StateCard>
-}
-else
-{
-<PageShell Title="System Diagnostics"
-           Width="PageShell.ShellWidth.Wide"
-           Class="diagnostics-container">
+<PageTitle>System status · PoSeeReview</PageTitle>
 
+<RadzenScope>
+<PageShell Title="System status" Width="PageShell.ShellWidth.Wide" Class="diagnostics-container">
     <Header>
-        <button type="button" class="btn btn-secondary" @onclick="LoadHealthStatus" disabled="@isLoading">Refresh</button>
+            <RadzenButton Text="@(_refreshing ? "Refreshing…" : "Refresh")"
+                          Icon="refresh"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Disabled="@_refreshing"
+                          Click="@LoadAsync"
+                          class="diag-refresh" />
     </Header>
     <ChildContent>
-    @* One tab strip instead of five stacked sections: on a phone the page was 2.3 screens of
-       collapsed and expanded panels. Client render mode keeps every tab in the DOM, so a hidden
-       tab still answers a selector. The Graphics tab is the live frame budget (FrameBudget). *@
-    <RadzenScope>
-        <RadzenTabs RenderMode="TabRenderMode.Client" class="diagnostics-tabs">
-            <Tabs>
-                <RadzenTabsItem Text="Health">
-                @if (isLoading)
-                {
-                    <LoadingIndicator Message="Checking system health..." />
-                }
-                else if (healthStatus == null)
-                {
-                    <StateCard Icon="⚠️" Title="Unable to retrieve health status" Alert="true">
-                        <ChildContent>@errorMessage</ChildContent>
-                        <Actions><button type="button" class="btn btn-primary" @onclick="LoadHealthStatus">Retry</button></Actions>
-                    </StateCard>
-                }
-                else
-                {
-                    <div class="health-summary @GetStatusClass(healthStatus.Status)">
-                        <div class="status-icon">@GetStatusIcon(healthStatus.Status)</div>
-                        <div class="status-details">
-                            <h2>Overall Status: @healthStatus.Status</h2>
-                            <p><strong>Checked:</strong> @healthStatus.Timestamp.ToString("yyyy-MM-dd HH:mm:ss UTC")</p>
-                            <p><strong>Duration:</strong> @healthStatus.DurationMilliseconds.ToString("F0") ms</p>
-                            <p><strong>Current User:</strong> @(diagnosticsSnapshot?.CurrentUserId ?? "anonymous")</p>
-                        </div>
+        <div class="diag-body">
+            @if (_snapshot is null && _refreshing)
+            {
+                <div class="diag-loading" role="status">
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                    <p>Checking every part of the app…</p>
+                </div>
+            }
+            else if (_snapshot is null)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="false" Title="We couldn't reach the app's server" class="diag-banner" data-status="error">
+                    The server didn't answer the status check, so we can't tell how its parts are doing.
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <span> (@_error)</span>
+                    }
+                    Try Refresh in a moment.
+                </RadzenAlert>
+                <RadzenCard class="diag-section" data-section="api">
+                    <h2 class="diag-section-title">API</h2>
+                    <div class="diag-row">
+                        <span class="diag-row-name">App server</span>
+                        <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Not reachable" />
                     </div>
+                </RadzenCard>
+            }
+            else
+            {
+                var snapshot = _snapshot;
+                <RadzenAlert AlertStyle="@BannerStyle(snapshot.Status)" AllowClose="false" Title="@BannerTitle(snapshot.Status)" class="diag-banner" data-status="@snapshot.Status.ToLowerInvariant()">
+                    @BannerBody(snapshot.Status)
+                    @if (snapshot.IsMockData)
+                    {
+                        <span> This copy runs on sample places and mocked AI, so nothing it shows is real.</span>
+                    }
+                </RadzenAlert>
 
-                    <RadzenDataGrid TItem="HealthCheckStatusDto" Data="@healthStatus.Checks" AllowSorting="true" AllowPaging="true" PageSize="20" Density="Density.Compact">
-                        <Columns>
-                            <RadzenDataGridColumn Property="@nameof(HealthCheckStatusDto.Name)" Title="Check" MinWidth="12rem">
-                                <Template Context="check">@FormatCheckName(check.Name)</Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn Title="Status" Sortable="false" Width="8rem">
-                                <Template Context="check">
-                                    <RadzenBadge BadgeStyle="@StatusBadgeStyle(check.Status)" Text="@check.Status" />
-                                </Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn Property="@nameof(HealthCheckStatusDto.Description)" Title="Description" />
-                            <RadzenDataGridColumn Property="@nameof(HealthCheckStatusDto.DurationMilliseconds)" Title="Duration" Width="7rem" TextAlign="TextAlign.End">
-                                <Template Context="check">@check.DurationMilliseconds.ToString("F0") ms</Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn Title="Error" Sortable="false">
-                                <Template Context="check">
-                                    @if (!string.IsNullOrEmpty(check.Exception))
-                                    {
-                                        <details>
-                                            <summary class="error-summary">Error Details</summary>
-                                            <pre class="error-details">@check.Exception</pre>
-                                        </details>
-                                    }
-                                </Template>
-                            </RadzenDataGridColumn>
-                        </Columns>
-                    </RadzenDataGrid>
-                }
-                </RadzenTabsItem>
-                @if (diagnosticsSnapshot != null)
-                {
-                    <RadzenTabsItem Text="Runtime">
-                    <div class="diagnostics-section">
-                        <h2 class="visually-hidden">Runtime snapshot</h2>
-                        <div class="key-grid">
-                            <div class="key-card"><div class="key-name">Environment</div><div class="key-value">@diagnosticsSnapshot.Environment</div></div>
-                            <div class="key-card"><div class="key-name">Machine</div><div class="key-value">@diagnosticsSnapshot.MachineName</div></div>
-                            <div class="key-card"><div class="key-name">.NET</div><div class="key-value">@diagnosticsSnapshot.DotNetVersion</div></div>
-                            <div class="key-card"><div class="key-name">Build</div><div class="key-value">@diagnosticsSnapshot.BuildStamp</div></div>
-                            <div class="key-card"><div class="key-name">OS</div><div class="key-value">@diagnosticsSnapshot.OsVersion</div></div>
+                <RadzenCard class="diag-section" data-section="api">
+                    <h2 class="diag-section-title">API</h2>
+                    <div class="diag-row">
+                        <div class="diag-row-main">
+                            <span class="diag-row-name">App server</span>
+                            <span class="diag-row-purpose">Answers every request the app makes.</span>
                         </div>
+                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Reachable" />
+                        <span class="diag-row-meta">Responded in @FormatMs(_apiMilliseconds)</span>
                     </div>
-                    </RadzenTabsItem>
-                    <RadzenTabsItem Text="Keys">
-                    <div class="diagnostics-section">
-                        <h2 class="visually-hidden">Critical keys</h2>
-                        <div class="key-grid">
-                            @foreach (var key in diagnosticsSnapshot.KeyStatus)
-                            {
-                                <div class="key-card @(key.Exists ? "key-present" : "key-missing")">
-                                    <div class="key-name">@key.Key</div>
-                                    <div class="key-value">@(key.Value ?? "missing")</div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    </RadzenTabsItem>
-                    <RadzenTabsItem Text="Config">
-                    <div class="diagnostics-section">
-                        <h2 class="visually-hidden">Configuration values</h2>
-                        <RadzenDataGrid TItem="ConfigurationValueDto" Data="@diagnosticsSnapshot.Config" AllowSorting="true" AllowPaging="true" PageSize="20" Density="Density.Compact">
-                            <Columns>
-                                <RadzenDataGridColumn Property="@nameof(ConfigurationValueDto.Key)" Title="Key" MinWidth="12rem" />
-                                <RadzenDataGridColumn Property="@nameof(ConfigurationValueDto.Value)" Title="Value" />
-                            </Columns>
-                        </RadzenDataGrid>
-                    </div>
-                    </RadzenTabsItem>
-                }
-                <RadzenTabsItem Text="Graphics">
+                </RadzenCard>
+
+                @CheckSection("Database / storage", "storage", snapshot.Checks.Where(c => c.Kind == DiagnosticsCheckKinds.Storage).ToList())
+                @CheckSection("Services", "services", snapshot.Checks.Where(c => c.Kind != DiagnosticsCheckKinds.Storage).ToList())
+
+                <RadzenCard class="diag-section diag-about" data-section="about">
+                    <h2 class="diag-section-title">About this copy</h2>
+                    <dl class="diag-facts">
+                        <div><dt>Version</dt><dd data-fact="version">@snapshot.BuildStamp</dd></div>
+                        <div><dt>Environment</dt><dd data-fact="environment">@snapshot.Environment</dd></div>
+                        <div><dt>Checked</dt><dd>@snapshot.Timestamp.ToLocalTime().ToString("HH:mm:ss") (took @FormatMs(snapshot.DurationMilliseconds))</dd></div>
+                    </dl>
+                </RadzenCard>
+
+                <details class="diag-section diag-graphics">
+                    <summary>Graphics on this device</summary>
                     <FrameBudget />
-                </RadzenTabsItem>
-            </Tabs>
-        </RadzenTabs>
-    </RadzenScope>
+                </details>
+            }
+        </div>
     </ChildContent>
 </PageShell>
-}
+</RadzenScope>
 
 @code {
-    private bool isLoading = true;
-    private HealthStatusDto? healthStatus;
-    private DiagnosticsSnapshotDto? diagnosticsSnapshot;
-    private string? errorMessage;
+    private DiagnosticsSnapshotDto? _snapshot;
+    private double _apiMilliseconds;
+    private bool _refreshing = true;
+    private string? _error;
 
-    protected override Task OnInitializedAsync() => LoadHealthStatus();
+    protected override Task OnInitializedAsync() => LoadAsync();
 
-    private async Task LoadHealthStatus()
+    private async Task LoadAsync()
     {
-        isLoading = true;
-        errorMessage = null;
-        healthStatus = null;
+        _refreshing = true;
+        _error = null;
+        StateHasChanged();
 
         try
         {
-            Logger.LogInformation("Fetching development diagnostics payloads");
-            var healthTask = ApiClient.GetHealthStatusAsync();
-            var diagnosticsTask = ApiClient.GetDiagnosticsSnapshotAsync();
-
-            await Task.WhenAll(healthTask, diagnosticsTask);
-
-            healthStatus = healthTask.Result;
-            diagnosticsSnapshot = diagnosticsTask.Result;
-            Logger.LogInformation("Health status retrieved: {Status}", healthStatus?.Status);
+            var stopwatch = Stopwatch.StartNew();
+            var snapshot = await ApiClient.GetDiagnosticsSnapshotAsync();
+            _apiMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
+            _snapshot = snapshot;
+            if (snapshot is null)
+            {
+                _error = "empty response";
+            }
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            Logger.LogError(ex, "Failed to fetch health status");
-            errorMessage = $"HTTP error: {ex.Message}";
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unexpected error fetching health status");
-            errorMessage = $"Unexpected error: {ex.Message}";
+            // Logged, not shown: the banner says what matters in plain words.
+            Logger.LogWarning(ex, "Diagnostics snapshot failed");
+            _snapshot = null;
+            _error = ex is TaskCanceledException ? "timed out" : null;
         }
         finally
         {
-            isLoading = false;
+            _refreshing = false;
         }
     }
 
-    private string GetStatusClass(string status) => status.ToLowerInvariant() switch
+    private RenderFragment CheckSection(string title, string key, List<DiagnosticsCheckDto> checks) => @<RadzenCard class="diag-section" data-section="@key">
+        <h2 class="diag-section-title">@title</h2>
+        @if (checks.Count == 0)
+        {
+            <p class="diag-empty">Nothing to check here.</p>
+        }
+        else
+        {
+            @foreach (var check in checks)
+            {
+                <div class="diag-row" data-check="@check.Name">
+                    <div class="diag-row-main">
+                        <span class="diag-row-name">@check.Name</span>
+                        <span class="diag-row-purpose">@check.Purpose</span>
+                    </div>
+                    <RadzenBadge BadgeStyle="@BadgeFor(check.Status)" Text="@check.Status" />
+                    <span class="diag-row-meta">
+                        @check.Detail
+                        @if (check.DurationMilliseconds is { } ms)
+                        {
+                            <span> · @FormatMs(ms)</span>
+                        }
+                        @if (!string.IsNullOrEmpty(check.ErrorType))
+                        {
+                            <span> · @check.ErrorType</span>
+                        }
+                        <span class="diag-row-time"> · checked @check.CheckedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+                    </span>
+                </div>
+            }
+        }
+    </RadzenCard>;
+
+    private static string FormatMs(double ms) => ms < 1 ? "under 1 ms" : $"{ms:F0} ms";
+
+    private static BadgeStyle BadgeFor(string status) => status switch
     {
-        "healthy" => "status-healthy",
-        "degraded" => "status-degraded",
-        "unhealthy" => "status-unhealthy",
-        _ => "status-unknown"
+        "Healthy" => BadgeStyle.Success,
+        "Degraded" => BadgeStyle.Warning,
+        _ => BadgeStyle.Danger
     };
 
-    private string GetStatusIcon(string status) => status.ToLowerInvariant() switch
+    private static AlertStyle BannerStyle(string status) => status switch
     {
-        "healthy" => "✓",
-        "degraded" => "!",
-        "unhealthy" => "✗",
-        _ => "?"
+        "Healthy" => AlertStyle.Success,
+        "Degraded" => AlertStyle.Warning,
+        _ => AlertStyle.Danger
     };
 
-    private static BadgeStyle StatusBadgeStyle(string status) => status.ToLowerInvariant() switch
+    private static string BannerTitle(string status) => status switch
     {
-        "healthy" => BadgeStyle.Success,
-        "degraded" => BadgeStyle.Warning,
-        "unhealthy" => BadgeStyle.Danger,
-        _ => BadgeStyle.Secondary
+        "Healthy" => "Everything is working",
+        "Degraded" => "Working, with some problems",
+        _ => "Something is broken"
     };
 
-    private string FormatCheckName(string name) => name
-        .Replace("_", " ")
-        .Replace("azure", "Azure")
-        .Replace("table storage", "Table Storage")
-        .Replace("blob storage", "Blob Storage")
-        .Replace("google maps api", "Google Maps API")
-        .Replace("openai", "OpenAI");
-
+    private static string BannerBody(string status) => status switch
+    {
+        "Healthy" => "Every part of the app answered its check.",
+        "Degraded" => "The app is up, but at least one part below is slow or not set up.",
+        _ => "At least one part below is not working, so some features will fail."
+    };
 }
