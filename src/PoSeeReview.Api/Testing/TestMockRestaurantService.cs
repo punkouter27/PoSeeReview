@@ -6,7 +6,7 @@ namespace PoSeeReview.Api.Testing;
 
 /// <summary>
 /// Deterministic in-memory restaurant catalog for local Test/E2EUI verification runs when
-/// <c>UseMockData</c> is enabled in the <c>Test</c> environment, avoiding live Google Maps calls.
+/// <c>UseMockData</c> is enabled (Development or Test — see <see cref="MockDataMode"/>), avoiding live Google Maps calls.
 /// </summary>
 internal sealed class TestMockRestaurantService : IRestaurantService, IMockable
 {

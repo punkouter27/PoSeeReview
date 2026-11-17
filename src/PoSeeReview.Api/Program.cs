@@ -17,6 +17,7 @@ using PoSeeReview.Api.Configuration;
 using Scalar.AspNetCore;
 using Serilog.Events;
 using PoSeeReview.Api.Platform;
+using PoSeeReview.Api.Testing;
 using Serilog;
 
 var isTestMode = Environment.GetEnvironmentVariable("DISABLE_SERILOG") == "true";
@@ -48,6 +49,9 @@ try
     }
 
     builder.ConfigureAzureKeyVault(isTestMode);
+
+    // UseMockData=true: placeholder AI/Maps settings so a local run boots with no secrets.
+    MockDataMode.Apply(builder);
 
     // Replace default logging with Serilog (unless in test mode)
     if (!isTestMode)

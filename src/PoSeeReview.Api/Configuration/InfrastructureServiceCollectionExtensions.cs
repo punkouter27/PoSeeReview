@@ -332,7 +332,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ILiveComicLookup, LiveComicLookup>();
         services.AddScoped<ILeaderboardService, LeaderboardService>();
 
-        if (environment.IsEnvironment(HostEnvironments.Test) && configuration.GetValue<bool>("UseMockData"))
+        // UseMockData (Development/Test only — MockDataMode refuses it elsewhere): fake places, mocked AI.
+        if (MockDataMode.IsEnabled(configuration, environment))
         {
             services.AddSingleton<TestMockRestaurantService>();
             services.Replace(ServiceDescriptor.Singleton<IRestaurantService>(sp =>
