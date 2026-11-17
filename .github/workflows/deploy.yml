@@ -161,16 +161,6 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # F1 gives the app about 60 CPU-minutes a day; once spent, Azure stops the site (usageState
-      # Exceeded) until 00:00 UTC and refuses the package with a bare 403. Say what it is.
-      - name: Check the F1 daily CPU quota
-        run: |
-          usage=$(az webapp show -g "$RG" -n "$APP" --query usageState -o tsv)
-          if [ "$usage" = "Exceeded" ]; then
-            echo "::error::$APP has used up its F1 daily CPU quota, so Azure refuses the package until 00:00 UTC. Rerun after that."
-            exit 1
-          fi
-
       - name: Prepare the live site (scripts/pre-deploy.ps1)
         if: hashFiles('scripts/pre-deploy.ps1') != ''
         shell: pwsh
