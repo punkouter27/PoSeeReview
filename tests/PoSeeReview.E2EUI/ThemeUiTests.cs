@@ -14,9 +14,17 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
 {
     private const int RenderTimeout = 15_000;
 
+    private const string LightSurface = "rgb(248, 247, 255)"; // #F8F7FF
+    private const string DarkSurface = "rgb(18, 16, 26)";     // #12101A
+
+    /// <summary>
+    /// The colour a token resolves to, not its declared text: the tokens are written as
+    /// <c>light-dark(light, dark)</c>, which only a used value (a probe's background) resolves.
+    /// </summary>
     private static async Task<string> TokenAsync(IPage page, string token) =>
         (await page.EvaluateAsync<string>(
-            $"() => getComputedStyle(document.documentElement).getPropertyValue('{token}').trim()")) ?? string.Empty;
+            $"() => {{ const p = document.createElement('div'); p.style.background = 'var({token})';"
+            + " document.body.appendChild(p); const c = getComputedStyle(p).backgroundColor; p.remove(); return c; }")) ?? string.Empty;
 
     private async Task<IPage> LoginPageAsync(string viewport, ColorScheme scheme)
     {
@@ -37,10 +45,10 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
     public async Task Theme_FollowsOsPreference(string viewport)
     {
         var light = await LoginPageAsync(viewport, ColorScheme.Light);
-        Assert.Equal("#F8F7FF", await TokenAsync(light, "--color-surface"));
+        Assert.Equal(LightSurface, await TokenAsync(light, "--color-surface"));
 
         var dark = await LoginPageAsync(viewport, ColorScheme.Dark);
-        Assert.Equal("#12101A", await TokenAsync(dark, "--color-surface"));
+        Assert.Equal(DarkSurface, await TokenAsync(dark, "--color-surface"));
     }
 
     /// <summary>
@@ -53,10 +61,10 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
     {
         var light = await LoginPageAsync(viewport, ColorScheme.Light);
         await light.EvaluateAsync("() => document.documentElement.setAttribute('data-theme', 'dark')");
-        Assert.Equal("#12101A", await TokenAsync(light, "--color-surface"));
+        Assert.Equal(DarkSurface, await TokenAsync(light, "--color-surface"));
 
         var dark = await LoginPageAsync(viewport, ColorScheme.Dark);
         await dark.EvaluateAsync("() => document.documentElement.setAttribute('data-theme', 'light')");
-        Assert.Equal("#F8F7FF", await TokenAsync(dark, "--color-surface"));
+        Assert.Equal(LightSurface, await TokenAsync(dark, "--color-surface"));
     }
 }

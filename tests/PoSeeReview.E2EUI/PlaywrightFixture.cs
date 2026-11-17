@@ -73,7 +73,9 @@ public sealed class PlaywrightFixture : IAsyncLifetime
             if (m.Type != "error")
                 return;
 
-            if (m.Text.Contains("status of 404 ()", StringComparison.Ordinal) && _allowed404Paths.ContainsKey(page))
+            // "404 ()" over HTTP/2 (no reason phrase), "404 (Not Found)" over HTTP/1.1 — a local
+            // http:// run (mock mode) is HTTP/1.1.
+            if (m.Text.Contains("status of 404 (", StringComparison.Ordinal) && _allowed404Paths.ContainsKey(page))
                 return;
 
             _browserErrors.Enqueue($"Console error on {page.Url}: {m.Text}");
