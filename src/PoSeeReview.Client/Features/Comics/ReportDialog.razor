@@ -19,6 +19,7 @@
 @using PoSeeReview.Client.Services
 @using PoSeeReview.Shared.Dtos
 @using PoSeeReview.Shared.Enums
+@using PoSeeReview.Shared.Validation
 @implements IAsyncDisposable
 @inject ApiClient ApiClient
 @inject IJSRuntime JS
@@ -37,43 +38,47 @@
             Tell us what's wrong and we'll review it.
         </p>
 
-        @* A real form: Enter submits, and type="email" is validated by the browser before
-           the handler ever runs. *@
-        <form @onsubmit="SubmitAsync">
+        @* A real form: Enter submits. Validated with the same FluentValidation rules the API runs
+           (ComicReportRequestValidator, Shared), shown inline under each field; novalidate keeps
+           the browser's own bubbles out of it. Send is disabled while a submit is in flight. *@
+        <EditForm Model="_model" OnValidSubmit="SubmitAsync" novalidate>
+        <FluentValidationValidator TModel="ComicReportRequestDto" Validator="Validator" />
         <fieldset class="report-reasons">
             <legend class="visually-hidden">Reason for reporting</legend>
+            <InputRadioGroup @bind-Value="_model.Reason" Name="report-reason">
             @foreach (var (reason, label) in Reasons)
             {
                 <label class="report-reason">
-                    <input type="radio"
-                           name="report-reason"
-                           checked="@(_reason == reason)"
-                           @onchange="() => _reason = reason" />
+                    <InputRadio Value="reason" />
                     <span>@label</span>
                 </label>
             }
+            </InputRadioGroup>
+            <ValidationMessage For="() => _model.Reason" />
+            <ValidationMessage For="() => _model.PlaceId" />
         </fieldset>
 
         <label class="report-field">
             <span class="report-label">Anything else? (optional)</span>
-            <textarea class="report-textarea"
-                      rows="3"
-                      maxlength="@MaxDetails"
-                      @bind="_details"
-                      @bind:event="oninput"
-                      placeholder="What should we look at?"></textarea>
+            <InputTextArea class="report-textarea"
+                           rows="3"
+                           maxlength="@ComicReportRequestValidator.MaxDetailsLength"
+                           @bind-Value="_model.Details"
+                           placeholder="What should we look at?" />
+            <ValidationMessage For="() => _model.Details" />
         </label>
 
         <label class="report-field">
             <span class="report-label">Your email (optional — only if you want a reply)</span>
-            <input class="report-input" type="email" autocomplete="email" @bind="_contactEmail" placeholder="you@example.com" />
+            <InputText class="report-input" type="email" autocomplete="email" @bind-Value="_model.ContactEmail" placeholder="you@example.com" />
+            <ValidationMessage For="() => _model.ContactEmail" />
         </label>
 
         <div class="report-actions">
-            <button type="submit" class="btn btn-primary">Send report</button>
+            <button type="submit" class="btn btn-primary" disabled="@_submitting">Send report</button>
             <button type="button" class="btn btn-secondary" @onclick="CloseAsync">Cancel</button>
         </div>
-        </form>
+        </EditForm>
     </div>
 </dialog>
 
@@ -88,8 +93,8 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    /// <summary>Matches the server-side validator's cap, so the textarea cannot compose a 400.</summary>
-    private const int MaxDetails = 1000;
+    /// <summary>The API's own rules; stateless, so one instance serves every dialog.</summary>
+    private static readonly ComicReportRequestValidator Validator = new();
 
     /// <summary>How long Undo is offered before the report actually leaves.</summary>
     private static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(5);
@@ -103,9 +108,8 @@
         (ComicReportReason.Other, "Something else")
     ];
 
-    private ComicReportReason _reason = ComicReportReason.Inaccurate;
-    private string _details = string.Empty;
-    private string _contactEmail = string.Empty;
+    private readonly ComicReportRequestDto _model = new() { Reason = ComicReportReason.Inaccurate };
+    private bool _submitting;
     private ElementReference _dialog;
     private IJSObjectReference? _module;
     private DotNetObjectReference<ReportDialog>? _self;
@@ -138,14 +142,23 @@
     [JSInvokable]
     public Task OnNativeCloseAsync() => OnClose.InvokeAsync();
 
+    protected override void OnParametersSet() => _model.PlaceId = PlaceId;
+
     private async Task SubmitAsync()
     {
+        // A double Enter or double tap lands here twice before the dialog has closed.
+        if (_submitting)
+        {
+            return;
+        }
+
+        _submitting = true;
         var request = new ComicReportRequestDto
         {
-            PlaceId = PlaceId,
-            Reason = _reason,
-            Details = _details,
-            ContactEmail = _contactEmail
+            PlaceId = _model.PlaceId,
+            Reason = _model.Reason,
+            Details = _model.Details.Trim(),
+            ContactEmail = _model.ContactEmail.Trim()
         };
 
         await CloseAsync();
