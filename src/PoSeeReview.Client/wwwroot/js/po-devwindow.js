@@ -1,7 +1,7 @@
 // po-devwindow.js — SAME FILE IN EVERY PO WEB APP (wwwroot/js/po-devwindow.js).
-// Pressing Tab while nothing on the page has focus opens a separate developer window
-// (/po-dev.html) with live diagnostics and stats. Once a control has focus, Tab moves focus as
-// normal, so keyboard navigation keeps working. The page also collects the stats that window
+// The first Tab of a page view, pressed while nothing has focus, opens a separate developer
+// window (/po-dev.html) with live diagnostics and stats. Every later Tab moves focus as normal,
+// so keyboard navigation keeps working. The page also collects the stats that window
 // reads through window.opener: frame rate, errors, long tasks, navigations.
 (function () {
   if (window.__poStats) return;
@@ -33,9 +33,12 @@
       .observe({ type: 'longtask', buffered: true });
   } catch (_) { /* longtask is Chromium-only */ }
 
-  // Blazor navigations change the path without a page load.
+  // The Tab gesture fires once per page view. After that, Tab with nothing focused moves into
+  // the page as usual, so a keyboard-only visitor is never trapped behind the dev window.
+  // A Blazor navigation (path change without a page load) re-arms it.
+  var tabUsed = false;
   setInterval(function () {
-    if (location.pathname !== stats.lastRoute) { stats.lastRoute = location.pathname; stats.navigations++; }
+    if (location.pathname !== stats.lastRoute) { stats.lastRoute = location.pathname; stats.navigations++; tabUsed = false; }
   }, 500);
 
   var devWin = null;
@@ -47,10 +50,12 @@
   window.poOpenDevWindow = openDevWindow;
 
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.repeat) return;
+    if (tabUsed) return;
     var a = document.activeElement;
     var nothingFocused = !a || a === document.body || a === document.documentElement;
     if (!nothingFocused) return;
+    tabUsed = true;
     if (openDevWindow()) e.preventDefault();
   }, true);
 })();
