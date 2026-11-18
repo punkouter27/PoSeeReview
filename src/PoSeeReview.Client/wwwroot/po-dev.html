@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- po-dev.html — SAME FILE IN EVERY PO WEB APP (wwwroot/po-dev.html). Opened by Tab via js/po-devwindow.js. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Developer view</title>
+  <link rel="stylesheet" href="css/po-tokens.css">
+  <style>
+    body { margin: 0; padding: 16px; display: grid; gap: 16px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    h1 { font-size: var(--po-text-lg); margin: 0; }
+    .meta { color: var(--po-text-muted); font-size: var(--po-text-xs); font-family: var(--po-font-mono); }
+    section { display: grid; gap: 8px; }
+    h2 { font-size: var(--po-text-sm); margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--po-text-muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+    .stat { background: var(--po-surface); border: 1px solid var(--po-border); border-radius: var(--po-radius-sm); padding: 8px 10px; }
+    .stat b { display: block; font-family: var(--po-font-mono); font-size: var(--po-text-lg); font-variant-numeric: tabular-nums; }
+    .stat span { font-size: var(--po-text-xs); color: var(--po-text-muted); }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center;
+           background: var(--po-surface); border: 1px solid var(--po-border); border-radius: var(--po-radius-sm); padding: 6px 10px; font-size: var(--po-text-sm); }
+    .row code { font-family: var(--po-font-mono); color: var(--po-text-muted); font-size: var(--po-text-xs); }
+    ol { margin: 0; padding-left: 18px; font-family: var(--po-font-mono); font-size: var(--po-text-xs); display: grid; gap: 4px; }
+    .empty { color: var(--po-text-muted); font-size: var(--po-text-sm); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="app">Developer view</h1>
+    <span class="meta" id="updated">starting…</span>
+  </header>
+  <section>
+    <h2>Server</h2>
+    <div class="grid">
+      <div class="stat"><b id="live">…</b><span>/health/live</span></div>
+      <div class="stat"><b id="latency">…</b><span>round trip (ms)</span></div>
+      <div class="stat"><b id="commit">…</b><span>commit</span></div>
+      <div class="stat"><b id="build">…</b><span>build</span></div>
+    </div>
+  </section>
+  <section>
+    <h2>Dependencies <span class="meta" id="source"></span></h2>
+    <div id="deps" style="display:grid;gap:6px"><p class="empty">Checking…</p></div>
+  </section>
+  <section>
+    <h2>This page</h2>
+    <div class="grid">
+      <div class="stat"><b id="fps">–</b><span>frames / s</span></div>
+      <div class="stat"><b id="mem">–</b><span>JS heap (MB)</span></div>
+      <div class="stat"><b id="longtasks">–</b><span>long tasks</span></div>
+      <div class="stat"><b id="uptime">–</b><span>page open</span></div>
+    </div>
+    <div class="meta" id="route"></div>
+  </section>
+  <section>
+    <h2>Recent errors</h2>
+    <ol id="errors"></ol>
+  </section>
+  <script src="js/po-dev.js"></script>
+</body>
+</html>

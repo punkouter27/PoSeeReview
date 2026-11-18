@@ -1,63 +1,21 @@
-/* The bar owns its background, so it also owns the notch: the inset is padding inside it. */
-.top-row {
-    padding-top: env(safe-area-inset-top);
-    background: var(--surface-inverse-veil);
-    border-bottom: 1px solid var(--border-on-dark-subtle);
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-on-dark) 5%, transparent), var(--elevation-2-shadow);
-}
-
-.nav-shell {
-    /* Same width and gutter as `.content`, so the brand lines up with the page below it. */
-    width: min(84rem, 100%);
-    margin: 0 auto;
-    padding-block: 0;
-    padding-inline: max(var(--space-md), env(safe-area-inset-left)) max(var(--space-md), env(safe-area-inset-right));
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-}
-
-.navbar-brand {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    /* The "go home" affordance on every page: a full tap target, not the mark's 28px. */
-    min-height: var(--tap-target);
-    text-decoration: none;
-}
+/* The Po shell header. .po-header, its title, email and gear are styled by po-tokens.css (the
+   Po web standard, unlayered); this sheet only adds what is PoSeeReview's own. */
 
 .brand-icon {
     flex-shrink: 0;
-    color: var(--color-on-dark);
-}
-
-.brand-name {
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    letter-spacing: 0.05em;
-    color: var(--color-on-dark);
-    line-height: 1;
-    transition: text-shadow var(--duration-base);
-}
-
-.navbar-brand:hover .brand-name {
-    text-shadow: 0 0 12px color-mix(in srgb, var(--color-brand-alt) 70%, transparent), 0 0 24px color-mix(in srgb, var(--color-brand) 50%, transparent);
+    color: var(--color-brand);
 }
 
 .nav-mock-badge {
-    display: inline-block;
-    margin-left: var(--space-xs);
+    flex-shrink: 0;
     padding: var(--space-3xs) var(--space-xs);
-    font-family: var(--font-body);
     font-size: var(--text-2xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--surface-inverse);
-    background: linear-gradient(135deg, var(--color-brand-alt), var(--color-brand-alt-soft));
+    color: var(--po-on-accent);
+    background: var(--color-brand);
     border-radius: var(--space-3xs);
-    vertical-align: middle;
     line-height: 1.4;
     animation: mock-badge-pulse 2s ease-in-out infinite;
 }
@@ -72,8 +30,7 @@
     align-items: center;
     gap: var(--space-3xs);
     flex: 1;
-    justify-content: flex-start;
-    margin-left: var(--space-md);
+    min-width: 0;
 }
 
 .nav-item {
@@ -82,26 +39,25 @@
 
 /* NavLink renders its own <a>, which does not carry this component's scope attribute. */
 .nav-item ::deep a {
-    color: var(--color-on-dark-secondary);
+    color: var(--color-text-secondary);
     border-radius: var(--radius-pill);
     min-height: var(--tap-target);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
     line-height: 1;
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-xs) var(--space-md);
     text-decoration: none;
 }
 
 .nav-item ::deep a.active {
-    background: var(--overlay-on-dark-strong);
-    color: var(--color-on-dark);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-on-dark) 12%, transparent);
+    background: var(--po-accent-soft);
+    color: var(--color-brand-ink);
 }
 
 .nav-item ::deep a:hover {
-    background-color: var(--overlay-on-dark);
-    color: var(--color-on-dark);
+    background-color: var(--po-surface-2);
+    color: var(--color-text-primary);
 }
 
 .nav-icon {
@@ -110,141 +66,16 @@
     flex-shrink: 0;
 }
 
-/* ── Inline user zone ─────────────────────────────────────── */
-.nav-user-zone {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    flex-shrink: 0;
-    margin-left: auto;
+.po-header__signin {
+    min-height: 2.5rem;
+    --btn-pad-x: var(--space-md);
 }
 
-.nav-user-badge {
-    position: relative;
-    display: inline-flex;
-    min-height: var(--space-xl);
-    background: transparent;
-    font-family: inherit;
-    cursor: pointer;
-    align-items: center;
-    gap: var(--space-2xs);
-    padding: var(--space-3xs) var(--space-sm);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border-on-dark);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-on-dark-muted);
-    max-width: 11.25rem;
-    white-space: nowrap;
-}
-
-/* The badge is 32px (28px on a phone); the target is the full 44px at every width. */
-.nav-user-badge::after {
-    content: "";
-    position: absolute;
-    inset: calc(var(--space-xs) * -1);
-}
-
-.nav-user-badge--user {
-    border-color: var(--status-on-dark-info-border);
-    color: var(--status-on-dark-info);
-}
-
-.nav-user-dot {
-    width: var(--space-2xs);
-    height: var(--space-2xs);
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-    opacity: 0.9;
-}
-
-.nav-user-email {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+/* On a phone the bottom nav carries Hall of Fame, and the mock badge would push the title
+   off a 412px bar; /diag still reports mock mode. */
 @media (max-width: 40rem) {
-    /* Everything must fit a 320px viewport: icon-only nav links and shrinkable flex children,
-       so the bar never overflows the screen. */
-    .nav-shell {
-        padding-inline: max(var(--space-sm), env(safe-area-inset-left)) max(var(--space-sm), env(safe-area-inset-right));
-        height: 3.25rem;
-        min-width: 0;
-        gap: var(--space-3xs);
-    }
-
-    .navbar-brand {
-        min-width: 0;
-        flex-shrink: 1;
-    }
-
-    /* The wordmark collapses to its mark. Visually hidden rather than `display: none`, so the
-       text stays in the accessibility tree — `.visually-hidden` itself is a class, and a media
-       query cannot apply one. */
-    .brand-name {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
-    }
-
-    .nav-links {
-        margin-left: var(--space-3xs);
-        min-width: 0;
-    }
-
-    /* The link labels stay, tab-bar style under their icons: two bare glyphs and a dot were
-       a guessing game, and "Hall of Fame" fits at this size down to 320px. */
-    .nav-item ::deep a {
-        flex-direction: column;
-        justify-content: center;
-        gap: 0.125rem;
-        padding: var(--space-3xs) var(--space-xs);
-        border-radius: var(--radius-sm);
-        font-size: var(--text-2xs);
-        font-weight: 600;
-    }
-
-    .nav-icon {
-        width: 1.125rem;
-        height: 1.125rem;
-    }
-
-    /* Collapse to a dot-only circle: a long name cannot fit a 28px badge. */
-    .nav-user-label {
+    .nav-links,
+    .nav-mock-badge {
         display: none;
-    }
-
-    .nav-user-badge--user {
-        width: 1.75rem;
-        height: 1.75rem;
-        min-height: 1.75rem;
-        padding: 0;
-        justify-content: center;
-        border-radius: 50%;
-        border: 1.5px solid currentColor;
-    }
-}
-
-/* ── Account menu ────────────────────────────────────────────────────────────────────────────
-   The surface is the shared `.popover-menu`; this only pins it under the bar's right edge.
-   `inset: auto` first, because the UA sheet centres popovers. */
-.nav-account-menu {
-    inset: auto;
-    top: calc(3.75rem + env(safe-area-inset-top));
-    right: max(var(--space-sm), env(safe-area-inset-right), calc((100vw - 84rem) / 2 + var(--space-md)));
-    margin: 0;
-}
-
-/* The bar is 3.25rem on a phone, not 3.5rem. After the base rule on purpose — same
-   specificity, so source order decides. */
-@media (max-width: 40rem) {
-    .nav-account-menu {
-        top: calc(3.5rem + env(safe-area-inset-top));
     }
 }

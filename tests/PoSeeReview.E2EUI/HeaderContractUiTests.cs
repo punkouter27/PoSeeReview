@@ -3,10 +3,11 @@ using Microsoft.Playwright;
 namespace PoSeeReview.E2EUI;
 
 /// <summary>
-/// Enforces the header layout contract (NET_RULES 4.1): Left (branding) | Center (actions) |
-/// Right (session / logout). The right zone regressed once by being wrapped in a
-/// Development-only conditional, so it is asserted explicitly whenever a principal exists.
-/// Anonymous visitors get no session zone at all — /login is already the sign-in CTA.
+/// Enforces the Po shell header contract (Po web standard, 2026-11): the app name upper-left
+/// (<c>.po-header__title</c>), the signed-in email (or the Sign in button) and the settings gear
+/// upper-right, on every page signed in AND out, plus one <c>v{YYMMDD}</c> build stamp. The right
+/// zone regressed once by being wrapped in a Development-only conditional, so it is asserted
+/// explicitly in both states.
 /// </summary>
 [Collection("e2e-ui")]
 [Trait("Tier", "E2EUI")]
@@ -20,7 +21,7 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         await page.GotoAsync($"{fixture.BaseUrl}/login");
         await page.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("continue as guest", System.Text.RegularExpressions.RegexOptions.IgnoreCase) }).ClickAsync();
-        await Assertions.Expect(page.Locator(".nav-user-zone")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator(".po-header__email")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
         return page;
     }
 
@@ -30,7 +31,13 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
     {
         var page = await SignedInPageAsync(viewport);
 
-        await Assertions.Expect(page.Locator(".navbar-brand .brand-name")).ToHaveTextAsync("PoSeeReview");
+        // The name stays readable at phone width: no collapse to the mark.
+        await Assertions.Expect(page.Locator(".po-header__title")).ToHaveTextAsync("PoSeeReview");
+        await Assertions.Expect(page.Locator(".po-header__title .brand-name")).ToBeVisibleAsync();
+
+        // One build stamp, vYYMMDD, on every page.
+        await Assertions.Expect(page.Locator(".po-version")).ToHaveCountAsync(1);
+        await Assertions.Expect(page.Locator(".po-version")).ToHaveTextAsync(new System.Text.RegularExpressions.Regex(@"^v\d{6}$"));
     }
 
     [Theory]
@@ -40,13 +47,23 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         var page = await SignedInPageAsync(viewport);
 
         var nav = page.Locator("nav.nav-links");
-        await Assertions.Expect(nav).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
         await Assertions.Expect(nav.Locator(".nav-item")).ToHaveCountAsync(1);
+        if (viewport == "mobile")
+        {
+            // On a phone the bottom nav carries Hall of Fame, so the bar keeps room for the name.
+            await Assertions.Expect(nav).ToBeHiddenAsync();
+            await Assertions.Expect(page.Locator(".po-bottom-nav")).ToBeVisibleAsync();
+        }
+        else
+        {
+            await Assertions.Expect(nav).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        }
     }
 
     /// <summary>
-    /// Both halves of the right-zone contract: present with a principal, absent without one.
-    /// One test because the two states are a single rule, and this tier is method-counted.
+    /// Both halves of the right-zone contract: the email and the gear with a principal; the Sign in
+    /// button and the gear without one. One test because the two states are a single rule, and
+    /// this tier is method-counted.
     /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
@@ -54,23 +71,23 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
     {
         var signedIn = await SignedInPageAsync(viewport);
 
-        await Assertions.Expect(signedIn.Locator(".nav-user-zone .nav-user-badge")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(signedIn.Locator(".po-header__actions .po-header__email")).ToContainTextAsync("@");
+        await Assertions.Expect(signedIn.Locator(".po-header__actions a.po-header__settings")).ToHaveAttributeAsync("href", "/settings");
 
-        // Sign out lives in the account menu the badge opens.
-        await signedIn.Locator(".nav-user-zone .nav-user-badge").ClickAsync();
-        await Assertions.Expect(signedIn.GetByRole(AriaRole.Button, new()
-        {
-            NameRegex = new("sign out", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
-        })).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        // Sign out lives on /settings, behind the gear.
+        await signedIn.Locator(".po-header__settings").ClickAsync();
+        await Assertions.Expect(signedIn.GetByTestId("settings-sign-out")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
 
-        // An anonymous visitor is already on /login, which presents the sign-in choice as its
-        // primary CTA. The header deliberately carries no "Not signed in / Sign in" pair — it
-        // restated the page and competed with that CTA.
+        // Signed out, the header is still there: Sign in and the gear instead of the email, with
+        // the sign-in card in the page body under it.
         var anonymous = await fixture.NewPageAsync(viewport);
         await anonymous.GotoAsync($"{fixture.BaseUrl}/login");
         await anonymous.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
 
-        await Assertions.Expect(anonymous.Locator(".nav-user-zone")).ToHaveCountAsync(0);
+        await Assertions.Expect(anonymous.Locator(".po-header")).ToBeVisibleAsync();
+        await Assertions.Expect(anonymous.Locator(".po-header__email")).ToHaveCountAsync(0);
+        await Assertions.Expect(anonymous.Locator(".po-header__signin")).ToBeVisibleAsync();
+        await Assertions.Expect(anonymous.Locator(".po-header__settings")).ToBeVisibleAsync();
         await Assertions.Expect(anonymous.Locator(".login-btn-microsoft")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
@@ -87,15 +104,19 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         var isMockActive = json?.GetProperty("isMockActive").GetBoolean() ?? false;
 
         var badge = page.Locator(".nav-mock-badge");
-        if (isMockActive)
+        if (!isMockActive)
+        {
+            await Assertions.Expect(badge).ToHaveCountAsync(0);
+        }
+        else if (viewport == "mobile")
+        {
+            // Hidden on a phone so the name fits; /diag still says so.
+            await Assertions.Expect(badge).ToBeHiddenAsync();
+        }
+        else
         {
             await Assertions.Expect(badge).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
             await Assertions.Expect(badge).ToHaveTextAsync("USING MOCK DATA");
         }
-        else
-        {
-            await Assertions.Expect(badge).ToHaveCountAsync(0);
-        }
     }
-
 }

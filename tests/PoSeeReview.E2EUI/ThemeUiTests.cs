@@ -3,10 +3,9 @@ using Microsoft.Playwright;
 namespace PoSeeReview.E2EUI;
 
 /// <summary>
-/// Verifies system-aware light/dark theming (NET_RULES 4.3). The page must follow the OS
-/// preference by default, and an explicit <c>data-theme</c> choice must beat it in both
-/// directions. Card surfaces are asserted too, because those were the tokens most likely
-/// to stay stuck on a hardcoded white.
+/// Verifies system-aware light/dark theming (NET_RULES 4.3, Po web standard). The page follows
+/// the OS preference and nothing else: there is no theme switch, and a stray <c>data-theme</c>
+/// attribute must not pin a scheme.
 /// </summary>
 [Collection("e2e-ui")]
 [Trait("Tier", "E2EUI")]
@@ -14,8 +13,8 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
 {
     private const int RenderTimeout = 15_000;
 
-    private const string LightSurface = "rgb(248, 247, 255)"; // #F8F7FF
-    private const string DarkSurface = "rgb(18, 16, 26)";     // #12101A
+    private const string LightSurface = "rgb(246, 247, 251)"; // --po-bg light, #f6f7fb
+    private const string DarkSurface = "rgb(15, 17, 23)";     // --po-bg dark, #0f1117
 
     /// <summary>
     /// The colour a token resolves to, not its declared text: the tokens are written as
@@ -52,19 +51,19 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
     }
 
     /// <summary>
-    /// An explicit <c>data-theme</c> beats the OS in both directions — the case that matters
-    /// because only <c>ThemeUiTests</c> ever sets that attribute.
+    /// The device decides, in both directions: a <c>data-theme</c> attribute (the old Settings
+    /// switch wrote one) no longer pins a scheme.
     /// </summary>
     [Theory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
-    public async Task Theme_ExplicitChoiceOverridesTheOs(string viewport)
+    public async Task Theme_DataThemeAttributeDoesNotOverrideTheOs(string viewport)
     {
         var light = await LoginPageAsync(viewport, ColorScheme.Light);
         await light.EvaluateAsync("() => document.documentElement.setAttribute('data-theme', 'dark')");
-        Assert.Equal(DarkSurface, await TokenAsync(light, "--color-surface"));
+        Assert.Equal(LightSurface, await TokenAsync(light, "--color-surface"));
 
         var dark = await LoginPageAsync(viewport, ColorScheme.Dark);
         await dark.EvaluateAsync("() => document.documentElement.setAttribute('data-theme', 'light')");
-        Assert.Equal(LightSurface, await TokenAsync(dark, "--color-surface"));
+        Assert.Equal(DarkSurface, await TokenAsync(dark, "--color-surface"));
     }
 }

@@ -134,14 +134,22 @@ public static class InfrastructureServiceCollectionExtensions
         // Storage:UseAzurite short-circuits Key Vault connection strings so local dev can run
         // against the emulator (docker-compose) instead of the real storage account. Without
         // this, Key Vault secrets always win and every local run mutates production data.
+        // Storage:AzuritePorts ("blob,queue,table", default 10000,10001,10002) moves it when another
+        // app's emulator already holds the standard ports.
         if (configuration.GetValue<bool>("Storage:UseAzurite"))
         {
-            const string azurite =
+            var ports = (configuration["Storage:AzuritePorts"] ?? "10000,10001,10002").Split(',', StringSplitOptions.TrimEntries);
+            if (ports.Length != 3 || !ports.All(p => ushort.TryParse(p, out _)))
+            {
+                throw new InvalidOperationException("Storage:AzuritePorts must be three ports: blob,queue,table.");
+            }
+
+            var azurite =
                 "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
                 "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
-                "TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;" +
-                "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;" +
-                "QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;";
+                $"TableEndpoint=http://127.0.0.1:{ports[2]}/devstoreaccount1;" +
+                $"BlobEndpoint=http://127.0.0.1:{ports[0]}/devstoreaccount1;" +
+                $"QueueEndpoint=http://127.0.0.1:{ports[1]}/devstoreaccount1;";
 
             services.AddSingleton(_ => new TableServiceClient(azurite));
             services.AddSingleton(_ => new BlobServiceClient(azurite));

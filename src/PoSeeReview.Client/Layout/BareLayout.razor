@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
 
-@* For pages that are the whole screen — Login. MainLayout's nav offered Hall of Fame there,
-   and it only bounced back to the login page. The boundary is kept: without it a
-   login-page exception shows the framework's red strip instead of a way forward. *@
+@* For the sign-in page. It keeps the Po shell header (title, Sign in, gear) but not the nav:
+   MainLayout's Hall of Fame link only bounced back to the login page. The boundary is kept:
+   without it a login-page exception shows the framework's red strip instead of a way forward. *@
+<NavMenu ShowNav="false" />
+
 <main id="main-content">
     <ErrorBoundary>
         <ChildContent>@Body</ChildContent>

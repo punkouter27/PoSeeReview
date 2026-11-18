@@ -6,29 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PoSeeReview</title>
     <base href="/" />
-    <script>
-        // Applied before CSS paints so a pinned choice never flashes the other scheme. Follows
-        // the device until the user pins Light or Dark on the Settings page.
-        (function () {
-            var theme = localStorage.getItem('poseereview:theme');
-            if (theme === 'light' || theme === 'dark') {
-                document.documentElement.dataset.theme = theme;
-            }
-            window.poseeTheme = {
-                get: function () { return document.documentElement.dataset.theme || 'auto'; },
-                set: function (value) {
-                    if (value === 'light' || value === 'dark') {
-                        document.documentElement.dataset.theme = value;
-                        localStorage.setItem('poseereview:theme', value);
-                    } else {
-                        delete document.documentElement.dataset.theme;
-                        localStorage.removeItem('poseereview:theme');
-                    }
-                }
-            };
-        })();
-    </script>
-    <link rel="stylesheet" href="fonts/fonts.css" />
+    <!-- Po web standard: the estate tokens, fonts (Inter + Space Grotesk, self-hosted) and shell
+         styles come first; tokens.css aliases this app's own variables onto them. -->
+    <link rel="stylesheet" href="css/po-tokens.css" />
+    <link rel="stylesheet" href="css/tokens.css" />
     <!-- Bootstrap removed: 31KB gzipped for six classes, all of which app.css already redefined,
          and whose duplicates were feeding the cascade conflicts the layer system now prevents.
          app.css carries a minimal reset in @layer reset instead. -->
@@ -36,7 +17,6 @@
          @layer page. That is the only way to put framework-generated CSS in a layer, and it is
          what stops a scoped sheet from silently overriding a shared primitive. Do NOT re-add a
          separate <link> for it — that would load it unlayered, where it beats every layer. -->
-    <link rel="stylesheet" href="css/po-tokens.css" />
     <link rel="stylesheet" href="css/po-motion.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -45,7 +25,7 @@
          theme-color paints the Android status bar and the iOS/desktop title bar. -->
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#7C3AED" />
+    <meta name="theme-color" content="#4f46e5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="PoSeeReview" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -66,6 +46,8 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <!-- Tab with nothing focused opens the developer window (/po-dev.html). -->
+    <script src="js/po-devwindow.js"></script>
     <script src="geolocation.js"></script>
     <script src="js/share-utils.js"></script>
     <!-- Graphics + audio. Loaded before Blazor so window.poseeFx exists by the time the first

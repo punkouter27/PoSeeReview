@@ -18,7 +18,7 @@ public sealed class ModerationUiTests(PlaywrightFixture fixture)
         await page.GotoAsync($"{fixture.BaseUrl}/login");
         await page.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
         await page.GetByRole(AriaRole.Button, new() { NameRegex = GuestButton }).ClickAsync();
-        await page.Locator(".nav-user-zone").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
+        await page.Locator(".po-header__email").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
         await page.GotoAsync($"{fixture.BaseUrl}{route}");
         return page;
     }

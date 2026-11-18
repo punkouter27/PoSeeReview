@@ -36,7 +36,7 @@ public sealed class AuthUiTests(PlaywrightFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("continue as guest", System.Text.RegularExpressions.RegexOptions.IgnoreCase) }).ClickAsync();
 
         // Guest cookie signin round-trips through /auth/login/fake and lands on home.
-        await Assertions.Expect(page.Locator(".nav-user-zone .nav-user-badge")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator(".po-header__email")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
     [Theory]
@@ -47,10 +47,11 @@ public sealed class AuthUiTests(PlaywrightFixture fixture)
         await page.GotoAsync($"{fixture.BaseUrl}/login");
         await page.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("continue as guest", System.Text.RegularExpressions.RegexOptions.IgnoreCase) }).ClickAsync();
-        await Assertions.Expect(page.Locator(".nav-user-zone .nav-user-badge")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator(".po-header__email")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
 
-        await page.Locator(".nav-user-zone .nav-user-badge").ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { NameRegex = new("sign out", System.Text.RegularExpressions.RegexOptions.IgnoreCase) }).ClickAsync();
+        // Sign out lives on /settings, behind the header's gear (Po web standard).
+        await page.Locator(".po-header__settings").ClickAsync();
+        await page.GetByTestId("settings-sign-out").ClickAsync(new() { Timeout = RenderTimeout });
 
         await page.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
     }

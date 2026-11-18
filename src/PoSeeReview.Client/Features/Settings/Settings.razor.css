@@ -39,3 +39,14 @@
     font-size: var(--text-sm);
     color: var(--color-text-muted);
 }
+
+.settings-email,
+.settings-build {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+
+.settings-build {
+    font-family: var(--po-font-mono);
+}

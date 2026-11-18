@@ -48,6 +48,8 @@ internal static class AuthEndpoints
                 [
                     new Claim(ClaimTypes.NameIdentifier, guestId),
                     new Claim(ClaimTypes.Name, guestId),
+                    // The Po shell header shows the signed-in email; a guest gets a local one.
+                    new Claim(ClaimTypes.Email, $"{guestId.ToLowerInvariant()}@guest.localhost"),
                     new Claim(ClaimTypes.Role, "Guest")
                 ],
                 FakeAuthHandler.SchemeName);

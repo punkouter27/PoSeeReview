@@ -1,14 +1,17 @@
-@* The deployed build's YYMMDD, bottom-right on every page, so a screenshot or a bug report says
-   which deploy it came from. Stamped into the assembly by the StampBuildDate target. *@
+@* The Po build stamp: v{YYMMDD} (the HEAD commit's UTC date), bottom-right on every page, so a
+   screenshot or a bug report says which deploy it came from. Stamped into every assembly by the
+   StampBuildDate target in Directory.Build.targets; /api/diag reports the same value. Styled by
+   po-tokens.css (.po-version). *@
 @using System.Reflection
 
 @if (Stamp is not null)
 {
-    <small class="build-stamp" title="Build version (YYMMDD)">@Stamp</small>
+    <span class="po-version" title="Build version (vYYMMDD)">v@(Stamp)</span>
 }
 
 @code {
-    private static readonly string? Stamp = typeof(BuildVersion).Assembly
+    /// <summary>The raw YYMMDD, also shown on /settings.</summary>
+    public static readonly string? Stamp = typeof(BuildVersion).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(a => a.Key == "BuildStamp")?.Value;
 }

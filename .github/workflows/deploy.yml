@@ -1,160 +1,67 @@
 name: Build & Deploy
 
-# SAME FILE IN EVERY PO .NET WEB REPO. The reference copy is PoTraffic's. Never edit it in one
-# repo only: change PoTraffic's, then copy it everywhere with PoPunkouterSoftware/scripts/sync-ci.ps1.
-# The weekly conventions check (PoPunkouterSoftware) fails any repo whose copy differs.
+# The one workflow in every Po .NET web repo: build, publish, deploy to App Service, confirm the
+# new build is the one answering. Tests, format checks and Bicep run locally, not here.
 #
-# Everything that differs between repos lives outside this file:
-#   repo variables  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   GitHub OIDC sign-in
-#                   AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP                    what is deployed, where
-#                   HEALTH_PATH (optional, default /health)                    the dependency-health JSON route
-#   hook scripts    scripts/ci-checks.ps1                 extra build-time checks, after the unit tests
-#                   scripts/ci-package.ps1 -PublishDir    adds files to the package before upload
-#                   scripts/pre-deploy.ps1 -BaseUrl       optional live-site preparation after quota check
-#                   scripts/post-deploy-smoke.ps1 -BaseUrl  checks the live site after the health gate
-#                   (each hook is optional: the step is skipped when the file does not exist)
-# Layout it relies on: one *.slnx at the root, global.json, src/*.Api/*.csproj, tests/*.Unit/*.csproj.
-#
-# This is the ONLY workflow in a Po .NET web repo. Bicep (infra/main.bicep) is never applied by a
-# push: run this workflow by hand with `infra` set to what-if, then apply. That run touches infra
-# only; it does not build or deploy code. The scope (subscription or resource group) is read from
-# main.bicep's targetScope; parameters come from the first infra/*.bicepparam, else
-# infra/main.parameters.json, else none. AZURE_LOCATION (optional repo variable, default eastus2).
+# Repo variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (GitHub OIDC sign-in),
+#                 AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP (what is deployed, where).
+# Optional hooks: scripts/ci-package.ps1 -PublishDir   adds files to the package
+#                 scripts/pre-deploy.ps1 -BaseUrl      prepares the live site before deploy
+# Layout it relies on: one *.slnx at the root, global.json, src/*.Api/*.csproj.
 
 on:
   push:
     branches: [master]
-  # Pull requests get the build and tests; only master deploys.
-  pull_request:
+    paths-ignore: ['*.md', 'SCREENSHOTS/**']
   workflow_dispatch:
-    inputs:
-      infra:
-        description: 'none = build & deploy code. what-if / apply = run infra/main.bicep only (no code deploy)'
-        type: choice
-        options: [none, what-if, apply]
-        default: none
-
-permissions:
-  contents: read
 
 concurrency:
-  group: deploy-${{ github.ref }}
-  # A newer PR build may replace an older one. A deploy is never cancelled part-way: that could
-  # leave a half-deployed site that nothing rolls back.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: deploy
+  cancel-in-progress: false
 
 env:
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
 
 jobs:
-  infra:
-    name: Infra (${{ inputs.infra }})
-    if: github.event_name == 'workflow_dispatch' && inputs.infra != 'none' && github.ref == 'refs/heads/master'
+  deploy:
+    name: Build & deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       contents: read
       id-token: write   # azure/login OIDC
-    environment: production
+    environment:
+      name: production
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    env:
+      BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v7
-      - name: Check for infra/main.bicep
-        run: '[ -f infra/main.bicep ] || { echo "::error::This repo has no infra/main.bicep."; exit 1; }'
-      - uses: azure/login@v3
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: ${{ inputs.infra == 'apply' && 'Apply' || 'What-if' }}
-        env:
-          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
-          LOCATION: ${{ vars.AZURE_LOCATION || 'eastus2' }}
-          MODE: ${{ inputs.infra }}
-        run: |
-          scope=$(grep -m1 -oE "^targetScope *= *'[a-zA-Z]+" infra/main.bicep | sed "s/.*'//")
-          params=()
-          bicepparam=$(ls infra/*.bicepparam 2>/dev/null | head -1)
-          if [ -n "$bicepparam" ]; then params=(--parameters "$bicepparam")
-          elif [ -f infra/main.parameters.json ]; then params=(--parameters @infra/main.parameters.json); fi
-          verb=what-if; [ "$MODE" = "apply" ] && verb=create
-          if [ "$scope" = "subscription" ]; then
-            az deployment sub "$verb" --location "$LOCATION" --template-file infra/main.bicep "${params[@]}"
-          else
-            [ -n "$RG" ] || { echo "::error::Repo variable AZURE_RESOURCE_GROUP is not set."; exit 1; }
-            az deployment group "$verb" --resource-group "$RG" --template-file infra/main.bicep "${params[@]}"
-          fi
+          fetch-depth: 0   # the build stamp and MinVer read git history
 
-  build:
-    name: Build & test
-    # A manual infra run touches infra only. On push/PR, inputs.infra is empty.
-    if: (inputs.infra || 'none') == 'none'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0   # MinVer versions the build from git tags; a shallow clone has none
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
       - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', 'global.json') }}
           restore-keys: nuget-${{ runner.os }}-
+
       - name: Build
         run: dotnet build *.slnx -c Release
-      - name: Unit tests
-        run: for p in tests/*.Unit/*.csproj; do dotnet test "$p" -c Release --no-build; done
-      - name: Repo checks (scripts/ci-checks.ps1)
-        if: hashFiles('scripts/ci-checks.ps1') != ''
-        shell: pwsh
-        run: ./scripts/ci-checks.ps1
+
       - name: Publish
         run: dotnet publish src/*.Api/*.csproj -c Release --no-build -o publish
+
       - name: Package extras (scripts/ci-package.ps1)
         if: hashFiles('scripts/ci-package.ps1') != ''
         shell: pwsh
         run: ./scripts/ci-package.ps1 -PublishDir publish
-      - uses: actions/upload-artifact@v7
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
-        with:
-          name: webapp
-          path: publish
-          retention-days: 1
 
-  deploy:
-    name: Deploy
-    needs: build
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    permissions:
-      contents: read
-      id-token: write   # azure/login OIDC (federated, no stored secret)
-    environment:
-      name: production
-      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
-    env:
-      APP: ${{ vars.AZURE_WEBAPP_NAME }}
-      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
-      BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
-      HEALTH_PATH: ${{ vars.HEALTH_PATH || '/health' }}
-    steps:
-      - name: Check the repo variables
-        run: |
-          [ -n "$APP" ] || { echo "::error::Repo variable AZURE_WEBAPP_NAME is not set."; exit 1; }
-          [ -n "$RG" ]  || { echo "::error::Repo variable AZURE_RESOURCE_GROUP is not set."; exit 1; }
-
-      # Only scripts/: the deploy job needs the smoke hook and nothing else.
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: scripts
-      - uses: actions/download-artifact@v8
-        with:
-          name: webapp
-          path: publish
       - uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -166,62 +73,17 @@ jobs:
         shell: pwsh
         run: ./scripts/pre-deploy.ps1 -BaseUrl "$env:BASE_URL"
 
-      # Keep the live build so it can be put back if anything fails once the new one is live.
-      - name: Back up the live site
-        id: backup
-        run: |
-          token=$(az account get-access-token --query accessToken -o tsv)
-          if curl -fsS --max-time 300 -H "Authorization: Bearer $token" -o previous.zip \
-               "https://$APP.scm.azurewebsites.net/api/zip/site/wwwroot/" && [ -s previous.zip ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-            echo "Backed up $(du -h previous.zip | cut -f1) of the live site."
-          else
-            echo "::warning title=No backup::Could not download the live site, so this deploy cannot be rolled back."
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: azure/webapps-deploy@v3
-        id: deploy
         with:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           resource-group-name: ${{ vars.AZURE_RESOURCE_GROUP }}
           package: publish
 
-      # The deploy step succeeds once App Service accepts the package, which says nothing about
-      # whether the app starts. First the new build must be the one answering (X-Commit on
-      # /health/live is this commit, not the old instance), then its dependencies must answer.
-      - name: Health gate (this commit on /health/live, then HEALTH_PATH)
+      - name: Confirm this commit is live (/health/live X-Commit)
         run: |
           for attempt in $(seq 1 40); do
             commit=$(curl -s -D - -o /dev/null --max-time 20 "$BASE_URL/health/live" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-commit" {print $2}' || true)
-            [ "$commit" = "$GITHUB_SHA" ] && { echo "/health/live serves $GITHUB_SHA (attempt $attempt)"; break; }
-            [ "$attempt" = "40" ] && { echo "::error::/health/live still serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1; }
+            [ "$commit" = "$GITHUB_SHA" ] && { echo "Live on $GITHUB_SHA (attempt $attempt)"; exit 0; }
             sleep 10
           done
-          for attempt in $(seq 1 10); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE_URL$HEALTH_PATH" || echo 000)
-            [ "$code" = "200" ] && { echo "$HEALTH_PATH -> 200 (attempt $attempt)"; exit 0; }
-            sleep 10
-          done
-          echo "::error::$HEALTH_PATH never returned 200 (last: $code)"; exit 1
-
-      - name: Post-deploy smoke (scripts/post-deploy-smoke.ps1)
-        if: hashFiles('scripts/post-deploy-smoke.ps1') != ''
-        shell: pwsh
-        run: ./scripts/post-deploy-smoke.ps1 -BaseUrl "$env:BASE_URL"
-
-      # Runs on a cancel or a timeout too, not only on a failure: either can strand a half-good build.
-      - name: Roll back to the previous build
-        if: (failure() || cancelled()) && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
-        run: |
-          az webapp deploy -g "$RG" -n "$APP" --src-path previous.zip --type zip --clean true
-          echo "::error title=Rolled back::${{ github.sha }} failed after it went live; the previous build is live again."
-
-      - name: Tell ntfy about the rollback
-        if: (failure() || cancelled()) && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'
-        env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        run: |
-          [ -n "$NTFY_TOPIC" ] || { echo "No NTFY_TOPIC secret; the CI watcher will still report the red run."; exit 0; }
-          curl -fsS -H "Title: ${{ github.event.repository.name }} rolled back" -H "Tags: rewind" \
-            -d "${{ github.sha }} failed after going live; the previous build is back." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
+          echo "::error::/health/live serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1

@@ -1,30 +1,45 @@
 @page "/settings"
-@attribute [Authorize]
+@attribute [AllowAnonymous]
 @using PoSeeReview.Client.Services
-@using Microsoft.JSInterop
+@using PoSeeReview.Client.Layout
 @inject FxService Fx
-@inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Settings · PoSeeReview</PageTitle>
 
-@* Every extra lives here, and every one starts on: sound, haptics, map sounds and ink
-   motes at full volume, Full effects, Auto theme. All of it is stored in this browser only. *@
+@* The header gear's page (Po web standard), open signed in or out. Every extra lives here, and
+   every one starts on: sound, haptics, map sounds and ink motes at full volume, Full effects.
+   All of it is stored in this browser only. The theme follows the device; there is no switch. *@
 <PageShell Title="Settings" Width="PageShell.ShellWidth.Narrow">
+    <section class="settings-group glass" aria-labelledby="settings-account">
+        <h2 id="settings-account">Account</h2>
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <div class="settings-row">
+                    <span class="settings-label">Signed in as</span>
+                    <span class="settings-email" data-testid="settings-email">@NavMenu.EmailOf(auth.User)</span>
+                </div>
+                <div class="settings-row">
+                    <a class="btn btn-secondary" href="my-comics">My comics</a>
+                    <button type="button" class="btn btn-secondary" data-testid="settings-sign-out" @onclick="Logout">Sign out</button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="settings-row">
+                    <span class="settings-label">Not signed in</span>
+                    <a class="btn btn-primary" href="login?returnUrl=%2Fsettings">Sign in</a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </section>
+
     <section class="settings-group glass" aria-labelledby="settings-appearance">
         <h2 id="settings-appearance">Appearance</h2>
-        <div class="settings-row" role="group" aria-label="Color theme">
-            @foreach (var (theme, label) in Themes)
-            {
-                <button type="button"
-                        class="chip-toggle @(_theme == theme ? "chip-toggle--active" : "")"
-                        aria-pressed="@(_theme == theme ? "true" : "false")"
-                        data-testid="@($"settings-theme-{theme}")"
-                        @onclick="() => SetThemeAsync(theme)">
-                    @label
-                </button>
-            }
+        <p class="settings-note">Light or dark follows your device's setting.</p>
+        <div class="settings-row">
+            <span class="settings-label">Build</span>
+            <span class="settings-build" data-testid="settings-build">v@(BuildVersion.Stamp)</span>
         </div>
-        <p class="settings-note">Auto follows your device; pick Light or Dark to pin it.</p>
     </section>
 
     <section class="settings-group glass" aria-labelledby="settings-sound">
@@ -123,11 +138,6 @@
     private static readonly (FxTier Tier, string Label)[] Tiers =
         [(FxTier.Off, "None"), (FxTier.Lite, "Standard"), (FxTier.Full, "Full")];
 
-    private static readonly (string Value, string Label)[] Themes =
-        [("auto", "Auto"), ("light", "Light"), ("dark", "Dark")];
-
-    private string _theme = "auto";
-
     private FxCapabilities _caps;
     private bool _sound;
     private FxToggleState _haptics;
@@ -149,15 +159,11 @@
         _mapSounds = await Fx.IsMapSoundsEnabledAsync();
         _motes = await Fx.GetMotesAsync();
         _volume = (int)Math.Round(await Fx.GetVolumeAsync() * 100);
-        _theme = await JS.InvokeAsync<string>("poseeTheme.get");
         StateHasChanged();
     }
 
-    private async Task SetThemeAsync(string theme)
-    {
-        _theme = theme;
-        await JS.InvokeVoidAsync("poseeTheme.set", theme);
-    }
+    // Full-page navigation so the server clears the BFF auth cookie.
+    private void Logout() => Navigation.NavigateTo("auth/logout?returnUrl=%2Flogin", forceLoad: true);
 
     /// <summary>The interop call is the first thing the click does: audio only starts on a gesture.</summary>
     private async Task ToggleSoundAsync()

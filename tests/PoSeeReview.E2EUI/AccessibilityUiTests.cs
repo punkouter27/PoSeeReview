@@ -45,7 +45,7 @@ public sealed class AccessibilityUiTests(PlaywrightFixture fixture)
         {
             await page.GotoAsync($"{fixture.BaseUrl}/login");
             await page.GetByRole(AriaRole.Button, new() { NameRegex = GuestButton }).ClickAsync(new() { Timeout = RenderTimeout });
-            await page.Locator(".nav-user-zone").WaitForAsync(new() { Timeout = RenderTimeout });
+            await page.Locator(".po-header__email").WaitForAsync(new() { Timeout = RenderTimeout });
         }
 
         if (discoveryLayout is not null)

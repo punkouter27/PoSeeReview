@@ -20,22 +20,14 @@
 }
 
 .diag-section-title {
-    margin: 0 0 var(--space-sm);
+    margin: 0;
     font-size: var(--text-lg, 1.15rem);
 }
 
-/* Name + purpose on the left, badge and timings beside it; on a phone the meta line wraps under. */
+/* One po-diag__card per dependency (po-tokens.css draws the card): name + purpose on the left,
+   the badge beside it; the meta line wraps under. */
 .diag-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--space-2xs, 0.25rem) var(--space-md);
-    padding-block: var(--space-sm);
-    border-top: 1px solid var(--color-border);
-}
-
-.diag-section-title + .diag-row {
-    border-top: 0;
 }
 
 .diag-row-main {

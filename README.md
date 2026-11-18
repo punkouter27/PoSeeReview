@@ -94,7 +94,8 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 | Maps | MapLibre GL JS 5.24.0 (UMD, jsDelivr, SRI-pinned, loaded only when a map opens) over OpenFreeMap vector tiles — no key, no per-load billing |
 | Alerting | `infra/alerts.bicep`: Http5xx, AI spend, in-band generation failures, fail-open guards, image refusals, moderation queue → email action group |
 | Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `scripts/lighthouserc.json`) in the post-deploy smoke (`scripts/post-deploy-smoke.ps1`) |
-| Build stamp | `YYMMDD` from the HEAD commit date (`Directory.Build.targets`), shown bottom-right on every page and as Version on `/diag` (`buildStamp` in `/api/diag`) |
+| Build stamp | `v{YYMMDD}` from the HEAD commit's UTC date (`Directory.Build.targets`), shown bottom-right on every page (`.po-version`) and as Version on `/diag` (`buildStamp` in `/api/diag`) |
+| Shell & look | The Po web standard: `wwwroot/css/po-tokens.css` (identical in every Po app; Inter + Space Grotesk self-hosted, one indigo accent, light/dark follow the device — no theme switch), one `.po-header` on every page (name upper-left; email or Sign in, then the settings gear upper-right), `/diag` status cards, and Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`) |
 
 ## Documentation Suite
 
@@ -208,7 +209,7 @@ After a deploy (push to `master`), the live URL is:
 az webapp show --name app-poseereview2 --resource-group PoSeeReview --query defaultHostName -o tsv
 ```
 
-The deploy job runs `scripts/post-deploy-smoke.ps1` after the health gate (a failure rolls the deploy back); it can be run by hand:
+CI only builds, deploys and confirms the new commit answers `/health/live`; the smoke is run by hand after a deploy:
 
 ```powershell
 # Post-deploy smoke (NET_RULES 5.4): Blazor render tree, /health, then Lighthouse budgets
@@ -224,7 +225,7 @@ $env:E2E_BASE_URL = "https://<fqdn>"
 dotnet test tests/PoSeeReview.E2EUI
 ```
 
-Locally, run it against the app in **mock mode** (`UseMockData=true`, Development or Test only): sample places instead of Google Maps, every AI call answered by `AiMockDelegatingHandler`, real Azurite storage on ports 10000/10002 (`scripts/start-azurite.ps1`), Key Vault blanked so no production secret is read:
+Locally, run it against the app in **mock mode** (`UseMockData=true`, Development or Test only): sample places instead of Google Maps, every AI call answered by `AiMockDelegatingHandler`, real Azurite storage on ports 10000/10002 (`scripts/start-azurite.ps1`; when another app's emulator holds those, run one elsewhere and set `Storage:AzuritePorts` to `blob,queue,table`, e.g. `Storage__AzuritePorts=5541,5542,5543`), Key Vault blanked so no production secret is read:
 
 ```bash
 KeyVault__Uri= UseMockData=true ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7208 \

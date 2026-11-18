@@ -1084,12 +1084,8 @@
         box-shadow: none;
     }
 
-    :root[data-theme="dark"] :focus-visible {
-        box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.75);
-    }
-
     @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) :focus-visible {
+        :focus-visible {
             box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.75);
         }
     }
@@ -2149,13 +2145,9 @@
     /* The dark theme's danger token is a light coral, which multiply washes out to nothing on
        the artwork; there the ink is laid on normally. */
     @media (prefers-color-scheme: dark) {
-        :root:not([data-theme="light"]) .fx-stamp {
+        .fx-stamp {
             mix-blend-mode: normal;
         }
-    }
-
-    :root[data-theme="dark"] .fx-stamp {
-        mix-blend-mode: normal;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -2230,11 +2222,48 @@
         --rz-info: var(--color-brand-surface);
         --rz-on-info: var(--color-brand-ink);
         --rz-dialog-mask-background-color: var(--surface-inverse-veil);
+        /* The one indigo accent (Po web standard): a soft accent button, not Radzen's pink. */
+        --rz-secondary: var(--po-accent-soft);
+        --rz-on-secondary: var(--color-brand-ink);
     }
 
     /* A tab strip scrolls sideways on a phone instead of widening the page. */
     .rz-tabview-nav {
         overflow-x: auto;
         scrollbar-width: none;
+    }
+}
+
+/* ============================================================================================
+   PO SHELL ADAPTERS — deliberately UNLAYERED.
+   po-tokens.css (the Po web standard, identical in every Po app, never edited here) is plain
+   unlayered CSS, so it beats every layer above. The few places this app must adjust it live
+   here, unlayered too, where specificity and source order decide.
+   ============================================================================================ */
+
+/* The backdrop shader sits at z-index -1; body's background would paint over it. */
+:root[data-fx-backdrop="on"] body {
+    background: transparent;
+}
+
+/* po-tokens.css points Radzen's status colours at the solid --po-* inks; this app's Radzen
+   bridge (above) pairs a status SURFACE with its readable ink, so a filled alert or badge stays
+   legible. Same specificity as po-tokens.css, later in the cascade. */
+:root {
+    --rz-danger: var(--color-danger-surface);
+    --rz-success: var(--color-success-surface);
+    --rz-warning: var(--color-highlight);
+    --rz-info: var(--po-accent-soft);
+}
+
+/* The header owns the notch on an installed iOS PWA (viewport-fit=cover). */
+.po-header {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* The phone bottom nav (BottomNav, under 40rem) is 48px plus the home indicator. */
+@media (max-width: 40rem) {
+    :root {
+        --po-stamp-lift: 48px;
     }
 }

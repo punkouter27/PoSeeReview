@@ -21,7 +21,8 @@ dotnet watch --project src/PoSeeReview.Api --launch-profile https   # code-only 
 **Local run with no secrets (mock mode, added 2026-11-17).** `UseMockData=true` swaps Google Maps
 for `TestMockRestaurantService` (sample Seattle places) and answers every AI call with
 `AiMockDelegatingHandler`; storage stays Azurite (`Storage:UseAzurite`, ports 10000/10002 — start
-it with `scripts/start-azurite.ps1`, or reuse an emulator already listening there). Development
+it with `scripts/start-azurite.ps1`, or reuse an emulator already listening there; when another
+app's emulator holds them, run one on other ports and set `Storage:AzuritePorts` = `blob,queue,table`). Development
 and Test only — `MockDataMode` refuses to start with it anywhere else. Blank Key Vault so no
 production secret is loaded:
 
@@ -31,7 +32,8 @@ E2E_BASE_URL=http://localhost:7208 dotnet test tests/PoSeeReview.E2EUI   # again
 ```
 
 Config changes (appsettings, Key Vault) need a full restart — hot reload will not pick them up.
-If another local app already holds 5000/5001, add `--urls "https://localhost:5101;http://localhost:5100"`.
+If another local app already holds 5000/5001, add `--urls "https://localhost:5101;http://localhost:5100"`
+(`--urls` beats `ASPNETCORE_URLS` and the launch profile).
 
 VS Code tasks `start-api-clean` / `start-api-watch-clean` do the correct sequence:
 stop the running API → start Azurite → start the API.
@@ -56,7 +58,7 @@ dotnet test tests/PoSeeReview.Unit --filter "FullyQualifiedName~GeoUtilsTests"  
 ```
 
 Tier quotas: Unit 100 / Integration 50 / E2EAPI 25 / E2EUI 25, counted in `[Fact]`/`[Theory]`
-attributes and enforced in CI by `scripts/check-test-quota.mjs` (run from `scripts/ci-checks.ps1`). A new test in a full tier
+attributes and checked by `scripts/check-test-quota.mjs` (run from `scripts/ci-checks.ps1` — locally; CI runs no tests). A new test in a full tier
 replaces one. Playwright browsers install via
 `pwsh tests/PoSeeReview.E2EUI/bin/Debug/net10.0/playwright.ps1 install chromium` after a build.
 
@@ -78,12 +80,13 @@ segment rather than skipping a fixed one.
 ### Deploy & smoke
 
 `git push origin master` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml), the
-shared Po workflow (byte-identical in every Po .NET web repo — never edit it here): `build` (unit
-tests, then `scripts/ci-checks.ps1` = test-quota check, publish) → `deploy` (App Service
-`app-poseereview2`, RG `PoSeeReview`, from repo variables), health gate (`/health/live` serving this
-commit, then `/health`), then `scripts/post-deploy-smoke.ps1` (Playwright smoke + Lighthouse budgets);
-any failure after go-live rolls back. Integration and E2E suites run locally only. Infra under
-`infra/` is applied only by a manual run of `deploy.yml` with `infra` = what-if, then apply — see [infra/README.md](infra/README.md).
+Po workflow: the same file in every Po .NET web repo, and each repo owns its own copy (no shared
+repo, no sync script). It builds and publishes, deploys to App Service `app-poseereview2` (RG
+`PoSeeReview`, from repo variables) and waits until `/health/live` reports the pushed commit. That
+is all: **no tests, no format check, no infra job, no rollback, no PR runs.** Every test tier,
+`scripts/ci-checks.ps1` (test quota), `dotnet format` and `scripts/post-deploy-smoke.ps1`
+(Playwright smoke + Lighthouse budgets) run locally. Infra under `infra/` is applied by hand
+(what-if, then apply) — see [infra/README.md](infra/README.md).
 
 ```powershell
 pwsh scripts/post-deploy-smoke.ps1 -BaseUrl https://app-poseereview2.azurewebsites.net
@@ -174,9 +177,10 @@ button in **both** Development and Test — every E2E UI test clicks it.
 
 - .NET 10 pinned by `global.json`; CPM via `Directory.Packages.props`; `TreatWarningsAsErrors` +
   `Nullable` via `Directory.Build.props`. MinVer versions from git tags (`v` prefix). Every
-  assembly also carries a `YYMMDD` build stamp (HEAD commit date, `StampBuildDate` in
-  `Directory.Build.targets`): `BuildStamp.razor` shows it bottom-right in both layouts and
-  `/api/diag` reports it as `buildStamp`.
+  assembly also carries a `YYMMDD` build stamp (HEAD commit's UTC date, `StampBuildDate` in
+  `Directory.Build.targets` — the one generation path): `BuildVersion.razor` shows it as
+  `<span class="po-version">v{YYMMDD}</span>` bottom-right in both layouts, `/settings` repeats it
+  and `/api/diag` reports it as `buildStamp`.
 - Key Vault `kv-poshared2` (RG `PoShared`), secrets prefix-scoped `PoSeeReview--` via
   `PrefixKeyVaultSecretManager`, `DefaultAzureCredential` throughout. The Bicep only grants read
   access to it; it never creates or writes a vault.
@@ -389,9 +393,18 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 - **History.** `ComicHistoryService` keeps seen comics in `localStorage` (`posee_comic_history`) for
   `/my-comics`; `BoardMemoryService` keeps last-seen ranks per region. Both degrade to no-ops when
   storage throws, and both types are in `AppJsonContext`.
-- **Account menu.** `/my-comics` and `/settings` are linked from the identity badge's native
-  `popover`, never from `nav.nav-links`, which `HeaderContractUiTests` pins at exactly one item (Hall of Fame — the brand link is the way home). Under 40rem every
-  `.popover-menu` is a bottom sheet over a scrim (shared layer, so callers' placement loses). `/diag` (alias `/diagnostics`) and
+- **Po shell (the Po web standard, 2026-11).** One header, `NavMenu.razor` (`<header class="po-header">`),
+  on every page signed in and out — `BareLayout` (the sign-in page) renders it too, without the nav,
+  and the sign-in card sits in the page body under it. Left: `.po-header__title` (mark + "PoSeeReview",
+  never collapsed on a phone). Right: the signed-in **email** (`.po-header__email`; a dev guest gets
+  `anonNNNNNN@guest.localhost`) or the Sign in button, then the settings gear (`.po-header__settings`
+  → `/settings`). `/settings` is anonymous and holds the account (email, My comics, Sign out), the
+  build stamp and every effects switch; there is no account popover and no theme switch.
+  `nav.nav-links` keeps exactly one item (Hall of Fame), hidden under 40rem where the bottom nav
+  carries it; the mock badge is hidden there too. `HeaderContractUiTests` pins all of this. Tab
+  with nothing focused opens `/po-dev.html` (`js/po-devwindow.js` + `js/po-dev.js`, which read
+  `/health/live` and `/api/diag`). Under 40rem every `.popover-menu` is a bottom sheet over a
+  scrim (shared layer, so callers' placement loses). `/diag` (alias `/diagnostics`) and
   `/moderation` have no nav entry.
 - **Components.** `ComicRow` is every list of comics (its `Skeleton` mode is every list's loading
   state — no spinner where rows are coming); `StateCard` is every empty/error/404 screen;
@@ -441,6 +454,15 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 
 Read its header comment before adding CSS.
 
+- **Po tokens come first.** `css/po-tokens.css` is the Po web standard's file — identical in every
+  Po app, never edited here (copy a new version in whole). It is unlayered, so it beats every layer
+  below: it sets the fonts (self-hosted Inter for text, Space Grotesk for headings — the only text
+  faces; Radzen's theme brings its own Material Symbols icon font), the `--po-*` colours that follow
+  `prefers-color-scheme`, and the shell classes (`.po-header*`, `.po-version`, `.po-diag*`,
+  `.po-badge*`). `css/tokens.css` (`@layer tokens`) is this app's own token set; its colours and
+  fonts alias `--po-*`. The few deliberate adjustments to po-tokens.css are in the unlayered
+  "PO SHELL ADAPTERS" block at the end of app.css. There is no `data-theme`: the device decides.
+
 - **Cascade layers**: `reset, tokens, base, vendor, page, shared, utilities` (`vendor` = injected third-party CSS: MapLibre, and Radzen on the operator pages). `page` (the scoped-CSS
   bundle, pulled in via `@import … layer(page)`) sits **before** `shared`, so a scoped sheet cannot
   fork `.btn`. Element selectors go in `base`; class components in `shared` — layer order beats
@@ -453,12 +475,14 @@ Read its header comment before adding CSS.
   (`40/48/64/80rem`); prefer a container query when the question is a component's room.
 - **Motion** scale `--duration-*` / `--ease-*`; reduced motion zeroes durations at `:root`.
 - **Elevation is a pair** `--elevation-N-surface` + `--elevation-N-shadow` (dark mode rises by
-  getting lighter). Redefine every token in **both** the dark media query and
-  `:root[data-theme="dark"]`.
+  getting lighter). A literal colour token needs a dark value in tokens.css's
+  `@media (prefers-color-scheme: dark)` block; an alias of a `--po-*` token flips on its own.
 - **Boot splash** is centred with `min-height: 100dvh`; a top offset caused 0.20 CLS on every load.
 - [ColorContrastTests.cs](tests/PoSeeReview.Unit/Utilities/ColorContrastTests.cs) parses the real
-  tokens and asserts WCAG ratios for every text token against **every** surface token. Tune text
-  tokens against `--color-surface-alt` (light) and `--color-highlight` (dark) — the worst cases.
+  tokens (tokens.css, resolving `var(--po-*)` through po-tokens.css) and asserts WCAG ratios for
+  every text token against **every** surface token. Tune text tokens against `--color-surface-alt`
+  (light) and `--color-highlight` (dark) — the worst cases (`--po-success` is 4.46:1 on
+  `--po-surface-2`, so `--color-success-ink` keeps a darker light-mode literal).
 
 ### Graphics and audio (`wwwroot/js/`, fronted by `FxService`)
 
@@ -475,7 +499,7 @@ Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRa
 
 **Everything on by default, switches in `/settings`** (the owner's call, 2026-11). Sound, haptics,
 map sounds and ink motes start **on** at full volume (an absent key is on; only an
-explicit `"false"` is off), the theme is Auto and the effects tier is `full` (the frame watchdog
+explicit `"false"` is off), the theme follows the device (no switch) and the effects tier is `full` (the frame watchdog
 steps a slow device down to `lite`). Every switch is on the
 `/settings` page (linked from the account menu); nothing else offers one.
 
@@ -596,9 +620,11 @@ check fails the deploy and rolls it back; `GET /api/diag` (anonymous, every envi
 `UserAgentValidationMiddleware`, so anonymous scripted fetches get a 400) feeds the `/diag` page;
 `/api/diag/mock-status` drives the client's "USING MOCK DATA" banner.
 
-**`/diag` (decided 2026-11-17, fleet standard).** `/diag` is the **client page** (Radzen, anonymous,
-`/diagnostics` kept as an alias): status banner, API (reachable + response time), Database / storage,
-Services (AI, Google Maps, imaging, Key Vault, Microsoft sign-in), version and environment, Refresh.
+**`/diag` (decided 2026-11-17, fleet standard; Po web standard 2026-11).** `/diag` is the **client page**
+(anonymous, `/diagnostics` kept as an alias): status banner, then groups API (reachable + response
+time), Data (table and blob storage) and Services (AI, Google Maps, imaging, Key Vault, Microsoft
+sign-in) with one `.po-diag__card` and a `.po-badge--ok|warn|bad` per dependency, version and
+environment, Refresh.
 The JSON moved from `/diag` to `/api/diag` so browser navigation reaches the page. It replaced the
 old Development-only, signed-in tabs (config dump, masked keys, machine name, user id): the
 snapshot (`DiagnosticsSnapshotQueryHandler`) now emits only fixed names/purposes, statuses,

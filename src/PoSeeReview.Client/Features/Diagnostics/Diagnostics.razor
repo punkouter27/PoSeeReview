@@ -27,7 +27,7 @@
                           class="diag-refresh" />
     </Header>
     <ChildContent>
-        <div class="diag-body">
+        <div class="po-diag diag-body">
             @if (_snapshot is null && _refreshing)
             {
                 <div class="diag-loading" role="status">
@@ -45,13 +45,13 @@
                     }
                     Try Refresh in a moment.
                 </RadzenAlert>
-                <RadzenCard class="diag-section" data-section="api">
+                <section class="po-diag__group diag-section" data-section="api">
                     <h2 class="diag-section-title">API</h2>
-                    <div class="diag-row">
+                    <div class="po-diag__card diag-row">
                         <span class="diag-row-name">App server</span>
-                        <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Not reachable" />
+                        <span class="po-badge po-badge--bad">Not reachable</span>
                     </div>
-                </RadzenCard>
+                </section>
             }
             else
             {
@@ -64,29 +64,29 @@
                     }
                 </RadzenAlert>
 
-                <RadzenCard class="diag-section" data-section="api">
+                <section class="po-diag__group diag-section" data-section="api">
                     <h2 class="diag-section-title">API</h2>
-                    <div class="diag-row">
+                    <div class="po-diag__card diag-row">
                         <div class="diag-row-main">
                             <span class="diag-row-name">App server</span>
                             <span class="diag-row-purpose">Answers every request the app makes.</span>
                         </div>
-                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Reachable" />
+                        <span class="po-badge po-badge--ok">Reachable</span>
                         <span class="diag-row-meta">Responded in @FormatMs(_apiMilliseconds)</span>
                     </div>
-                </RadzenCard>
+                </section>
 
-                @CheckSection("Database / storage", "storage", snapshot.Checks.Where(c => c.Kind == DiagnosticsCheckKinds.Storage).ToList())
+                @CheckSection("Data", "storage", snapshot.Checks.Where(c => c.Kind == DiagnosticsCheckKinds.Storage).ToList())
                 @CheckSection("Services", "services", snapshot.Checks.Where(c => c.Kind != DiagnosticsCheckKinds.Storage).ToList())
 
-                <RadzenCard class="diag-section diag-about" data-section="about">
+                <section class="po-diag__group diag-section diag-about" data-section="about">
                     <h2 class="diag-section-title">About this copy</h2>
                     <dl class="diag-facts">
-                        <div><dt>Version</dt><dd data-fact="version">@snapshot.BuildStamp</dd></div>
+                        <div><dt>Version</dt><dd data-fact="version">v@(snapshot.BuildStamp)</dd></div>
                         <div><dt>Environment</dt><dd data-fact="environment">@snapshot.Environment</dd></div>
                         <div><dt>Checked</dt><dd>@snapshot.Timestamp.ToLocalTime().ToString("HH:mm:ss") (took @FormatMs(snapshot.DurationMilliseconds))</dd></div>
                     </dl>
-                </RadzenCard>
+                </section>
 
                 <details class="diag-section diag-graphics">
                     <summary>Graphics on this device</summary>
@@ -136,7 +136,7 @@
         }
     }
 
-    private RenderFragment CheckSection(string title, string key, List<DiagnosticsCheckDto> checks) => @<RadzenCard class="diag-section" data-section="@key">
+    private RenderFragment CheckSection(string title, string key, List<DiagnosticsCheckDto> checks) => @<section class="po-diag__group diag-section" data-section="@key">
         <h2 class="diag-section-title">@title</h2>
         @if (checks.Count == 0)
         {
@@ -146,12 +146,12 @@
         {
             @foreach (var check in checks)
             {
-                <div class="diag-row" data-check="@check.Name">
+                <div class="po-diag__card diag-row" data-check="@check.Name">
                     <div class="diag-row-main">
                         <span class="diag-row-name">@check.Name</span>
                         <span class="diag-row-purpose">@check.Purpose</span>
                     </div>
-                    <RadzenBadge BadgeStyle="@BadgeFor(check.Status)" Text="@check.Status" />
+                    <span class="po-badge po-badge--@BadgeFor(check.Status)">@check.Status</span>
                     <span class="diag-row-meta">
                         @check.Detail
                         @if (check.DurationMilliseconds is { } ms)
@@ -167,15 +167,15 @@
                 </div>
             }
         }
-    </RadzenCard>;
+    </section>;
 
     private static string FormatMs(double ms) => ms < 1 ? "under 1 ms" : $"{ms:F0} ms";
 
-    private static BadgeStyle BadgeFor(string status) => status switch
+    private static string BadgeFor(string status) => status switch
     {
-        "Healthy" => BadgeStyle.Success,
-        "Degraded" => BadgeStyle.Warning,
-        _ => BadgeStyle.Danger
+        "Healthy" => "ok",
+        "Degraded" => "warn",
+        _ => "bad"
     };
 
     private static AlertStyle BannerStyle(string status) => status switch

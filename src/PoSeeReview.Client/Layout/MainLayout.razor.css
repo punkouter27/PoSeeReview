@@ -27,13 +27,6 @@ main {
     flex: 1;
 }
 
-.shell-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    backdrop-filter: blur(14px);
-}
-
 /* The one horizontal gutter in the app — page containers inside it add none of their own.
    84rem so `page-shell--wide` is reachable; a 1200px cap left it 80px wider than Standard. */
 .content {
@@ -41,7 +34,7 @@ main {
     width: min(84rem, 100%);
     margin: 0 auto;
     /* max(): the gutter, or the notch / home indicator where that is larger. The top inset is
-       the sticky header's (NavMenu's .top-row). */
+       the sticky header's (NavMenu's .po-header). */
     /* The bottom adds the build stamp's height, so the last row of any page can scroll clear of
        the fixed stamp instead of ending underneath it. */
     padding: var(--gutter)
@@ -51,8 +44,10 @@ main {
 }
 
 @media (max-width: 40rem) {
+    /* Clear of the fixed bottom nav (48px) and the build stamp lifted above it. */
     .content {
         --gutter: var(--space-sm);
+        padding-bottom: calc(max(var(--gutter), env(safe-area-inset-bottom)) + 48px + var(--space-xl));
     }
 }
 
