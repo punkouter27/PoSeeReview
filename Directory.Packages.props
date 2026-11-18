@@ -61,5 +61,8 @@
     <PackageVersion Include="Radzen.Blazor" Version="12.2.0" />
     <PackageVersion Include="FluentValidation" Version="11.12.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.12.0" />
+    <!-- MAUI Mobile -->
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.110" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.15" />
   </ItemGroup>
 </Project>

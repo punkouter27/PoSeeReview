@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PoSeeReview.Mobile.Pages.NearbyPage"
+             Title="Nearby">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12">
+            <Label Text="PoSeeReview Nearby" FontSize="24" FontAttributes="Bold" />
+            <Label x:Name="StatusLabel" Text="Tap Near Me to find weird local restaurants via native GPS." FontSize="13" />
+            <Button Text="Near Me (GPS)" Clicked="OnNearMeClicked" />
+            <Image x:Name="ComicPreview" HeightRequest="220" Aspect="AspectFit" IsVisible="False" />
+            <VerticalStackLayout x:Name="RestaurantsList" Spacing="10" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

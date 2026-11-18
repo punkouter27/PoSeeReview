@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PoSeeReview.Mobile.Pages.SettingsPage"
+             Title="Settings">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12">
+            <Label Text="Backend &amp; Secure Storage" FontSize="22" FontAttributes="Bold" />
+            <Label Text="API Base URL" FontAttributes="Bold" />
+            <Entry x:Name="BaseUrlEntry" Keyboard="Url" />
+            <Label Text="Dev X-Fake-User (SecureStorage)" FontAttributes="Bold" />
+            <Entry x:Name="FakeUserEntry" />
+            <Label Text="Bearer JWT (SecureStorage)" FontAttributes="Bold" />
+            <Entry x:Name="TokenEntry" IsPassword="True" />
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Save" Clicked="OnSaveClicked" />
+                <Button Text="Test /auth/me" Clicked="OnTestClicked" />
+            </HorizontalStackLayout>
+            <Label x:Name="ResultLabel" FontSize="13" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
