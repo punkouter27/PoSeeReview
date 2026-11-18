@@ -12,19 +12,35 @@
     <NuGetAuditLevel>low</NuGetAuditLevel>
   </PropertyGroup>
 
-  <Target Name="PoBuildStamp" BeforeTargets="GetAssemblyAttributes">
-    <Exec Command="git rev-list -1 --timestamp HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true"
-          IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="low" StandardErrorImportance="low">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <EnableDefaultCompressionFormats>false</EnableDefaultCompressionFormats>
+    <PublishCompressionFormats>brotli</PublishCompressionFormats>
+  </PropertyGroup>
+
+  <!-- Self-contained Po build stamp (vYYMMDD = UTC date of HEAD commit, fallback to UTC build date).
+       Emits BuildVersion (and legacy aliases BuildStamp/BuildDate) so client corner badge and /api/diag match. -->
+  <Target Name="PoBuildStamp" BeforeTargets="GetAssemblyAttributes;CoreCompile">
+    <Exec Condition="'$(PoStamp)' == ''" Command="git rev-list -1 --timestamp HEAD" WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ConsoleToMSBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true"
+          StandardOutputImportance="low" StandardErrorImportance="low">
       <Output TaskParameter="ConsoleOutput" PropertyName="_PoHeadCommit" />
       <Output TaskParameter="ExitCode" PropertyName="_PoHeadCommitExit" />
     </Exec>
     <PropertyGroup>
-      <PoStamp Condition="'$(_PoHeadCommitExit)' == '0' and '$(_PoHeadCommit)' != ''">$([System.DateTime]::new(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc).AddSeconds($(_PoHeadCommit.Split(' ')[0])).ToString('yyMMdd'))</PoStamp>
+      <PoStamp Condition="'$(PoStamp)' == '' and '$(_PoHeadCommitExit)' == '0' and '$(_PoHeadCommit)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('$(_PoHeadCommit.Split(` `)[0])', '^\d+$'))">$([System.DateTime]::UnixEpoch.AddSeconds($(_PoHeadCommit.Split(' ')[0])).ToString('yyMMdd'))</PoStamp>
       <PoStamp Condition="'$(PoStamp)' == ''">$([System.DateTime]::UtcNow.ToString('yyMMdd'))</PoStamp>
     </PropertyGroup>
     <ItemGroup>
       <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
         <_Parameter1>BuildVersion</_Parameter1>
+        <_Parameter2>$(PoStamp)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildStamp</_Parameter1>
+        <_Parameter2>$(PoStamp)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildDate</_Parameter1>
         <_Parameter2>$(PoStamp)</_Parameter2>
       </AssemblyAttribute>
     </ItemGroup>

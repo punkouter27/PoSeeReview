@@ -1,9 +1,14 @@
+using Radzen;
+
 namespace PoSeeReview.Client.Services;
 
 /// <summary>The one transient confirmation, rendered by the <c>Toast</c> component in MainLayout.</summary>
 public sealed class ToastService
 {
+    private readonly NotificationService? _radzen;
     private int _version;
+
+    public ToastService(NotificationService? radzen = null) => _radzen = radzen;
     private TaskCompletionSource<bool>? _undo;
 
     public string? Message { get; private set; }
@@ -18,6 +23,7 @@ public sealed class ToastService
         Supersede();
         var version = ++_version;
         Message = message;
+        _radzen?.Notify(NotificationSeverity.Info, message);
         Changed?.Invoke();
         _ = ClearAfterAsync(version, TimeSpan.FromSeconds(3));
     }
@@ -34,6 +40,7 @@ public sealed class ToastService
         var undo = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _undo = undo;
         Message = message;
+        _radzen?.Notify(NotificationSeverity.Info, message);
         Changed?.Invoke();
         _ = ClearAfterAsync(version, window);
         return undo.Task;
