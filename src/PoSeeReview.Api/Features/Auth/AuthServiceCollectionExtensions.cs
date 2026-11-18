@@ -1,6 +1,7 @@
 using PoSeeReview.Api.Identity;
 using PoSeeReview.Api.Platform;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -25,18 +26,24 @@ internal static class AuthServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
+        var clientId = configuration["AzureAd:ClientId"];
         var authBuilder = services.AddAuthentication(options =>
             {
                 options.DefaultScheme = PolicySchemeName;
                 options.DefaultChallengeScheme = PolicySchemeName;
             })
-            .AddPolicyScheme(PolicySchemeName, "Cookie or FakeAuth selector", options =>
+            .AddPolicyScheme(PolicySchemeName, "Cookie, Bearer, or FakeAuth selector", options =>
             {
-                // Fake headers only exist for the Dev/Test scheme; everything else is the cookie.
+                // Fake headers only exist for the Dev/Test scheme; Bearer is for mobile clients; everything else is the cookie.
                 options.ForwardDefaultSelector = context =>
-                    environment.AllowsFakeAuth() && context.Request.Headers.ContainsKey(FakeAuthHandler.UserHeader)
-                        ? FakeAuthHandler.SchemeName
-                        : CookieAuthenticationDefaults.AuthenticationScheme;
+                {
+                    if (environment.AllowsFakeAuth() && context.Request.Headers.ContainsKey(FakeAuthHandler.UserHeader))
+                        return FakeAuthHandler.SchemeName;
+                    if (!string.IsNullOrEmpty(clientId)
+                        && context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        return JwtBearerDefaults.AuthenticationScheme;
+                    return CookieAuthenticationDefaults.AuthenticationScheme;
+                };
             })
             .AddCookie(options =>
             {
@@ -59,10 +66,21 @@ internal static class AuthServiceCollectionExtensions
                 };
             });
 
-        var clientId = configuration["AzureAd:ClientId"];
         if (!string.IsNullOrEmpty(clientId))
         {
             var allowedTenants = configuration.GetSection("AzureAd:AllowedTenants").Get<string[]>() ?? [];
+            authBuilder.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Authority = "https://login.microsoftonline.com/common/v2.0";
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    NameClaimType = "name",
+                    ValidateAudience = true,
+                    ValidAudiences = [clientId, $"api://{clientId}"],
+                    ValidateIssuer = true,
+                    IssuerValidator = (issuer, _, _) => ValidateIssuerShape(issuer, allowedTenants),
+                };
+            });
             authBuilder.AddOpenIdConnect(options =>
             {
                 // /common accepts both Entra work/school and personal Microsoft accounts,

@@ -7,6 +7,7 @@ name: Build & Deploy
 #                 AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP (what is deployed, where).
 # Optional hooks: scripts/ci-package.ps1 -PublishDir   adds files to the package
 #                 scripts/pre-deploy.ps1 -BaseUrl      prepares the live site before deploy
+#                 (hooks get $env:APP, $env:RG and $env:BASE_URL)
 # Layout it relies on: one *.slnx at the root, global.json, src/*.Api/*.csproj.
 
 on:
@@ -34,7 +35,9 @@ jobs:
     environment:
       name: production
       url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
-    env:
+    env:   # the hooks read these
+      APP: ${{ vars.AZURE_WEBAPP_NAME }}
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
       BASE_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v7

@@ -5,9 +5,24 @@
              Title="Settings">
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="12">
-            <Label Text="Backend &amp; Secure Storage" FontSize="22" FontAttributes="Bold" />
-            <Label Text="API Base URL" FontAttributes="Bold" />
+            <Label Text="Backend &amp; Authentication" FontSize="22" FontAttributes="Bold" />
+            <Label Text="API Base URL (adb reverse, 10.0.2.2, or Dev Tunnel)" FontAttributes="Bold" />
             <Entry x:Name="BaseUrlEntry" Keyboard="Url" />
+
+            <Border Padding="14" StrokeThickness="1" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Microsoft Entra PKCE (Production)" FontAttributes="Bold" />
+                    <Entry x:Name="ClientIdEntry" Placeholder="Entra App Client ID (GUID)" />
+                    <Entry x:Name="TenantIdEntry" Placeholder="Tenant ID or common" />
+                    <Entry x:Name="ScopeEntry" Placeholder="openid profile email" />
+                    <Label x:Name="RedirectLabel" FontSize="11" Opacity="0.7" />
+                    <HorizontalStackLayout Spacing="10">
+                        <Button Text="Sign in (Microsoft)" Clicked="OnEntraSignInClicked" />
+                        <Button Text="Sign Out" Clicked="OnSignOutClicked" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
             <Label Text="Dev X-Fake-User (SecureStorage)" FontAttributes="Bold" />
             <Entry x:Name="FakeUserEntry" />
             <Label Text="Bearer JWT (SecureStorage)" FontAttributes="Bold" />

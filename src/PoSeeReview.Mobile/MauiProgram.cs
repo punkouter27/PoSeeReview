@@ -23,6 +23,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<MobileConfig>();
         builder.Services.AddSingleton<SecureSessionStore>();
+        builder.Services.AddSingleton<EntraAuthService>();
         builder.Services.AddSingleton<OfflineComicCache>();
         builder.Services.AddTransient<AuthDelegatingHandler>();
         builder.Services.AddSingleton(sp =>
