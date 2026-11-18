@@ -30,12 +30,16 @@
     });
   }
 
+  // The first candidate that answers OK with JSON holding at least one named check. An app may
+  // answer an unknown /api/* path with a JSON 404 body, so content type alone is not enough.
   async function findDiag() {
     for (var i = 0; i < DIAG_CANDIDATES.length; i++) {
       try {
         var r = await fetch(DIAG_CANDIDATES[i], { headers: { Accept: 'application/json' }, cache: 'no-store' });
         var ct = r.headers.get('content-type') || '';
-        if (ct.indexOf('json') >= 0) return DIAG_CANDIDATES[i];
+        if (!r.ok || ct.indexOf('json') < 0) continue;
+        var found = []; collect(await r.json(), found);
+        if (found.length) return DIAG_CANDIDATES[i];
       } catch (_) { }
     }
     return null;
