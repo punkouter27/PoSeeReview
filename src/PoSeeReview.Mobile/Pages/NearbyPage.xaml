@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PoSeeReview.Mobile.Pages.NearbyPage"
+             Title="Nearby">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Label Text="Strange places near you" FontSize="24" FontAttributes="Bold" />
+            <Button x:Name="NearMeButton" Text="Near me" Clicked="OnNearMeClicked" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry x:Name="SearchEntry" Placeholder="Or search a place or address" ReturnType="Search" Completed="OnSearchClicked" />
+                <Button Grid.Column="1" Text="Search" Clicked="OnSearchClicked" />
+            </Grid>
+            <ActivityIndicator x:Name="Busy" IsRunning="False" IsVisible="False" />
+            <Label x:Name="StatusLabel" Text="Tap Near me to find weird reviews around you." FontSize="13" />
+            <!-- The native map goes here when this build has one (Apple Maps on iOS, Google Maps on Android with a key). -->
+            <ContentView x:Name="MapHost" HeightRequest="300" IsVisible="False" />
+            <VerticalStackLayout x:Name="PlacesList" Spacing="10" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

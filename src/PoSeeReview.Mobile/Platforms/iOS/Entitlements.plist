@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links for /comic/* and /s/*; the host proves it with
+	     /.well-known/apple-app-site-association (MobileApp:AppleAppId on the API). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app-poseereview2.azurewebsites.net</string>
+	</array>
+</dict>
+</plist>

@@ -57,7 +57,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 - No server-side user profiles: sign-in is a session cookie, and "My comics" history lives only in the browser.
 - No automated moderation decisions: the AI triage advises, a moderator acts.
 - No real-time collaborative features beyond optimistic concurrency on the same restaurant.
-- No mobile native app — Blazor WASM in the browser is the delivery target.
+- The browser (Blazor WASM) is the primary delivery target. The native companion app (`src/PoSeeReview.Mobile`, below) is not in `PoSeeReview.slnx` and is not built or shipped by CI.
 - No paid tier or premium features.
 
 ### Technical Constraints
@@ -95,6 +95,7 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 | Alerting | `infra/alerts.bicep`: Http5xx, AI spend, in-band generation failures, fail-open guards, image refusals, moderation queue → email action group |
 | Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `scripts/lighthouserc.json`) in the post-deploy smoke (`scripts/post-deploy-smoke.ps1`) |
 | Build stamp | `v{YYMMDD}` from the HEAD commit's UTC date (`Directory.Build.targets`), shown bottom-right on every page (`.po-version`) and as Version on `/diag` (`buildStamp` in `/api/diag`) |
+| Mobile companion | `src/PoSeeReview.Mobile` — .NET MAUI (XAML) for Android/iOS, built by hand (`dotnet build src/PoSeeReview.Mobile -f net10.0-android`). Native GPS with a place-name fallback; a native map with score pins (Apple Maps; Google Maps on Android only when built with `POSEEREVIEW_ANDROID_MAPS_KEY`, else list-only); offline copies of the last search, the board and the last 30 comics (never past `ExpiresAt`, evicted on 404/451); draw a comic over the SSE stream with a haptic per step and on the reveal (Settings switch); Share sends the `/s/{code}` short link. App Links / Universal Links open `/comic/*` and `/s/*` in the app; without it they open the web page. The API serves `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` from `MobileApp:AndroidPackage`, `MobileApp:AndroidCertSha256` (release keystore SHA-256 fingerprints) and `MobileApp:AppleAppId` (`TEAMID.com.punkouter.poseereview`); each answers 404 while unset. `/.well-known/*` skips the User-Agent check so Google's and Apple's verifiers can read them. Auth: Entra bearer token (`AddJwtBearer`) or, in Debug builds only, `X-Fake-User` against a Dev/Test API. Dev loop: Android emulator → `http://10.0.2.2:5000`; USB phone → `adb reverse tcp:5000 tcp:5000`, then `http://localhost:5000` in Settings; test a link with `adb shell am start -a android.intent.action.VIEW -d poseereview://comic/<placeId>` |
 | Shell & look | The Po web standard: `wwwroot/css/po-tokens.css` (identical in every Po app; Inter + Space Grotesk self-hosted, one indigo accent, light/dark follow the device — no theme switch), one `.po-header` on every page (name upper-left; email or Sign in, then the settings gear upper-right), `/diag` status cards, and Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`) |
 
 ## Documentation Suite

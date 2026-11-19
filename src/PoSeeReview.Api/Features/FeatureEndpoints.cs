@@ -18,6 +18,7 @@ internal static class FeatureEndpoints
         app.MapAuthEndpoints();
         app.MapComicsEndpoints();
         app.MapSharingEndpoints();
+        app.MapAppLinkEndpoints();
         app.MapRestaurantsEndpoints();
         app.MapLeaderboardEndpoints();
         app.MapModerationEndpoints();

@@ -47,8 +47,11 @@ public sealed class UserAgentValidationMiddleware
 
         // Skip validation for health check endpoints (used by load balancers and monitoring)
         var path = context.Request.Path.Value ?? "";
+        // and for /.well-known (App Link / Universal Link verifiers are Google's and Apple's bots,
+        // and their files are public by design).
         if (path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+            path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/.well-known/", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;
