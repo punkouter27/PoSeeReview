@@ -58,7 +58,7 @@ dotnet test tests/PoSeeReview.Unit --filter "FullyQualifiedName~GeoUtilsTests"  
 ```
 
 Tier quotas: Unit 100 / Integration 50 / E2EAPI 25 / E2EUI 25, counted in `[Fact]`/`[Theory]`
-attributes and checked by `scripts/check-test-quota.mjs` (run from `scripts/ci-checks.ps1` — locally; CI runs no tests). A new test in a full tier
+attributes and checked by `scripts/check-test-quota.mjs` (run from `scripts/ci-checks.ps1` — locally; CI runs only the format check and the Unit tier). A new test in a full tier
 replaces one. Playwright browsers install via
 `pwsh tests/PoSeeReview.E2EUI/bin/Debug/net10.0/playwright.ps1 install chromium` after a build.
 
@@ -81,10 +81,10 @@ segment rather than skipping a fixed one.
 
 `git push origin master` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml), the
 Po workflow: the same file in every Po .NET web repo, and each repo owns its own copy (no shared
-repo, no sync script). It builds and publishes, deploys to App Service `app-poseereview2` (RG
-`PoSeeReview`, from repo variables) and waits until `/health/live` reports the pushed commit. That
-is all: **no tests, no format check, no infra job, no rollback, no PR runs.** Every test tier,
-`scripts/ci-checks.ps1` (test quota), `dotnet format` and `scripts/post-deploy-smoke.ps1`
+repo, no sync script). It checks formatting, builds, runs the Unit tier, publishes, deploys to App Service `app-poseereview2` (RG
+`PoSeeReview`, from repo variables) and waits until `/health/live` reports the pushed commit. A red
+check stops the deploy. **No other tests, no infra job, no rollback, no PR runs.** Every other tier,
+`scripts/ci-checks.ps1` (test quota) and `scripts/post-deploy-smoke.ps1`
 (Playwright smoke + Lighthouse budgets) run locally. Infra under `infra/` is applied by hand
 (what-if, then apply) — see [infra/README.md](infra/README.md).
 

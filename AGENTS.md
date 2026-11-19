@@ -68,7 +68,7 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
 
 ## CI/CD and Azure (same section in every Po repo)
 
-- A push to `master` builds, publishes, deploys and confirms the new commit is the one answering `/health/live` (`.github/workflows/deploy.yml`). Nothing is deployed by hand. The workflow runs no tests, no format check, no infra job and no rollback, and does not run on pull requests: tests, `dotnet format` and Bicep run locally before pushing.
+- A push to `master` checks formatting (`dotnet format --verify-no-changes`), builds, runs the Unit tier, then deploys (`.github/workflows/deploy.yml`, identical in every Po web repo; each repo owns its copy) and waits for `/health/live` to report the pushed commit in `X-Commit`. A red check stops the deploy and the live site keeps its last good build. Integration, E2E, Bicep and other checks run locally; there is no infra job, rollback or PR build. Nothing is deployed by hand.
 - `deploy.yml` is the same file in every Po .NET web repo, and each repo owns its own copy (there is no shared repo or sync script). Change it here only to change it everywhere.
 - Azure sign-in is GitHub OIDC (the `gh-<repo>-deploy` app). Its IDs are repo **variables** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`, and the App Service name is `AZURE_WEBAPP_NAME`. Never move them to secrets or write resource names into workflows.
 - Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.

@@ -21,6 +21,10 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
     // identified by their metadata, not listed.
     private static readonly string[] AnonymousAllowList =
     [
+        // App Links / Universal Links: Google's and Apple's verifiers fetch these unauthenticated
+        // to prove the phone app owns /comic/* (Features/Sharing/AppLinkEndpoints).
+        "/.well-known/apple-app-site-association",
+        "/.well-known/assetlinks.json",
         "/api/diag/",
         "/api/diag/mock-status",
         "/api/takedowns/",
