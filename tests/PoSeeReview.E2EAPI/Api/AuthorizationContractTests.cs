@@ -47,7 +47,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         "/{*path:nonfile}",
     ];
 
-    [Fact]
+    [DockerFact]
     public void Anonymous_surface_is_exactly_the_allow_list()
     {
         var anonymous = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
@@ -61,7 +61,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         Assert.Equal(AnonymousAllowList, anonymous);
     }
 
-    [Fact]
+    [DockerFact]
     public void Every_other_endpoint_requires_a_signed_in_user()
     {
         var policy = factory.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
@@ -74,7 +74,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         endpoint.RoutePattern.RawText!.TrimStart('/').StartsWith("_framework", StringComparison.Ordinal)
         || endpoint.Metadata.Any(m => m.GetType().Name is "StaticAssetDescriptor" or "ComponentTypeMetadata" or "RootComponentMetadata");
 
-    [Theory]
+    [DockerTheory]
     [InlineData("/api/comics/ChIJTest123")]
     [InlineData("/api/restaurants/nearby?latitude=47.6&longitude=-122.3")]
     [InlineData("/api/leaderboard")]
@@ -85,7 +85,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Theory]
+    [DockerTheory]
     [InlineData("/auth/me")]
     [InlineData("/api/devsession")]
     [InlineData("/api/diag")]
@@ -98,7 +98,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task SpaFallback_IsReachableAnonymously()
     {
         // Regression guard: the fallback must stay a real endpoint carrying AllowAnonymous,
@@ -109,7 +109,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task UnknownApiRoute_Returns404_RatherThanSpaShell()
     {
         var response = await factory.CreateClient().GetAsync("/api/definitely-not-a-route");
@@ -117,7 +117,7 @@ public class AuthorizationContractTests(CustomWebApplicationFactory<Program> fac
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task FakeAuthHeader_GrantsAccessToDeniedEndpoint()
     {
         var client = factory.CreateClient();

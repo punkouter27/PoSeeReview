@@ -1,5 +1,5 @@
-/* The Po shell header. .po-header, its title, email and gear are styled by po-tokens.css (the
-   Po web standard, unlayered); this sheet only adds what is PoSeeReview's own. */
+/* The page shell header. .po-header, its title, email, Sign in button and gear are styled by
+   po-tokens.css (unlayered); this sheet only adds what is PoSeeReview's own. */
 
 .brand-icon {
     flex-shrink: 0;
@@ -8,6 +8,7 @@
 
 .nav-mock-badge {
     flex-shrink: 0;
+    margin-right: auto;   /* stays beside the title on the sign-in page, which has no nav */
     padding: var(--space-3xs) var(--space-xs);
     font-size: var(--text-2xs);
     font-weight: 700;
@@ -64,11 +65,6 @@
     width: 1.25rem;
     height: 1.25rem;
     flex-shrink: 0;
-}
-
-.po-header__signin {
-    min-height: 2.5rem;
-    --btn-pad-x: var(--space-md);
 }
 
 /* On a phone the bottom nav carries Hall of Fame, and the mock badge would push the title

@@ -23,7 +23,7 @@ public class RestaurantsEndpointTests : IClassFixture<CustomWebApplicationFactor
         _output = output;
     }
 
-    [Theory]
+    [DockerTheory]
     [InlineData(91.0, -122.3321)]   // Invalid latitude > 90
     [InlineData(-91.0, -122.3321)]  // Invalid latitude < -90
     [InlineData(47.6062, 181.0)]    // Invalid longitude > 180
@@ -37,7 +37,7 @@ public class RestaurantsEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task GetNearbyRestaurants_MissingLatitude_Returns400()
     {
@@ -48,7 +48,7 @@ public class RestaurantsEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task GetNearbyRestaurants_MissingLongitude_Returns400()
     {
@@ -59,7 +59,7 @@ public class RestaurantsEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Theory]
+    [DockerTheory]
     [InlineData(-1)]   // Limit < 1
     [InlineData(0)]    // Limit = 0
     [InlineData(51)]   // Limit > 50

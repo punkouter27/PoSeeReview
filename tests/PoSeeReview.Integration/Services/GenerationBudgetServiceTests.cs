@@ -68,7 +68,7 @@ public sealed class GenerationBudgetServiceTests : IClassFixture<AzuriteFixture>
             NullLogger<GenerationBudgetService>.Instance);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task TryReserve_BeyondPerUserLimit_RefusesAndStopsCounting()
     {
         var service = await CreateServiceAsync("BudgetUserLimitTest", "user-over-limit", perUserLimit: 3);
@@ -92,7 +92,7 @@ public sealed class GenerationBudgetServiceTests : IClassFixture<AzuriteFixture>
         Assert.Equal(3, budget.Used);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task Release_AfterCacheHit_ReturnsTheUnitToTheUser()
     {
         var service = await CreateServiceAsync("BudgetRefundTest", "user-refund", perUserLimit: 3);
@@ -109,7 +109,7 @@ public sealed class GenerationBudgetServiceTests : IClassFixture<AzuriteFixture>
         Assert.Equal(3, budget.Remaining);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task TryReserve_WhenServiceCeilingReached_RefusesWithoutSpendingUserQuota()
     {
         // A service ceiling below the per-user limit, so the app-wide cap is what bites first.

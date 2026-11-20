@@ -58,7 +58,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
             : new StreamResult((HttpStatusCode)evt.ErrorStatus, null, last);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task PostComic_WithValidPlaceId_Returns200OrCachedOrContentPolicyRejection()
     {
@@ -132,7 +132,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
         }
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task PostComic_WithForceRegenerate_ReturnsNewComicOrContentPolicy()
     {
@@ -173,7 +173,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
         Assert.False(comic2.IsCached);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task GetComic_WithExistingCachedComic_Returns200OrNotFound()
     {
@@ -201,7 +201,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
         Assert.True(comic.IsCached);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     public async Task PostComic_SecondCall_ReturnsTheCachedComicOrContentPolicy()
     {
@@ -231,7 +231,7 @@ public class ComicsEndpointTests : IClassFixture<CustomWebApplicationFactory<Pro
         Assert.True(comic2.IsCached);
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     [Trait("Category", "Expensive")]
     [Trait("Category", "RequiresAzureOpenAI")]

@@ -51,7 +51,7 @@ public sealed class TakedownsEndpointValidationTests
     private static void AssertAccepted(IResult result) =>
         Assert.Equal(StatusCodes.Status202Accepted, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
 
-    [Fact]
+    [DockerFact]
     public async Task SubmitAsync_WhenComicExists_DeletesComicBlobAndLeaderboardEntry()
     {
         var request = BuildValidRequest("ChIJ-abc123", "US-WA-Seattle");
@@ -71,7 +71,7 @@ public sealed class TakedownsEndpointValidationTests
         _mockHallOfFameArchive.Verify(h => h.DeleteAllForPlaceAsync(placeId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task SubmitAsync_WhenTheComicRowHasExpired_StillErasesTheBoardRowAndArchive()
     {
         // The board row outlives the 24-hour comic and is partitioned by country, not by the
@@ -92,7 +92,7 @@ public sealed class TakedownsEndpointValidationTests
         _mockHallOfFameArchive.Verify(h => h.DeleteAllForPlaceAsync(placeId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task SubmitAsync_WhenComicIdIsEmpty_SkipsBlobDeletion()
     {
         var request = BuildValidRequest("ChIJ-partial", "US-NY-NYC");
@@ -107,7 +107,7 @@ public sealed class TakedownsEndpointValidationTests
         _mockBlobStorageService.Verify(b => b.DeleteComicImageAsync(It.IsAny<string>()), Times.Never);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task SubmitAsync_AlwaysReturns202Accepted()
     {
         var request = BuildValidRequest("ChIJ-any", "US-WA-SEATTLE");

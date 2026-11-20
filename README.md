@@ -89,60 +89,20 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 | External AI | Azure OpenAI (`gpt-5.4-nano` scorer and image QA, `gpt-5.4-mini` moderation triage, `gpt-image-1-mini` drafts), Azure AI Content Safety, Google Gemini (`gemini-2.5-flash-image` remasters), Google Maps Places. Local: Ollama (chat), any OpenAI-compatible image server (Development) |
 | Observability | Application Insights, OpenTelemetry, Serilog |
 | Imaging | SkiaSharp (caption overlay, lossy WebP, share cards); Bangers and DM Sans embedded |
-| Operator UI | Radzen.Blazor 12.0.6 on `/moderation` (DataGrid, confirm dialog) and `/diag` (system status; alias `/diagnostics`) only, through `RadzenScope`; its `material-base` theme is fetched into the `vendor` cascade layer and re-coloured from the app's tokens by the `--rz-*` bridge in `app.css`. The trimmed assembly and the framework pieces it pulls in add ~0.97 MB brotli to the boot download |
+| Operator UI | Radzen.Blazor 12.0.6 on `/moderation` (DataGrid, confirm dialog) only, through `RadzenScope`; its `material-base` theme is fetched into the `vendor` cascade layer and re-coloured from the app's tokens by the `--rz-*` bridge in `app.css`. The trimmed assembly and the framework pieces it pulls in add ~0.97 MB brotli to the boot download |
 | Graphics & audio | One hand-written WebGL2 backdrop shader on a shared rAF loop with a frame-budget tier (`off`/`lite`/`full`, `full` by default — `lite` is the calm one: the ink reveal and glass only, while the stamp, confetti, springy score, board and pin animations wait for `full`); an optional WebGPU compute particle layer (ink motes); 2D-canvas confetti and ink splats; Web Audio synthesis, no audio assets. Every extra (sound, haptics, map sounds, ink motes) is on by default at full volume and can be switched off on `/settings` |
 | Maps | MapLibre GL JS 5.24.0 (UMD, jsDelivr, SRI-pinned, loaded only when a map opens) over OpenFreeMap vector tiles — no key, no per-load billing |
 | Alerting | `infra/alerts.bicep`: Http5xx, AI spend, in-band generation failures, fail-open guards, image refusals, moderation queue → email action group |
 | Quality gates | axe-core (`Deque.AxeCore.Playwright` 4.13.0) in the E2E UI suite; Lighthouse CI (`@lhci/cli` 0.15.1, `scripts/lighthouserc.json`) in the post-deploy smoke (`scripts/post-deploy-smoke.ps1`) |
-| Build stamp | `v{YYMMDD}` from the HEAD commit's UTC date (`Directory.Build.targets`), shown bottom-right on every page (`.po-version`) and as Version on `/diag` (`buildStamp` in `/api/diag`) |
+| Version | `v{YYMMDD}` from the HEAD commit's UTC date (`BuildVersion`, stamped by `Directory.Build.props`), shown bottom-right on every page (`.po-version`) and as Version on `/diag` (`version` in `/api/diag`) |
 | Mobile companion | `src/PoSeeReview.Mobile` — .NET MAUI (XAML) for Android/iOS, built by hand (`dotnet build src/PoSeeReview.Mobile -f net10.0-android`). Native GPS with a place-name fallback; a native map with score pins (Apple Maps; Google Maps on Android only when built with `POSEEREVIEW_ANDROID_MAPS_KEY`, else list-only); offline copies of the last search, the board and the last 30 comics (never past `ExpiresAt`, evicted on 404/451); draw a comic over the SSE stream with a haptic per step and on the reveal (Settings switch); Share sends the `/s/{code}` short link. App Links / Universal Links open `/comic/*` and `/s/*` in the app; without it they open the web page. The API serves `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` from `MobileApp:AndroidPackage`, `MobileApp:AndroidCertSha256` (release keystore SHA-256 fingerprints) and `MobileApp:AppleAppId` (`TEAMID.com.punkouter.poseereview`); each answers 404 while unset. `/.well-known/*` skips the User-Agent check so Google's and Apple's verifiers can read them. Auth: Entra bearer token (`AddJwtBearer`) or, in Debug builds only, `X-Fake-User` against a Dev/Test API. Dev loop: Android emulator → `http://10.0.2.2:5000`; USB phone → `adb reverse tcp:5000 tcp:5000`, then `http://localhost:5000` in Settings; test a link with `adb shell am start -a android.intent.action.VIEW -d poseereview://comic/<placeId>` |
-| Shell & look | The Po web standard: `wwwroot/css/po-tokens.css` (identical in every Po app; Inter + Space Grotesk self-hosted, one indigo accent, light/dark follow the device — no theme switch), one `.po-header` on every page (name upper-left; email or Sign in, then the settings gear upper-right), `/diag` status cards, and Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`) |
+| Shell & look | The Po web standard: `wwwroot/css/po-tokens.css` (this repo's copy of the Po conventions; Inter + Space Grotesk self-hosted, one indigo accent, light/dark follow the device — no theme switch), one `.po-header` on every page (name upper-left; email or Sign in, then the settings gear upper-right), `/diag` (System status: API, Data, Services), and Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`) |
 
-## Documentation Suite
+## Documentation
 
-All diagrams are self-contained HTML files rendered by Mermaid.js with the cathrynlavery/diagram-design aesthetic. Open [docs/index.html](./docs/index.html) for the full gallery.
-
-### 1 — Architecture & CI/CD Strategy
-
-| Diagram | Full | Simple |
-|---|---|---|
-| Architecture Master (C4 Hybrid L1/L2) | [docs/Architecture_MASTER.html](./docs/Architecture_MASTER.html) | [docs/Architecture_MASTER_SIMPLE.html](./docs/Architecture_MASTER_SIMPLE.html) |
-| Release Pipeline Master | [docs/ReleasePipeline_MASTER.html](./docs/ReleasePipeline_MASTER.html) | [docs/ReleasePipeline_MASTER_SIMPLE.html](./docs/ReleasePipeline_MASTER_SIMPLE.html) |
-
-### 2 — User Usage & Behavioral Flowcharts
-
-| Diagram | Full | Simple |
-|---|---|---|
-| Onboarding Journey | [docs/OnboardingJourney.html](./docs/OnboardingJourney.html) | [docs/OnboardingJourney_SIMPLE.html](./docs/OnboardingJourney_SIMPLE.html) |
-| Primary Value Flow (Happy Path) | [docs/PrimaryValueFlow.html](./docs/PrimaryValueFlow.html) | [docs/PrimaryValueFlow_SIMPLE.html](./docs/PrimaryValueFlow_SIMPLE.html) |
-| Exception User Flows | [docs/ExceptionUserFlows.html](./docs/ExceptionUserFlows.html) | [docs/ExceptionUserFlows_SIMPLE.html](./docs/ExceptionUserFlows_SIMPLE.html) |
-
-### 3 — Logic & State Dynamics
-
-| Diagram | Full | Simple |
-|---|---|---|
-| System Flow Master | [docs/SystemFlow_MASTER.html](./docs/SystemFlow_MASTER.html) | [docs/SystemFlow_MASTER_SIMPLE.html](./docs/SystemFlow_MASTER_SIMPLE.html) |
-| State Dynamics Master | [docs/StateDynamics_MASTER.html](./docs/StateDynamics_MASTER.html) | [docs/StateDynamics_MASTER_SIMPLE.html](./docs/StateDynamics_MASTER_SIMPLE.html) |
-
-### 4 — Data & Security Schema
-
-| Diagram | Full | Simple |
-|---|---|---|
-| Data Model (ERD) | [docs/DataModel.html](./docs/DataModel.html) | [docs/DataModel_SIMPLE.html](./docs/DataModel_SIMPLE.html) |
-| Access Control Matrix | [docs/AccessControl_MATRIX.html](./docs/AccessControl_MATRIX.html) | [docs/AccessControl_MATRIX_SIMPLE.html](./docs/AccessControl_MATRIX_SIMPLE.html) |
-| Data Lifecycle Master | [docs/DataLifecycle_MASTER.html](./docs/DataLifecycle_MASTER.html) | [docs/DataLifecycle_MASTER_SIMPLE.html](./docs/DataLifecycle_MASTER_SIMPLE.html) |
-
-### 5 — Dependency & UI Hierarchy
-
-| Diagram | Full | Simple |
-|---|---|---|
-| System Interaction Flow (Sequence) | [docs/SystemInteractionFlow.html](./docs/SystemInteractionFlow.html) | [docs/SystemInteractionFlow_SIMPLE.html](./docs/SystemInteractionFlow_SIMPLE.html) |
-| Service Map Master | [docs/ServiceMap_MASTER.html](./docs/ServiceMap_MASTER.html) | [docs/ServiceMap_MASTER_SIMPLE.html](./docs/ServiceMap_MASTER_SIMPLE.html) |
-| Interface Hierarchy Master | [docs/InterfaceHierarchy_MASTER.html](./docs/InterfaceHierarchy_MASTER.html) | [docs/InterfaceHierarchy_MASTER_SIMPLE.html](./docs/InterfaceHierarchy_MASTER_SIMPLE.html) |
-
-### Visual assets
-
-- [docs/screenshots](./docs/screenshots) — reserved for UI screenshots and flow captures.
+- [AGENTS.md](./AGENTS.md) — the Po web app standard this repo follows, plus the working rules.
+- [docs/development.md](./docs/development.md) — commands, test tiers, architecture, configuration and conventions.
+- [infra/README.md](./infra/README.md) — Azure resources and how they are applied.
 
 ## Refactor Blast Radius Assessment
 
@@ -210,7 +170,7 @@ After a deploy (push to `master`), the live URL is:
 az webapp show --name app-poseereview2 --resource-group PoSeeReview --query defaultHostName -o tsv
 ```
 
-CI only builds, deploys and confirms the new commit answers `/health/live`; the smoke is run by hand after a deploy:
+CI checks formatting, builds, runs the Unit and Integration tiers, deploys and confirms the new commit answers `/health/live`; the smoke is run by hand after a deploy:
 
 ```powershell
 # Post-deploy smoke (NET_RULES 5.4): Blazor render tree, /health, then Lighthouse budgets

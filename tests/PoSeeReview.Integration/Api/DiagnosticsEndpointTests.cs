@@ -27,18 +27,19 @@ public partial class DiagnosticsEndpointTests(CustomWebApplicationFactory<Progra
         "AzureAd:ClientId", "KeyVault:Uri", "ApplicationInsights:ConnectionString"
     ];
 
-    [Fact]
+    [DockerFact]
     public async Task Diag_IsAnonymous_AndContainsNoSecretsOrIdentifyingInternals()
     {
         var response = await factory.CreateClient().GetAsync("/api/diag");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
 
-        var snapshot = JsonSerializer.Deserialize<DiagnosticsSnapshotDto>(body, JsonSerializerOptions.Web);
-        Assert.NotNull(snapshot);
-        Assert.Equal("Test", snapshot.Environment);
-        Assert.False(string.IsNullOrWhiteSpace(snapshot.BuildStamp));
-        Assert.Contains(snapshot.Checks, c => c.Kind == DiagnosticsCheckKinds.Storage && c.Status == "Healthy");
+        var report = JsonSerializer.Deserialize<DiagReportDto>(body, JsonSerializerOptions.Web);
+        Assert.NotNull(report);
+        Assert.Equal("Test", report.Environment);
+        Assert.Matches("^[0-9]{6}$", report.Version);
+        Assert.Contains(report.Checks, c => c.Group == DiagGroups.Api && c.Status == "Healthy");
+        Assert.Contains(report.Checks, c => c.Group == DiagGroups.Data && c.Status == "Healthy");
 
         var configuration = factory.Services.GetRequiredService<IConfiguration>();
         foreach (var key in SensitiveKeys)

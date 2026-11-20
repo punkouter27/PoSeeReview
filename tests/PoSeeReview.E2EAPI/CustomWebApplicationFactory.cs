@@ -49,6 +49,11 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
     /// </summary>
     public async Task InitializeAsync()
     {
+        if (DockerAvailability.SkipReason is not null)
+        {
+            return; // Every test in this tier is skipped; there is no Docker to start Azurite in.
+        }
+
         // --skipApiVersionCheck: the Azure SDK's storage API version can be newer than
         // the Azurite release; the emulator still supports the operations we use.
         _azuriteContainer = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest")

@@ -1,4 +1,4 @@
-// Radzen's theme and script, loaded only by the operator pages (/moderation, /diagnostics) that
+// Radzen's theme and script, loaded only by the operator pages (/moderation) that
 // use Radzen components — never by the consumer app, which has its own design system.
 //
 // The theme goes into `@layer vendor` (vendor.js), so app.css's `--rz-*` bridge (brand colours,

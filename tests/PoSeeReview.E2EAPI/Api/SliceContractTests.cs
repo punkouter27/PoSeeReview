@@ -23,7 +23,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 
     // ── Leaderboard ─────────────────────────────────────────────────────────
 
-    [Fact]
+    [DockerFact]
     public async Task GetLeaderboard_Default_Returns200WithRegion()
     {
         var response = await CreateAuthenticatedClient().GetAsync("/api/leaderboard");
@@ -36,7 +36,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 
     // ── Restaurants ─────────────────────────────────────────────────────────
 
-    [Fact]
+    [DockerFact]
     public async Task GetNearby_ReturnsWellFormedEnvelope()
     {
         var payload = await CreateAuthenticatedClient()
@@ -49,7 +49,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 
     // ── Input validation, place ids and retired routes ──────────────────────
 
-    [Theory]
+    [DockerTheory]
     [InlineData("/api/leaderboard?region=not-a-region", HttpStatusCode.BadRequest)]
     [InlineData("/api/leaderboard?region=U", HttpStatusCode.BadRequest)]
     [InlineData("/api/leaderboard?region=123", HttpStatusCode.BadRequest)]
@@ -67,7 +67,7 @@ public class SliceContractTests(CustomWebApplicationFactory<Program> factory)
 
     // ── Takedowns ───────────────────────────────────────────────────────────
 
-    [Theory]
+    [DockerTheory]
     [InlineData(null)]
     [InlineData("definitely-not-the-key")]
     public async Task PostTakedown_WithoutTheRightApiKey_IsNeverAccepted(string? apiKey)

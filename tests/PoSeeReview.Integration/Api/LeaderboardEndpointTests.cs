@@ -39,7 +39,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         _client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithValidRegion_ReturnsTop10Entries()
@@ -79,7 +79,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         _output.WriteLine($"Top restaurant: {content.Entries[0].RestaurantName}");
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithCustomLimit_ReturnsRequestedCount()
@@ -100,7 +100,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(limit, content.Entries.Count);
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithFewerEntriesThanLimit_ReturnsAvailableEntries()
@@ -120,7 +120,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(3, content.Entries.Count);
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithEmptyRegion_ReturnsWorldwideBoard()
@@ -136,7 +136,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal("ALL", content.Region);
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithInvalidRegionFormat_ReturnsBadRequest()
@@ -148,7 +148,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task GetLeaderboard_WithExcessiveLimit_ReturnsBadRequest()
@@ -160,7 +160,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task GET_Leaderboard_Filters_By_Region_Only()
     {
         // Arrange - Create entries for multiple regions
@@ -181,7 +181,7 @@ public class LeaderboardEndpointTests : IClassFixture<CustomWebApplicationFactor
         Assert.All(result.Entries, entry => Assert.Equal("CA", entry.Region));
     }
 
-    [Fact]
+    [DockerFact]
     public async Task GetLeaderboard_OmitsAPlaceModerationIsWithholding()
     {
         // Hide was only enforced under /api/comics: the board kept showing a withheld place's

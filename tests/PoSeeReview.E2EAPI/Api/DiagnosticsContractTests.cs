@@ -15,7 +15,7 @@ namespace PoSeeReview.E2EAPI.Api;
 public class DiagnosticsContractTests(CustomWebApplicationFactory<Program> factory)
     : IClassFixture<CustomWebApplicationFactory<Program>>
 {
-    [Theory]
+    [DockerTheory]
     [InlineData("/health")]
     [InlineData("/health/live")]
     [InlineData("/health/ready")]
@@ -30,16 +30,17 @@ public class DiagnosticsContractTests(CustomWebApplicationFactory<Program> facto
         Assert.True(response.Headers.Contains("X-Commit"));
     }
 
-    [Fact]
+    [DockerFact]
     public async Task Diag_IsAnonymous_ReportsEnvironment_AndNeverShowsASecret()
     {
         var body = await factory.CreateClient().GetStringAsync("/api/diag");
-        var snapshot = JsonSerializer.Deserialize<DiagnosticsSnapshotDto>(body, JsonSerializerOptions.Web);
+        var report = JsonSerializer.Deserialize<DiagReportDto>(body, JsonSerializerOptions.Web);
 
-        Assert.NotNull(snapshot);
-        Assert.False(string.IsNullOrWhiteSpace(snapshot.Environment));
-        Assert.NotEqual(default, snapshot.Timestamp);
-        Assert.NotEmpty(snapshot.Checks);
+        Assert.NotNull(report);
+        Assert.False(string.IsNullOrWhiteSpace(report.Environment));
+        Assert.NotEqual(default, report.CheckedAt);
+        Assert.NotEmpty(report.Checks);
+        Assert.All(report.Checks, c => Assert.Contains(c.Group, new[] { DiagGroups.Api, DiagGroups.Data, DiagGroups.Service }));
 
         // The factory injects these values; none may appear, masked or not.
         foreach (var leak in new[] { "test-key-12345", "test-google-maps-key", "test.openai.azure.com", "AccountKey" })
@@ -48,7 +49,7 @@ public class DiagnosticsContractTests(CustomWebApplicationFactory<Program> facto
         }
     }
 
-    [Fact]
+    [DockerFact]
     public async Task DiagMockStatus_ReportsActiveMocks()
     {
         var status = await factory.CreateClient().GetFromJsonAsync<MockStatusDto>("/api/diag/mock-status");

@@ -29,7 +29,7 @@ public class BlobStorageTests : IClassFixture<AzuriteFixture>
     /// local download, existence check and delete 404'd while the JSON said the comic was there.
     /// A second upload under the same id must replace the first: remastering redraws in place.
     /// </summary>
-    [Fact]
+    [DockerFact]
     public async Task BlobStorageService_ResolvesAzuriteSasUrl_ForReadOverwriteExistsAndDelete()
     {
         _fixture.EnsureAzuriteAvailable();

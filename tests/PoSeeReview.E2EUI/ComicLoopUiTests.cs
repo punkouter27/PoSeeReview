@@ -23,7 +23,7 @@ public sealed class ComicLoopUiTests(PlaywrightFixture fixture)
     private static readonly System.Text.RegularExpressions.Regex BackButton =
         new("back to", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task ComicLoop_TapToOutcome_ThenBackResetsToDiscovery(string viewport)
     {

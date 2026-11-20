@@ -1,4 +1,4 @@
-// po-devwindow.js — SAME FILE IN EVERY PO WEB APP (wwwroot/js/po-devwindow.js).
+// po-devwindow.js (wwwroot/js/po-devwindow.js), owned by this repo.
 // The first Tab of a page view, pressed while nothing has focus, opens a separate developer
 // window (/po-dev.html) with live diagnostics and stats. Every later Tab moves focus as normal,
 // so keyboard navigation keeps working. The page also collects the stats that window

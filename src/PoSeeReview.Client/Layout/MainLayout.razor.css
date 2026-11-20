@@ -34,7 +34,7 @@ main {
     width: min(84rem, 100%);
     margin: 0 auto;
     /* max(): the gutter, or the notch / home indicator where that is larger. The top inset is
-       the sticky header's (NavMenu's .po-header). */
+       the sticky header's (PoHeader's .po-header). */
     /* The bottom adds the build stamp's height, so the last row of any page can scroll clear of
        the fixed stamp instead of ending underneath it. */
     padding: var(--gutter)

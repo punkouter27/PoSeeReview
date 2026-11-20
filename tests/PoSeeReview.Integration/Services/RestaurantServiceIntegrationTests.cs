@@ -96,7 +96,7 @@ public class RestaurantServiceIntegrationTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     [Trait("Category", "RequiresGoogleMapsAPI")]
     public async Task GetRestaurantByPlaceId_LaCajSeafood_ShouldReturnRestaurantWithReviews()
@@ -164,7 +164,7 @@ public class RestaurantServiceIntegrationTests : IAsyncLifetime
         _output.WriteLine("✅ All assertions passed!");
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     [Trait("Category", "RequiresGoogleMapsAPI")]
     public async Task GetPlaceDetailsAsync_LaCajSeafood_ShouldReturnAtLeast5Reviews()
@@ -209,7 +209,7 @@ public class RestaurantServiceIntegrationTests : IAsyncLifetime
         _output.WriteLine($"✅ Successfully retrieved {restaurant.Reviews.Count} reviews - sufficient for comic generation!");
     }
 
-    [Fact]
+    [DockerFact]
     [Trait("Category", "Integration")]
     [Trait("Category", "RequiresGoogleMapsAPI")]
     public async Task GetRestaurantByPlaceId_ShouldCacheReviews()

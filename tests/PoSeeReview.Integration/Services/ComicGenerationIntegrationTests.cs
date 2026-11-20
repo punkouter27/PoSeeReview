@@ -30,7 +30,7 @@ public class ComicGenerationIntegrationTests
         _output = output;
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     [Trait("Category", "Expensive")]
@@ -152,7 +152,7 @@ public class ComicGenerationIntegrationTests
         _output.WriteLine($"📊 Stats: {narrative.Length} characters, {narrative.Split(' ').Length} words, {sentenceCount} sentences");
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     [Trait("Category", "Expensive")]

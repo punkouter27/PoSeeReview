@@ -1,8 +1,84 @@
 # AGENTS.md
 
-Working rules (NET_AGENTS). These govern how any coding agent operates in this repo, not how the
-code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) and
-[README.md](README.md).
+## Po Web App Standard
+
+This repo is one of several independent Po apps. It follows the conventions below, but it owns every file:
+nothing is generated from, synced with, or required to stay identical to another repository. Change anything
+here freely; only the *conventions* are common, never the code. Azure resources may be shared through the
+`PoShared` resource group; code may not.
+
+### Repo skeleton
+```
+README.md          what the app is, live URL, how to run locally, how it deploys
+AGENTS.md          this standard + repo-specific notes (CLAUDE.md just points here)
+CLAUDE.md          one line: "Read AGENTS.md."  (plus repo-specific notes only if unavoidable)
+<App>.slnx  global.json  Directory.Build.props  Directory.Packages.props  .editorconfig
+src/<App>.Api  src/<App>.Client  src/<App>.Shared  [src/<App>.Mobile]
+tests/<App>.Unit  tests/<App>.Integration  [tests/<App>.E2E...]
+infra/main.bicep  infra/main.bicepparam  [infra/modules/*.bicep]
+scripts/           setup / helper scripts (no infra/*.ps1)
+docs/              lowercase; everything else that is prose
+.github/workflows/deploy.yml   the ONLY workflow
+```
+No `.cursorrules`, `.copilotignore`, `SPEC.md`, `tasks/`, `DOCS/` at the root (fold useful content into docs/).
+`SCREENSHOTS/` is allowed only if README references it.
+
+### Page shell (every page, signed in or out, including the sign-in page)
+- Header `.po-header`, height 56px, sticky: app name top-left (`.po-header__title`, links to `/`).
+- Top-right `.po-header__actions`: signed-in user's **email** (`.po-header__email`, full email, ellipsis at 16ch on
+  phones) — or, signed out, one **Sign in** button `class="po-link-btn filled small"` (same style on every page) —
+  then the settings gear ONLY if the app has a settings page (the owner removed settings from some apps — don't
+  re-add it). Apps without OAuth show nothing in place of the email (no fake identity chips).
+- Version badge `.po-version` fixed bottom-right showing `vYYMMDD`. It must never cover content: `main` gets
+  `padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom))`, and when a mobile bottom nav exists the
+  badge sits above it (`--po-stamp-lift: <nav height>`).
+- Colours only from `wwwroot/css/po-tokens.css` (`--po-*`). All text ≥ 4.5:1 contrast in light AND dark mode
+  (status banners: use `--po-text` on `--po-*-soft` backgrounds, never warning-on-peach).
+- Login-only data must not be requested for signed-out visitors (no 401s in the console on public pages), and
+  actions a signed-out visitor cannot perform are hidden.
+
+### Version
+- `Directory.Build.props` stamps ONE assembly metadata key: `BuildVersion` = UTC `yyMMdd`. No `BuildStamp`/`BuildDate`
+  aliases. Every reader (header badge component, `/api/diag`, `/health` headers) reads `BuildVersion`.
+
+### Health + /diag contract
+- `GET /health/live` (liveness, returns header `X-Commit: <sha>`), `GET /health` (readiness), `GET /api/diag` →
+  ```
+  DiagReportDto(string Status, string Environment, string Version, DateTimeOffset CheckedAt, double CheckedMs,
+                DiagCheckDto[] Checks)
+  DiagCheckDto(string Name, string Group /* "api" | "data" | "service" */, string Label, string Status
+               /* Healthy|Degraded|Unhealthy */, string Purpose, string Detail, double LatencyMs, string? Problem)
+  ```
+- UI route `/diag` ONLY (delete other diagnostics pages/routes such as `/system`, `/diagnostics`, `/status`). Page
+  `<title>` and `h1`: **System status**. Layout: overall banner in plain words ("Everything is working" /
+  "Working, with N things degraded" / "Not working: …"), then three sections in this order: **API**, **Data**,
+  **Services**; each row = label, purpose, status pill, latency ms, problem/detail text. Every external dependency
+  the app really calls appears as a check. Anonymous, nothing secret in the payload.
+
+### Workflow (`.github/workflows/deploy.yml`, the only one)
+push to master → format check → build (Release, warnings as errors) → Unit tests → Integration tests (Testcontainers /
+Azurite; Docker is available on ubuntu-latest) → publish → deploy → confirm `/health/live` X-Commit = this SHA.
+If the repo has a MAUI `src/<App>.Mobile`, a second job in the SAME file (`mobile`, `needs: []`, not blocking deploy)
+installs the `maui-android` workload and builds the Android target, so the client is always compiled.
+
+### Tests
+- Unit tier: fast, no I/O, runs in CI.
+- Integration tier: runs in CI; locally it SKIPS with a clear message when Docker is not running (never a wall of
+  `DockerUnavailableException` failures).
+- E2E/UI tiers: run locally against a running app; when no app URL / browser is available they SKIP with a clear
+  message. They are not part of CI.
+- Docs must state real counts, not caps that are out of date.
+
+### Azure naming
+App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowercase>`; shared things only in `PoShared`.
+
+---
+
+# PoSeeReview: repo-specific notes
+
+Architecture, commands, configuration and conventions are in
+[docs/development.md](docs/development.md); the PRD is [README.md](README.md). The rules below govern
+how any coding agent operates in this repo.
 
 ## 1. Branching & version control
 
@@ -28,12 +104,10 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
 
 ## 3. Architecture & configuration
 
-- **Read the docs first, and keep them in sync.** Check a root `DOCS/` (or `docs/`) folder and
-  [README.md](README.md) for the architecture before exploring the code. `DOCS/` does not exist
-  right now — the generated reports were cleared out and are due to be rebuilt — so README.md (the
-  PRD) and [CLAUDE.md](CLAUDE.md) are the authoritative overview. Whenever a change adds, removes
+- **Read the docs first, and keep them in sync.** Check [docs/development.md](docs/development.md) and
+  [README.md](README.md) for the architecture before exploring the code. Whenever a change adds, removes
   or upgrades a dependency, adds or renames a configuration key, or adds or changes a major
-  endpoint, update README.md (and `DOCS/` once it exists) **in the same change**.
+  endpoint, update README.md and docs/ **in the same change**.
 - **No `dotnet user-secrets`.** Non-secret config goes in `appsettings*.json`; real secrets go in
   Key Vault `kv-poshared2` under the `PoSeeReview--` prefix. The one existing exception is
   `Takedowns:ApiKey` for local dev — it is a live credential, so it must never land in an
@@ -41,9 +115,9 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
 - **Automate everything you can.** Run the commands yourself, and script the steps that repeat.
   Don't hand the user a command to paste or a web portal to click through when the agent can do
   it; only ask when it genuinely needs their machine, credentials, or a decision.
-- **The deployed build is stamped `v{YYMMDD}`, bottom-right.** The `StampBuildDate` target in
-  `Directory.Build.targets` derives it from the HEAD commit's UTC date (today's date without git);
-  `BuildVersion.razor` shows it (`<span class="po-version">`) in both layouts and `/api/diag` reports it as `buildStamp` (shown on the `/diag` page). Keep it working; don't hand-edit a version.
+- **The deployed build is stamped `v{YYMMDD}`, bottom-right.** The `PoBuildStamp` target in
+  `Directory.Build.props` stamps `BuildVersion` from the HEAD commit's UTC date (today's date without git);
+  `BuildVersion.razor` shows it (`<span class="po-version">`) in both layouts and `/api/diag` reports it as `version` (shown on the `/diag` page). Keep it working; don't hand-edit a version.
 
 ## 4. UI changes & reporting
 
@@ -66,10 +140,9 @@ code is written — for architecture and conventions see [CLAUDE.md](CLAUDE.md) 
   prompt left no other questions open, end with 3 optional, high-level questions about where the
   app's purpose is heading — the kind whose answers could trigger further changes.
 
-## CI/CD and Azure (same section in every Po repo)
+## CI/CD and Azure
 
-- A push to `master` checks formatting (`dotnet format --verify-no-changes`), builds, runs the Unit tier, then deploys (`.github/workflows/deploy.yml`, identical in every Po web repo; each repo owns its copy) and waits for `/health/live` to report the pushed commit in `X-Commit`. A red check stops the deploy and the live site keeps its last good build. Integration, E2E, Bicep and other checks run locally; there is no infra job, rollback or PR build. Nothing is deployed by hand.
-- `deploy.yml` is the same file in every Po .NET web repo, and each repo owns its own copy (there is no shared repo or sync script). Change it here only to change it everywhere.
+- A push to `master` runs `.github/workflows/deploy.yml` (the shape in the standard above): format check, Release build, Unit and Integration tiers, publish, deploy, then wait for `/health/live` to report the pushed commit in `X-Commit`. A red check stops the deploy and the live site keeps its last good build. The non-blocking `mobile` job builds the Android target of `src/PoSeeReview.Mobile`. E2EAPI, E2EUI, Bicep and the other scripts run locally. Nothing is deployed by hand.
 - Azure sign-in is GitHub OIDC (the `gh-<repo>-deploy` app). Its IDs are repo **variables** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`, and the App Service name is `AZURE_WEBAPP_NAME`. Never move them to secrets or write resource names into workflows.
 - Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
 - The app answers `/health/live` (process up, no dependencies, `X-Commit` header) and `/health` (dependencies reachable). The deploy waits for `/health/live` to report the pushed commit.

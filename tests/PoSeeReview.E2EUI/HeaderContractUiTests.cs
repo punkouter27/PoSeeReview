@@ -25,7 +25,7 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         return page;
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Header_LeftZone_ShowsBranding(string viewport)
     {
@@ -40,7 +40,7 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         await Assertions.Expect(page.Locator(".po-version")).ToHaveTextAsync(new System.Text.RegularExpressions.Regex(@"^v\d{6}$"));
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Header_CenterZone_ShowsPrimaryNavigation(string viewport)
     {
@@ -65,7 +65,7 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
     /// button and the gear without one. One test because the two states are a single rule, and
     /// this tier is method-counted.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Header_RightZone_ShowsSessionOnlyWhenAuthenticated(string viewport)
     {
@@ -86,12 +86,12 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
 
         await Assertions.Expect(anonymous.Locator(".po-header")).ToBeVisibleAsync();
         await Assertions.Expect(anonymous.Locator(".po-header__email")).ToHaveCountAsync(0);
-        await Assertions.Expect(anonymous.Locator(".po-header__signin")).ToBeVisibleAsync();
+        await Assertions.Expect(anonymous.Locator(".po-header__actions a.po-link-btn.filled.small", new() { HasTextString = "Sign in" })).ToBeVisibleAsync();
         await Assertions.Expect(anonymous.Locator(".po-header__settings")).ToBeVisibleAsync();
         await Assertions.Expect(anonymous.Locator(".login-btn-microsoft")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Header_MockDataBanner_ReflectsServerMockStatus(string viewport)
     {

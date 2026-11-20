@@ -233,7 +233,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAnalysisRepository, AnalysisRepository>();
         services.AddModerationAuthorization(configuration);
         services.AddScoped<GenerationBudgetService>();
-        services.AddScoped<DiagnosticsSnapshotQueryHandler>();
+        services.AddScoped<DiagReportHandler>();
 
         // Register services
         services.AddHttpClient<GoogleMapsService>()

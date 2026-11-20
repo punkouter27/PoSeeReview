@@ -28,7 +28,7 @@ public sealed class ModerationUiTests(PlaywrightFixture fixture)
     /// route and same render as the former pair: operator tooling is reachable by URL and stays
     /// out of a consumer app's navigation.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Moderation_ShowsTheRefusalAndHasNoPrimaryNavEntry(string viewport)
     {

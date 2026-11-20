@@ -25,7 +25,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         return page;
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Home_RendersHeroAndLocationPrompt_WithNoErrorBanner(string viewport)
     {
@@ -39,7 +39,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         await Assertions.Expect(page.Locator(".error-message")).ToHaveCountAsync(0);
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Home_GrantedGeolocation_TriggersRestaurantLookup(string viewport)
     {
@@ -61,7 +61,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         Assert.Contains("longitude=-122.3", request.Url, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Home_DeniedGeolocation_ShowsRecoverableMessage(string viewport)
     {
@@ -81,7 +81,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         await Assertions.Expect(recovered.First).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Home_WithRememberedZip_ResumesTextSearchWithoutAskingForLocation(string viewport)
     {
@@ -114,7 +114,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
         Assert.Empty(nearbyCalls);
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task RestaurantCards_WhenPresent_ExposeGenerateAction(string viewport)
     {
@@ -132,7 +132,7 @@ public sealed class DiscoveryUiTests(PlaywrightFixture fixture)
             .ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task ComicRoute_WithUnknownPlace_RendersWithoutCrashing(string viewport)
     {

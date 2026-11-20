@@ -1,0 +1,157 @@
+@page "/diag"
+@attribute [AllowAnonymous]
+@using System.Diagnostics
+@using PoSeeReview.Client.Services
+@using PoSeeReview.Shared.Dtos
+@inject ApiClient ApiClient
+@inject ILogger<Diag> Logger
+
+@* /diag, "System status" (the /diag contract in AGENTS.md): anonymous, plain words, every
+   environment. An overall banner, then API, Data and Services. Everything shown comes from
+   GET /api/diag (DiagReportDto); the API's DiagReportHandler is the safety boundary, not this
+   page. Styled by po-tokens.css (.po-diag). *@
+
+<PageTitle>System status</PageTitle>
+
+<div class="po-diag" data-status="@OverallStatus">
+    <div class="po-diag__head">
+        <h1>System status</h1>
+        <button type="button" class="po-link-btn small" @onclick="LoadAsync" disabled="@_loading">@(_loading ? "Checking…" : "Refresh")</button>
+    </div>
+
+    <p class="po-diag__banner po-diag__banner--@BannerTone" role="status" data-testid="diag-banner">@BannerText</p>
+
+    @foreach (var (group, title) in Groups)
+    {
+        var rows = Checks.Where(c => c.Group == group).ToList();
+        <section class="po-diag__group" data-group="@group" aria-labelledby="diag-@group">
+            <h2 id="diag-@group">@title</h2>
+            @if (rows.Count == 0)
+            {
+                <p class="po-diag__empty">@(_loading ? "Checking…" : "Nothing to check here.")</p>
+            }
+            @foreach (var check in rows)
+            {
+                <div class="po-diag__card" data-check="@check.Name" data-status="@check.Status">
+                    <div>
+                        <span class="po-diag__label">@check.Label</span>
+                        <span class="po-diag__purpose">@check.Purpose</span>
+                    </div>
+                    <span class="po-badge po-badge--@Tone(check.Status)">@check.Status</span>
+                    <span class="po-diag__meta">
+                        @FormatMs(check.LatencyMs) · @check.Detail
+                        @if (!string.IsNullOrEmpty(check.Problem))
+                        {
+                            <span class="po-diag__problem"> · @check.Problem</span>
+                        }
+                    </span>
+                </div>
+            }
+        </section>
+    }
+
+    @if (_report is { } report)
+    {
+        <p class="po-diag__about" data-testid="diag-about">
+            Version v@(report.Version) · @report.Environment · checked @report.CheckedAt.ToLocalTime().ToString("HH:mm:ss") in @FormatMs(report.CheckedMs)
+        </p>
+
+        <details class="diag-graphics">
+            <summary>Graphics on this device</summary>
+            <FrameBudget />
+        </details>
+    }
+</div>
+
+@code {
+    private static readonly (string Group, string Title)[] Groups =
+    [
+        (DiagGroups.Api, "API"),
+        (DiagGroups.Data, "Data"),
+        (DiagGroups.Service, "Services")
+    ];
+
+    private DiagReportDto? _report;
+    private DiagCheckDto[] _checks = [];
+    private bool _loading = true;
+    private bool _unreachable;
+
+    private IEnumerable<DiagCheckDto> Checks => _checks;
+
+    private string OverallStatus => _unreachable ? "Unhealthy" : _report?.Status ?? "Checking";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var report = await ApiClient.GetDiagReportAsync() ?? throw new HttpRequestException("Empty /api/diag response");
+            var roundTrip = stopwatch.Elapsed.TotalMilliseconds;
+            _report = report;
+            _unreachable = false;
+            // The API row reports that the server answered; its latency is the round trip measured here.
+            _checks = [.. report.Checks.Select(c => c.Group == DiagGroups.Api && c.LatencyMs == 0 ? c with { LatencyMs = roundTrip } : c)];
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            // Logged, not shown: the banner says what matters in plain words.
+            Logger.LogWarning(ex, "/api/diag failed");
+            _report = null;
+            _unreachable = true;
+            _checks =
+            [
+                new DiagCheckDto("api", DiagGroups.Api, "App server", "Unhealthy", "Answers every request the app makes.",
+                    "Not reachable", stopwatch.Elapsed.TotalMilliseconds,
+                    "The server did not answer, so nothing else could be checked.")
+            ];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string BannerTone => OverallStatus switch
+    {
+        "Healthy" => "ok",
+        "Degraded" => "warn",
+        "Checking" => "wait",
+        _ => "bad"
+    };
+
+    private string BannerText
+    {
+        get
+        {
+            if (OverallStatus == "Checking")
+            {
+                return "Checking every part of the app…";
+            }
+
+            var unhealthy = _checks.Where(c => c.Status == "Unhealthy").Select(c => c.Label).ToList();
+            if (unhealthy.Count > 0)
+            {
+                return $"Not working: {string.Join(", ", unhealthy)}";
+            }
+
+            var degraded = _checks.Count(c => c.Status != "Healthy");
+            return degraded == 0
+                ? "Everything is working"
+                : $"Working, with {degraded} {(degraded == 1 ? "thing" : "things")} degraded";
+        }
+    }
+
+    private static string Tone(string status) => status switch
+    {
+        "Healthy" => "ok",
+        "Degraded" => "warn",
+        _ => "bad"
+    };
+
+    private static string FormatMs(double ms) => ms < 1 ? "<1 ms" : $"{ms:F0} ms";
+}

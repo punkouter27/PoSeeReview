@@ -16,7 +16,7 @@ namespace PoSeeReview.Integration.Services;
 [Trait("Tier", "Integration")]
 public sealed class ShareCardTests
 {
-    [Fact]
+    [DockerFact]
     public async Task RenderAsync_ComposesAFullSizePng_EvenWhenTheArtworkIsGone()
     {
         var blobs = new Mock<IBlobStorageService>();

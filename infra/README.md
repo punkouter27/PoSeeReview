@@ -5,6 +5,7 @@ publishes the app package to the existing App Service `app-poseereview2` (RG `Po
 
 | File | What it is |
 |---|---|
+| `main.bicepparam` | Parameters for `main.bicep` (from `AZURE_ENV_NAME` / `AZURE_LOCATION`, defaults dev / westus2) |
 | `main.bicep` | Subscription-scope template: resource group, monitoring, storage, App Service, budget, and read access to the shared vault |
 | `alerts.bicep` | Alerts for the **live** app, deployed on its own (see below) |
 | `modules/appservice.bicep` | Linux App Service, .NET 10, system-assigned identity, startup command |
@@ -25,7 +26,7 @@ az keyvault secret set --vault-name kv-poshared2 --name "PoSeeReview--GoogleMaps
 ## Provision
 
 ```powershell
-az deployment sub create -l westus2 -f infra/main.bicep -p environmentName=dev location=westus2
+az deployment sub create -l westus2 -f infra/main.bicep -p infra/main.bicepparam   # AZURE_ENV_NAME / AZURE_LOCATION override the defaults
 ```
 
 ## Alerts

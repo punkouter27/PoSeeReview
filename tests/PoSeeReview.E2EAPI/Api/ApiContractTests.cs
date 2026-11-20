@@ -19,7 +19,7 @@ public class ApiContractTests : IClassFixture<CustomWebApplicationFactory<Progra
         _client.DefaultRequestHeaders.Add("X-Fake-User", "contract-test-user");
     }
 
-    [Fact]
+    [DockerFact]
     public async Task StreamComic_WithInvalidPlaceId_EndsWith404Event()
     {
         // The stream commits a 200 before generation can fail, so the real status is in the frame.
@@ -29,7 +29,7 @@ public class ApiContractTests : IClassFixture<CustomWebApplicationFactory<Progra
         Assert.Contains("\"errorStatus\":404", body);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task GetComic_WithNonExistentComic_Returns404()
     {
         var response = await _client.GetAsync("/api/comics/ChIJNonExistentPlace123456789");

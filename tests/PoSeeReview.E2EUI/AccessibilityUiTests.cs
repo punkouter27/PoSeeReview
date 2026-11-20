@@ -26,7 +26,7 @@ public sealed class AccessibilityUiTests(PlaywrightFixture fixture)
         RunOnly = new RunOnlyOptions { Type = "tag", Values = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] }
     };
 
-    [Theory]
+    [E2ETheory]
     [InlineData("/login", ".login-container", null)]
     [InlineData("/", ".index-container", null)]
     [InlineData("/?q=Seattle", ".restaurants-grid [data-testid='restaurant-card']", "list")]

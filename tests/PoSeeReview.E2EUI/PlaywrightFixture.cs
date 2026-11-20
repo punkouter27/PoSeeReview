@@ -11,10 +11,9 @@ namespace PoSeeReview.E2EUI;
 public sealed class PlaywrightFixture : IAsyncLifetime
 {
     public IBrowser Browser { get; private set; } = null!;
-    public string BaseUrl { get; } =
-        Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "https://localhost:5001";
+    public string BaseUrl { get; } = E2EAvailability.BaseUrl;
 
-    private IPlaywright _playwright = null!;
+    private IPlaywright? _playwright;
     private readonly List<IPage> _trackedPages = [];
     private readonly ConcurrentQueue<string> _browserErrors = new();
     private readonly ConcurrentDictionary<IPage, List<string>> _allowed404Paths = new();
@@ -44,6 +43,11 @@ public sealed class PlaywrightFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        if (E2EAvailability.SkipReason is not null)
+        {
+            return; // Every test in this tier is skipped (no app or no browser); start nothing.
+        }
+
         _playwright = await Playwright.CreateAsync();
         var headed = string.Equals(Environment.GetEnvironmentVariable("HEADED"), "1", StringComparison.OrdinalIgnoreCase);
         Browser = await _playwright.Chromium.LaunchAsync(new() { Headless = !headed });

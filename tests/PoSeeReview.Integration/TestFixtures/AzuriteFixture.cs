@@ -26,6 +26,11 @@ public class AzuriteFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        if (DockerAvailability.SkipReason is not null)
+        {
+            return; // Every test in this tier is skipped; there is no Docker to start Azurite in.
+        }
+
         await _container.StartAsync();
         ConnectionString = _container.GetConnectionString();
         TableServiceClient = new TableServiceClient(ConnectionString);
@@ -33,6 +38,11 @@ public class AzuriteFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        if (DockerAvailability.SkipReason is not null)
+        {
+            return;
+        }
+
         await _container.DisposeAsync();
     }
 

@@ -1,0 +1,7 @@
+/* /diag: the page itself is styled by po-tokens.css (.po-diag); this only styles the
+   PoSeeReview-only graphics readout under the three sections. */
+.diag-graphics summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding-block: var(--space-sm);
+}

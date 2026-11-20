@@ -24,7 +24,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         _fixture = fixture;
     }
 
-    [Fact]
+    [DockerFact]
     public async Task ModerationRepository_AutomatedWrites_NeverUndoASuppress()
     {
         // Reports and the content screen write under the row's ETag. They used to replace the
@@ -51,7 +51,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         Assert.Equal("takedown", verdict.Reason);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task AnalysisRepository_ReanalysisKeepsDemand_AndPredrawQueryHonoursTheThresholds()
     {
         // Two storage behaviours the analysis cache leans on: a merge with Demand left null keeps
@@ -88,7 +88,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         Assert.Empty(await repository.GetPredrawCandidatesAsync(4, 40, 3, 10));
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task UpsertRestaurantEntity_ValidEntity_StoresSuccessfully()
@@ -118,7 +118,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         Assert.Equal("123 Test St", retrieved.Value["Address"]);
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task QueryRestaurantsByRegion_MultipleEntities_ReturnsFiltered()
@@ -152,7 +152,7 @@ public class TableStorageTests : IClassFixture<AzuriteFixture>
         Assert.All(results, e => Assert.Equal("US-WA-Seattle", e.PartitionKey));
     }
 
-    [Fact]
+    [DockerFact]
 
     [Trait("Category", "Integration")]
     public async Task DeleteRestaurantEntity_ExistingEntity_RemovesSuccessfully()

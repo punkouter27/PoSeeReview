@@ -1,8 +1,10 @@
 name: Build & Deploy
 
-# The one workflow in every Po .NET web repo: check formatting, build, run the Unit tier, publish,
+# This repo's only workflow (the shape is in AGENTS.md): check formatting, build (Release, warnings
+# as errors), run the Unit and Integration tiers (Testcontainers needs the runner's Docker), publish,
 # deploy to App Service, confirm the new build is the one answering. A red check stops the deploy
-# and the live site keeps its last good build. Integration, E2E and Bicep run locally, not here.
+# and the live site keeps its last good build. E2E tiers and Bicep run locally, not here.
+# The `mobile` job builds the MAUI Android client in parallel; it never blocks the deploy.
 #
 # Repo variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (GitHub OIDC sign-in),
 #                 AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP (what is deployed, where).
@@ -64,6 +66,9 @@ jobs:
       - name: Unit tests
         run: dotnet test tests/*.Unit/*.csproj -c Release --no-build
 
+      - name: Integration tests
+        run: dotnet test tests/*.Integration/*.csproj -c Release --no-build
+
       - name: Publish
         run: dotnet publish src/*.Api/*.csproj -c Release --no-build -o publish
 
@@ -97,3 +102,33 @@ jobs:
             sleep 10
           done
           echo "::error::/health/live serves ${commit:-no X-Commit header}, not $GITHUB_SHA"; exit 1
+
+  mobile:
+    name: Build Android client (src/*.Mobile)
+    needs: []   # runs beside the deploy and never blocks it
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the build stamp reads git history
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '17'
+
+      - name: Install the maui-android workload
+        run: dotnet workload install maui-android
+
+      - name: Install Android SDK packages the project needs
+        run: dotnet build src/*.Mobile/*.csproj -t:InstallAndroidDependencies -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT" -p:AcceptAndroidSDKLicenses=True
+
+      - name: Build the Android target
+        run: dotnet build src/*.Mobile/*.csproj -f net10.0-android -c Release -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT"

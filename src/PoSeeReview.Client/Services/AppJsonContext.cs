@@ -17,7 +17,7 @@ namespace PoSeeReview.Client.Services;
 [JsonSerializable(typeof(LeaderboardResponse))]
 [JsonSerializable(typeof(HallOfFameResponse))]
 [JsonSerializable(typeof(HealthStatusDto))]
-[JsonSerializable(typeof(DiagnosticsSnapshotDto))]
+[JsonSerializable(typeof(DiagReportDto))]
 [JsonSerializable(typeof(MockStatusDto))]
 [JsonSerializable(typeof(AuthStateDto))]
 [JsonSerializable(typeof(GenerationBudgetDto))]

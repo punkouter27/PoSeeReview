@@ -634,11 +634,11 @@
     }
 
     /* NOTE: there is deliberately no shared `.nav-link` rule.
-       Bootstrap used to provide one, and replacing it here looked obvious — but NavMenu's scoped
+       Bootstrap used to provide one, and replacing it here looked obvious — but PoHeader's scoped
        `.nav-item ::deep a` already owns padding, tap target, radius AND colour for that element.
        A shared `.nav-link { color: inherit }` sat in the `shared` layer, which now outranks
        `page`, so it beat the scoped white and inherited the dark body text onto the dark nav bar:
-       the labels vanished. One owner per element. NavMenu is that owner. */
+       the labels vanished. One owner per element. PoHeader is that owner. */
 
     /* ── Alerts ──────────────────────────────────────────────────────────────────────────── */
     .alert {

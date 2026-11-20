@@ -8,11 +8,11 @@ using PoSeeReview.Shared.Dtos;
 
 namespace PoSeeReview.Unit.Features.Diagnostics;
 
-public class DiagnosticsSnapshotQueryHandlerTests
+public class DiagReportHandlerTests
 {
     private readonly Mock<HealthCheckService> _healthCheckServiceMock = new();
 
-    private DiagnosticsSnapshotQueryHandler BuildSut(string environmentName = "Development", Dictionary<string, string?>? settings = null)
+    private DiagReportHandler BuildSut(string environmentName = "Development", Dictionary<string, string?>? settings = null)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(settings ?? new Dictionary<string, string?>
@@ -23,12 +23,12 @@ public class DiagnosticsSnapshotQueryHandlerTests
             })
             .Build();
 
-        return new DiagnosticsSnapshotQueryHandler(
+        return new DiagReportHandler(
             config,
             _healthCheckServiceMock.Object,
             Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environmentName),
             TimeProvider.System,
-            NullLogger<DiagnosticsSnapshotQueryHandler>.Instance);
+            NullLogger<DiagReportHandler>.Instance);
     }
 
     [Fact]
@@ -42,11 +42,15 @@ public class DiagnosticsSnapshotQueryHandlerTests
         var result = await BuildSut().ExecuteAsync(default);
 
         Assert.Equal("Development", result.Environment);
-        var table = Assert.Single(result.Checks, c => c.Kind == DiagnosticsCheckKinds.Storage);
-        Assert.Equal("Table Storage", table.Name);
+        Assert.False(string.IsNullOrWhiteSpace(result.Version));
+        var api = Assert.Single(result.Checks, c => c.Group == DiagGroups.Api);
+        Assert.Equal("Healthy", api.Status);
+        var table = Assert.Single(result.Checks, c => c.Group == DiagGroups.Data);
+        Assert.Equal("Table Storage", table.Label);
         Assert.Equal("Healthy", table.Status);
-        Assert.Equal(12, table.DurationMilliseconds);
-        Assert.Contains(result.Checks, c => c.Name == "AI scoring and drawing" && c.Status == "Healthy");
+        Assert.Equal(12, table.LatencyMs);
+        Assert.Null(table.Problem);
+        Assert.Contains(result.Checks, c => c.Label == "AI scoring and drawing" && c.Status == "Healthy");
     }
 
     [Fact]
@@ -62,7 +66,7 @@ public class DiagnosticsSnapshotQueryHandlerTests
         var json = System.Text.Json.JsonSerializer.Serialize(result);
 
         Assert.Equal("Unhealthy", result.Status);
-        Assert.Contains(result.Checks, c => c.ErrorType == nameof(InvalidOperationException));
+        Assert.Contains(result.Checks, c => c.Problem is { } p && p.Contains(nameof(InvalidOperationException), StringComparison.Ordinal));
         foreach (var leak in new[] { "leaky", "AccountKey", "sk-very-secret", "secret-host", "kv-secret", "openai.azure.com", "vault.azure.net", "C:\\" })
         {
             Assert.DoesNotContain(leak, json, StringComparison.OrdinalIgnoreCase);
@@ -77,7 +81,7 @@ public class DiagnosticsSnapshotQueryHandlerTests
         var result = await BuildSut("Production", []).ExecuteAsync(default);
 
         Assert.Equal("Unhealthy", result.Status);
-        Assert.Contains(result.Checks, c => c.Name == "AI scoring and drawing" && c.Status == "Unhealthy");
+        Assert.Contains(result.Checks, c => c.Label == "AI scoring and drawing" && c.Status == "Unhealthy" && c.Problem is not null);
     }
 
     [Fact]
@@ -89,9 +93,9 @@ public class DiagnosticsSnapshotQueryHandlerTests
 
         var result = await BuildSut().ExecuteAsync(default);
 
-        var failed = Assert.Single(result.Checks, c => c.Name == "Health checks");
+        var failed = Assert.Single(result.Checks, c => c.Label == "Health checks");
         Assert.Equal("Unhealthy", failed.Status);
-        Assert.Equal(nameof(InvalidOperationException), failed.ErrorType);
+        Assert.Contains(nameof(InvalidOperationException), failed.Problem, StringComparison.Ordinal);
         Assert.DoesNotContain("secret-host", System.Text.Json.JsonSerializer.Serialize(result), StringComparison.Ordinal);
     }
 

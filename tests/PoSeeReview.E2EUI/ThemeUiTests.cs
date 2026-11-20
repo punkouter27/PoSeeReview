@@ -39,7 +39,7 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
     /// schemes are one contract, and because this tier's budget is method-counted — the
     /// assertions and the viewport coverage are unchanged.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Theme_FollowsOsPreference(string viewport)
     {
@@ -54,7 +54,7 @@ public sealed class ThemeUiTests(PlaywrightFixture fixture)
     /// The device decides, in both directions: a <c>data-theme</c> attribute (the old Settings
     /// switch wrote one) no longer pins a scheme.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Theme_DataThemeAttributeDoesNotOverrideTheOs(string viewport)
     {

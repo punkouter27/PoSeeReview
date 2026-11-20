@@ -45,7 +45,7 @@ let onNavigate = null;
 const ROUTE_DEPTH = [
     [/^\/comic\//, 3],
     [/^\/moderation/, 2],
-    [/^\/diagnostics/, 2],
+    [/^\/diag/, 2],
     [/^\/insights/, 2],
     [/^\/my-comics/, 2],
     [/^\/leaderboard/, 2]

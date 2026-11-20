@@ -39,7 +39,7 @@ public enum FxWaitOutcome
     Abandon
 }
 
-/// <summary>The ink-motes WebGPU device, as /diagnostics shows it. Order matches fx.js MOTES_INDEX.</summary>
+/// <summary>The ink-motes WebGPU device, as /diag shows it. Order matches fx.js MOTES_INDEX.</summary>
 public enum FxGpuState { Unsupported, Idle, Starting, Running, Lost }
 
 /// <summary>One frame-budget sample from gfx-core.js, read over [JSImport] into a span.</summary>

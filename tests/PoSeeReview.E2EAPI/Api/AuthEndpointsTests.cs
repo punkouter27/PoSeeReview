@@ -20,7 +20,7 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
         AllowAutoRedirect = false
     });
 
-    [Fact]
+    [DockerFact]
     public async Task AuthMe_IsAnonymousWithoutHeaders_AndMapsFakeHeadersToClaims()
     {
         var client = CreateHttpsClient();
@@ -44,7 +44,7 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
         Assert.Contains("Tester", state.Roles);
     }
 
-    [Fact]
+    [DockerFact]
     public async Task FakeLogin_SetsBffCookie_AndRedirectsToLocalReturnUrl()
     {
         var response = await CreateHttpsClient().GetAsync("/auth/login/fake?returnUrl=/leaderboard");
@@ -58,7 +58,7 @@ public class AuthEndpointsTests(CustomWebApplicationFactory<Program> factory)
     }
 
     /// <summary>A non-local returnUrl collapses to the root (open-redirect guard); logout lands on /login.</summary>
-    [Theory]
+    [DockerTheory]
     [InlineData("/auth/login/fake?returnUrl=https%3A%2F%2Fevil.example%2Fphish", "/")]
     [InlineData("/auth/login/fake?returnUrl=%2F%2Fevil.example", "/")]
     [InlineData("/auth/login/fake?returnUrl=%2F%5Cevil.example", "/")]

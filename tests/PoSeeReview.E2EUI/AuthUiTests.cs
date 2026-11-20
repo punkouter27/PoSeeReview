@@ -13,7 +13,7 @@ public sealed class AuthUiTests(PlaywrightFixture fixture)
 {
     private const int RenderTimeout = 15_000;
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Home_Unauthenticated_RedirectsToLogin(string viewport)
     {
@@ -25,7 +25,7 @@ public sealed class AuthUiTests(PlaywrightFixture fixture)
         await Assertions.Expect(microsoftButton).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task GuestLogin_InDev_AuthenticatesAndShowsAnonBadge(string viewport)
     {
@@ -39,7 +39,7 @@ public sealed class AuthUiTests(PlaywrightFixture fixture)
         await Assertions.Expect(page.Locator(".po-header__email")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Logout_ReturnsToLoginPage(string viewport)
     {

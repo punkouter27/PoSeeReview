@@ -420,11 +420,11 @@ public class ApiClient
         return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.HealthStatusDto, cancellationToken);
     }
 
-    public async Task<DiagnosticsSnapshotDto?> GetDiagnosticsSnapshotAsync(CancellationToken cancellationToken = default)
+    public async Task<DiagReportDto?> GetDiagReportAsync(CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/diag");
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, "Diagnostics request failed", cancellationToken);
-        return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.DiagnosticsSnapshotDto, cancellationToken);
+        return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.DiagReportDto, cancellationToken);
     }
 }

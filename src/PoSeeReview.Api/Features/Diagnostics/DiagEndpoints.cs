@@ -4,26 +4,25 @@ using PoSeeReview.Shared.Dtos;
 namespace PoSeeReview.Api.Features.Diagnostics;
 
 /// <summary>
-/// Diagnostics slice: <c>GET /api/diag</c> (dependency health, build stamp, environment) and
-/// <c>GET /api/diag/mock-status</c> (the USING MOCK DATA banner). Both are anonymous in every
-/// environment so the <c>/diag</c> page works signed out; the snapshot handler is what keeps the
-/// output safe. Under <c>/api</c> since 2026-11-17 so a browser navigation to <c>/diag</c> reaches
-/// the client page instead of this JSON.
+/// Diagnostics slice: <c>GET /api/diag</c> (the /diag contract in AGENTS.md: dependency health,
+/// version, environment) and <c>GET /api/diag/mock-status</c> (the USING MOCK DATA badge). Both
+/// are anonymous in every environment so the <c>/diag</c> page works signed out;
+/// <see cref="DiagReportHandler"/> is what keeps the output safe.
 /// </summary>
-internal static class DiagnosticsEndpoints
+internal static class DiagEndpoints
 {
     public const string RoutePrefix = "/api/diag";
 
-    public static IEndpointRouteBuilder MapDiagnosticsEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapDiagEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(RoutePrefix).WithTags("Diagnostics").AllowAnonymous();
 
-        group.MapGet("", async (DiagnosticsSnapshotQueryHandler handler, HttpContext http, CancellationToken cancellationToken) =>
+        group.MapGet("", async (DiagReportHandler handler, HttpContext http, CancellationToken cancellationToken) =>
         {
-            // A cached snapshot would show a stale status on Refresh.
+            // A cached report would show a stale status on Refresh.
             http.Response.Headers.CacheControl = "no-store";
             return Results.Ok(await handler.ExecuteAsync(cancellationToken));
-        });
+        }).Produces<DiagReportDto>();
 
         group.MapGet("/mock-status", (IEnumerable<IMockable> mockables, IConfiguration configuration) =>
         {

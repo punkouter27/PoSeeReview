@@ -22,7 +22,7 @@ internal static class FeatureEndpoints
         app.MapRestaurantsEndpoints();
         app.MapLeaderboardEndpoints();
         app.MapModerationEndpoints();
-        app.MapDiagnosticsEndpoints();
+        app.MapDiagEndpoints();
         return app;
     }
 }

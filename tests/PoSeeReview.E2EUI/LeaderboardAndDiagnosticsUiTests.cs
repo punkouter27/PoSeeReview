@@ -27,7 +27,7 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
     // ── Leaderboard ─────────────────────────────────────────────────────────
 
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Leaderboard_CardsAlwaysShowAComicStrip(string viewport)
     {
@@ -54,7 +54,7 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
     /// is the board alone: no region, limit or view chips — one "☰ Right now" button opens the views
     /// drawer (archive, map); beside it, only the restaurants / apartments board switch.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Leaderboard_DefaultsToTheBareBoard_WithItsHeadingAndNoErrorBanner(string viewport)
     {
@@ -74,26 +74,24 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
     }
 
     /// <summary>
-    /// The fleet /diag standard: reachable signed out, a status banner, API / storage / services
-    /// sections, version and environment, and no horizontal scroll at 390px. Console errors fail
-    /// the suite through the fixture. /diagnostics stays an alias of the same page.
+    /// The /diag contract (AGENTS.md): reachable signed out, titled "System status", a status
+    /// banner, then API / Data / Services in that order, the version, and no horizontal scroll at
+    /// 390px. Console errors fail the suite through the fixture. /diag is the only route.
     /// </summary>
-    [Theory]
+    [E2ETheory]
     [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
     public async Task Diag_RendersSignedOut_WithEverySection(string viewport)
     {
         var page = await fixture.NewPageAsync(viewport);
         await page.GotoAsync($"{fixture.BaseUrl}/diag");
 
-        await Assertions.Expect(page.Locator(".diag-banner")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
-        await Assertions.Expect(page.Locator(".diag-banner")).Not.ToHaveAttributeAsync("data-status", "error");
-        foreach (var section in new[] { "api", "storage", "services", "about" })
-        {
-            await Assertions.Expect(page.Locator($"[data-section='{section}']")).ToBeVisibleAsync();
-        }
-        await Assertions.Expect(page.Locator("[data-section='storage'] .diag-row").First).ToBeVisibleAsync();
-        await Assertions.Expect(page.Locator("[data-fact='version']")).Not.ToBeEmptyAsync();
-        await Assertions.Expect(page.Locator("[data-fact='environment']")).Not.ToBeEmptyAsync();
+        await Assertions.Expect(page).ToHaveTitleAsync("System status");
+        await Assertions.Expect(page.Locator("h1")).ToHaveTextAsync("System status");
+        var banner = page.GetByTestId("diag-banner");
+        await Assertions.Expect(banner).ToHaveTextAsync(new System.Text.RegularExpressions.Regex(@"^(Everything is working|Working, with \d+ things? degraded|Not working: .+)$"), new() { Timeout = RenderTimeout });
+        await Assertions.Expect(page.Locator("section.po-diag__group h2")).ToHaveTextAsync(["API", "Data", "Services"]);
+        await Assertions.Expect(page.Locator("[data-group='data'] .po-diag__card").First).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByTestId("diag-about")).ToContainTextAsync("Version v");
 
         var refresh = page.GetByRole(AriaRole.Button, new() { NameRegex = new("refresh", System.Text.RegularExpressions.RegexOptions.IgnoreCase) });
         await refresh.ClickAsync();
@@ -101,8 +99,5 @@ public sealed class LeaderboardAndDiagnosticsUiTests(PlaywrightFixture fixture)
 
         var overflow = await page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth > window.innerWidth + 1");
         Assert.False(overflow, "/diag scrolls sideways");
-
-        await page.GotoAsync($"{fixture.BaseUrl}/diagnostics");
-        await Assertions.Expect(page.Locator(".diag-banner")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
     }
 }
