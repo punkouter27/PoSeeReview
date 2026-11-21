@@ -50,6 +50,7 @@ public sealed class UserAgentValidationMiddleware
         // and for /.well-known (App Link / Universal Link verifiers are Google's and Apple's bots,
         // and their files are public by design).
         if (path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/diag", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/.well-known/", StringComparison.OrdinalIgnoreCase))
         {
