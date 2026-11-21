@@ -2236,7 +2236,7 @@
 
 /* ============================================================================================
    PO SHELL ADAPTERS — deliberately UNLAYERED.
-   po-tokens.css (the Po web standard, identical in every Po app, never edited here) is plain
+   po-tokens.css (this repo's design tokens and Po shell styles) is plain
    unlayered CSS, so it beats every layer above. The few places this app must adjust it live
    here, unlayered too, where specificity and source order decide.
    ============================================================================================ */

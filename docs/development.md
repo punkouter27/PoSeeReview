@@ -455,8 +455,8 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
 
 Read its header comment before adding CSS.
 
-- **Po tokens come first.** `css/po-tokens.css` is the Po web standard's file — identical in every
-  Po app, never edited here (copy a new version in whole). It is unlayered, so it beats every layer
+- **Po tokens come first.** `css/po-tokens.css` follows the Po web standard (owned by this repo and
+  editable here). It is unlayered, so it beats every layer
   below: it sets the fonts (self-hosted Inter for text, Space Grotesk for headings — the only text
   faces; Radzen's theme brings its own Material Symbols icon font), the `--po-*` colours that follow
   `prefers-color-scheme`, and the shell classes (`.po-header*`, `.po-version`, `.po-diag*`,
