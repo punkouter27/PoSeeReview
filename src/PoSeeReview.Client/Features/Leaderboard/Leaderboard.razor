@@ -28,22 +28,22 @@
         <div class="board-kind" role="group" aria-label="Which board">
             @foreach (var (kind, label, icon) in Kinds)
             {
-                <button type="button" class="chip-toggle @(_category == kind ? "chip-toggle--active" : "")"
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_category == kind ? "chip-toggle--active" : "")}")"
                         aria-pressed="@(_category == kind ? "true" : "false")"
                         data-testid="@($"board-{kind.ToWire()}")"
-                        @onclick="() => SwitchCategoryAsync(kind)">
+                        Click="() => SwitchCategoryAsync(kind)">
                     <span aria-hidden="true">@icon</span> @label
-                </button>
+                </RadzenButton>
             }
         </div>
         @* Every view of the board behind one control: a native popover that slides in from the
            side on a desktop and rises as a bottom sheet on a phone (.popover-menu--drawer). Each
            item also closes it (popovertargetaction="hide"). No refresh button: the board re-reads
            itself every 60 seconds. *@
-        <button type="button" class="chip-toggle board-views-toggle" popovertarget="board-views"
+        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain chip-toggle board-views-toggle" popovertarget="board-views"
                 aria-label="@($"Board view: {CurrentViewLabel}. Change view")">
             <span aria-hidden="true">☰</span> @CurrentViewLabel
-        </button>
+        </RadzenButton>
         <div id="board-views" class="popover-menu popover-menu--drawer" popover>
             <p class="popover-menu-title">Show the board</p>
             @foreach (var (scope, layout, label, icon) in Views)
@@ -52,12 +52,12 @@
                 {
                     continue;
                 }
-                <button type="button" class="popover-menu-item@(IsView(scope, layout) ? " active" : "")"
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain popover-menu-item{(IsView(scope, layout) ? " active" : "")}")"
                         aria-current="@(IsView(scope, layout) ? "true" : null)"
                         popovertarget="board-views" popovertargetaction="hide"
-                        @onclick="() => ShowAsync(scope, layout)">
+                        Click="() => ShowAsync(scope, layout)">
                     <span aria-hidden="true">@icon</span> @label
-                </button>
+                </RadzenButton>
             }
         </div>
     </Header>
@@ -85,7 +85,7 @@
     {
         <StateCard Icon="⚠️" Title="Couldn't load the board" Alert="true">
             <ChildContent>@errorMessage</ChildContent>
-            <Actions><button type="button" class="btn btn-primary" @onclick="RetryAsync">Try again</button></Actions>
+            <Actions><RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary" Click="RetryAsync">Try again</RadzenButton></Actions>
         </StateCard>
     }
     else if (_scope == BoardScope.Weekly)
@@ -185,11 +185,11 @@
                         </span>
                     </Leading>
                     <Actions>
-                        <button type="button" class="btn btn-icon comic-row-action"
-                                @onclick="() => ShareService.ShareComicAsync(entry.PlaceId, entry.RestaurantName, (int)Math.Round(entry.StrangenessScore))"
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-icon comic-row-action"
+                                Click="() => ShareService.ShareComicAsync(entry.PlaceId, entry.RestaurantName, (int)Math.Round(entry.StrangenessScore))"
                                 title="Share this comic" aria-label="@($"Share the comic for {entry.RestaurantName}")">
                             <span aria-hidden="true">&#128228;</span>
-                        </button>
+                        </RadzenButton>
                     </Actions>
                 </ComicRow>
             }
@@ -201,9 +201,9 @@
          && (_scope == BoardScope.Weekly ? _archive is { Weeks.Count: > 0 } : leaderboardEntries is { Count: > LongBoard }))
     {
         <div class="board-more">
-            <button type="button" class="link-button" @onclick="BackToTopAsync">
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain link-button" Click="BackToTopAsync">
                 <span aria-hidden="true">↑</span> Back to top
-            </button>
+            </RadzenButton>
         </div>
     }
     </div>

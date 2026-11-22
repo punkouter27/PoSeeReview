@@ -26,7 +26,7 @@ builder.Services.AddScoped<DiscoveryState>();
 builder.Services.AddScoped<BoardMemoryService>();
 builder.Services.AddScoped<ComicHistoryService>();
 builder.Services.AddScoped<ModerationClient>();
-// Radzen is the operator pages' toolkit only (RadzenScope); its services are inert elsewhere.
+// Radzen is the component library (DialogService for confirms and the report form).
 builder.Services.AddRadzenComponents();
 
 await builder.Build().RunAsync();

@@ -91,7 +91,9 @@ try
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
     builder.Services.AddScoped<ICurrentRequestIdentityAccessor, HttpContextRequestIdentityAccessor>();
-    builder.Services.AddValidatorsFromAssemblyContaining<PoSeeReview.Shared.Validation.TakedownRequestValidator>();
+    // Validators by type, not assembly scanning: a trimmed or reordered assembly cannot drop one.
+    builder.Services.AddScoped<IValidator<PoSeeReview.Shared.Dtos.TakedownRequestDto>, PoSeeReview.Shared.Validation.TakedownRequestValidator>();
+    builder.Services.AddScoped<IValidator<PoSeeReview.Shared.Dtos.ComicReportRequestDto>, PoSeeReview.Shared.Validation.ComicReportRequestValidator>();
 
     builder.Services.AddConfiguredTelemetry(builder.Configuration, builder.Environment);
     builder.Services.AddConfiguredRateLimiting(builder.Configuration);

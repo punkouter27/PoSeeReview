@@ -21,7 +21,7 @@
                 </div>
                 <div class="settings-row">
                     <a class="btn btn-secondary" href="my-comics">My comics</a>
-                    <button type="button" class="btn btn-secondary" data-testid="settings-sign-out" @onclick="Logout">Sign out</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary" data-testid="settings-sign-out" Click="Logout">Sign out</RadzenButton>
                 </div>
             </Authorized>
             <NotAuthorized>
@@ -47,17 +47,17 @@
 
         <div class="settings-row">
             <span class="settings-label">Sound effects</span>
-            <button type="button" class="chip-toggle @(_sound ? "chip-toggle--active" : "")"
-                    aria-pressed="@(_sound ? "true" : "false")" data-testid="settings-sound" @onclick="ToggleSoundAsync">
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_sound ? "chip-toggle--active" : "")}")"
+                    aria-pressed="@(_sound ? "true" : "false")" data-testid="settings-sound" Click="ToggleSoundAsync">
                 @(_sound ? "On" : "Off")
-            </button>
+            </RadzenButton>
         </div>
 
-        <label class="settings-row">
-            <span class="settings-label">Volume</span>
-            <input class="settings-volume" type="range" min="0" max="100" disabled="@(!_sound)"
-                   @bind="_volume" @bind:event="oninput" @bind:after="ApplyVolumeAsync" />
-        </label>
+        <div class="settings-row">
+            <span class="settings-label" id="settings-volume-label">Volume</span>
+            <RadzenSlider TValue="int" class="settings-volume" Min="0" Max="100" Disabled="@(!_sound)"
+                          @bind-Value="_volume" Change="ApplyVolumeAsync" aria-labelledby="settings-volume-label" />
+        </div>
 
         @* Haptics follow sound and can be switched off on their own, never on on their own.
            Hidden where the Vibration API does not exist (every iOS browser). *@
@@ -65,20 +65,20 @@
         {
             <div class="settings-row">
                 <span class="settings-label">Haptics</span>
-                <button type="button" class="chip-toggle @(_haptics.Enabled ? "chip-toggle--active" : "")"
-                        aria-pressed="@(_haptics.Enabled ? "true" : "false")" disabled="@(!_sound)" @onclick="ToggleHapticsAsync">
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_haptics.Enabled ? "chip-toggle--active" : "")}")"
+                        aria-pressed="@(_haptics.Enabled ? "true" : "false")" Disabled="@(!_sound)" Click="ToggleHapticsAsync">
                     @(_haptics.Enabled ? "On" : "Off")
-                </button>
+                </RadzenButton>
             </div>
         }
 
         <div class="settings-row">
             <span class="settings-label">Map sounds</span>
-            <button type="button" class="chip-toggle @(_mapSounds ? "chip-toggle--active" : "")"
-                    aria-pressed="@(_mapSounds ? "true" : "false")" disabled="@(!_sound)"
-                    data-testid="settings-map-sounds" @onclick="ToggleMapSoundsAsync">
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_mapSounds ? "chip-toggle--active" : "")}")"
+                    aria-pressed="@(_mapSounds ? "true" : "false")" Disabled="@(!_sound)"
+                    data-testid="settings-map-sounds" Click="ToggleMapSoundsAsync">
                 @(_mapSounds ? "On" : "Off")
-            </button>
+            </RadzenButton>
         </div>
         <p class="settings-note">Map sounds add wind as you drag, a ping when you can search an area, and a low hum from the drawn places.</p>
     </section>
@@ -89,13 +89,13 @@
         <div class="settings-row" role="group" aria-label="Visual effects">
             @foreach (var (tier, label) in Tiers)
             {
-                <button type="button"
-                        class="chip-toggle @(_caps.Tier == tier ? "chip-toggle--active" : "")"
+                <RadzenButton
+                        ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_caps.Tier == tier ? "chip-toggle--active" : "")}")"
                         aria-pressed="@(_caps.Tier == tier ? "true" : "false")"
-                        disabled="@(_caps.ReducedMotion || !_caps.WebGl2)"
-                        @onclick="() => SetTierAsync(tier)">
+                        Disabled="@(_caps.ReducedMotion || !_caps.WebGl2)"
+                        Click="() => SetTierAsync(tier)">
                     @label
-                </button>
+                </RadzenButton>
             }
         </div>
 
@@ -123,11 +123,11 @@
         {
             <div class="settings-row">
                 <span class="settings-label">Ink motes</span>
-                <button type="button" class="chip-toggle @(_motes.Enabled ? "chip-toggle--active" : "")"
-                        aria-pressed="@(_motes.Enabled ? "true" : "false")" disabled="@(_caps.Tier != FxTier.Full)"
-                        data-testid="settings-motes" @onclick="ToggleMotesAsync">
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_motes.Enabled ? "chip-toggle--active" : "")}")"
+                        aria-pressed="@(_motes.Enabled ? "true" : "false")" Disabled="@(_caps.Tier != FxTier.Full)"
+                        data-testid="settings-motes" Click="ToggleMotesAsync">
                     @(_motes.Enabled ? "On" : "Off")
-                </button>
+                </RadzenButton>
             </div>
             <p class="settings-note">Drifting ink behind a comic, drawn on the GPU. Needs Full effects.</p>
         }

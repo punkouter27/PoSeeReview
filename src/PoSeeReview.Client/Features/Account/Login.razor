@@ -8,20 +8,11 @@
 
 <div class="login-page">
     <div class="login-container">
-        <div class="login-logo">
-            <svg class="login-brand-icon" width="48" height="48" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-                <rect x="1" y="1" width="11" height="11" rx="2" fill="currentColor" fill-opacity="0.95"/>
-                <rect x="15" y="1" width="11" height="11" rx="2" fill="currentColor" fill-opacity="0.75"/>
-                <rect x="1" y="15" width="11" height="11" rx="2" fill="currentColor" fill-opacity="0.75"/>
-                <rect x="15" y="15" width="11" height="11" rx="2" fill="currentColor" fill-opacity="0.5"/>
-            </svg>
-            <span class="login-brand-name">PoSeeReview</span>
-        </div>
-        <h1>Welcome Back</h1>
-        <p>Sign in to discover strange restaurant stories nearby and turn them into shareable comics.</p>
+        @* The sign-in page shows only the app title and one sign-in button (the Po web standard). *@
+        <h1 class="login-title">PoSeeReview</h1>
 
         <div class="login-actions">
-            <button type="button" class="btn btn-primary login-btn-microsoft" @onclick="LoginWithMicrosoft">
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary login-btn-microsoft" Click="LoginWithMicrosoft">
                 <svg class="login-btn-icon" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                     <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -29,13 +20,13 @@
                     <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                 </svg>
                 Sign in with Microsoft
-            </button>
+            </RadzenButton>
             @* Guest bypass renders in Dev AND Test (NET_RULES 4.4). Test used to auto-navigate
                instead of rendering the button, which contradicted the E2E UI suite — every one
                of its tests clicks "Continue as guest" and so only ever worked against Dev. *@
             @if (IsDevelopment || IsTest)
             {
-                <button type="button" class="btn btn-secondary" @onclick="LoginAsGuest">Continue as guest</button>
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary" Click="LoginAsGuest">Continue as guest</RadzenButton>
             }
         </div>
     </div>

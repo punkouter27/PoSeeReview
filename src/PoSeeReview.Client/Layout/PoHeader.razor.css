@@ -21,9 +21,11 @@
     animation: mock-badge-pulse 2s ease-in-out infinite;
 }
 
+/* The pulse is a ring, not the badge's opacity: fading the badge dropped its text below 4.5:1
+   mid-cycle, so axe failed it whenever it sampled the dim frame. */
 @keyframes mock-badge-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    50% { box-shadow: 0 0 0 3px var(--brand-a08); }
 }
 
 .nav-links {

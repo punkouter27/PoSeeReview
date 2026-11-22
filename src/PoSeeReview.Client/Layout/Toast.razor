@@ -8,7 +8,7 @@
     <span role="status">@Toasts.Message</span>
     @if (Toasts.CanUndo)
     {
-        <button type="button" class="toast-action" @onclick="Toasts.Undo">Undo</button>
+        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain toast-action" Click="Toasts.Undo">Undo</RadzenButton>
     }
 </div>
 

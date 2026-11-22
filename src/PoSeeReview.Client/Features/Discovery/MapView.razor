@@ -11,7 +11,7 @@
 {
     <StateCard Icon="🗺️" Title="The map couldn't load">
         <ChildContent>Everything on it is in the list too.</ChildContent>
-        <Actions><button type="button" class="btn btn-primary" @onclick="OnShowList">Show the list</button></Actions>
+        <Actions><RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary" Click="OnShowList">Show the list</RadzenButton></Actions>
     </StateCard>
 }
 else if (!_failed)

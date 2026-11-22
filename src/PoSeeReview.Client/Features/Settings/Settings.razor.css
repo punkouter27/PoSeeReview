@@ -27,11 +27,9 @@
     color: var(--color-text-secondary);
 }
 
-.settings-volume {
+.settings-row ::deep .settings-volume {
     flex: 1;
     min-width: 8rem;
-    min-height: var(--tap-target);
-    accent-color: var(--color-brand);
 }
 
 .settings-note {

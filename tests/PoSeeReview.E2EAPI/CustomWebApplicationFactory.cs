@@ -34,6 +34,10 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
         // these when building the host, so they must be present before CreateBuilder runs).
         Environment.SetEnvironmentVariable("DISABLE_SERILOG", "true");
         Environment.SetEnvironmentVariable("DISABLE_USER_AGENT_VALIDATION", "true");
+        // The host runs as Development, whose appsettings turn Storage:UseAzurite on (default ports
+        // 10000-10002). That made this tier pass only while a developer's own Azurite happened to be
+        // running; off here, so the Testcontainers connection strings below are what it uses.
+        Environment.SetEnvironmentVariable("Storage__UseAzurite", "false");
 
         // AzureOpenAI options — IConfiguration uses __ as the section separator for env vars
         Environment.SetEnvironmentVariable("AzureOpenAI__Endpoint", "https://test.openai.azure.com/");
@@ -130,7 +134,8 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
                 ["AzureOpenAI:ApiKey"] = "test-key-12345",
                 ["AzureOpenAI:DeploymentName"] = "test-deployment",
                 ["AzureOpenAI:DalleDeploymentName"] = "test-dalle-deployment",
-                ["GoogleMaps:ApiKey"] = "test-google-maps-key"
+                ["GoogleMaps:ApiKey"] = "test-google-maps-key",
+                ["Storage:UseAzurite"] = "false"
             };
 
             config.AddInMemoryCollection(testConfig);

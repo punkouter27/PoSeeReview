@@ -12,6 +12,9 @@ public class DiagReportHandlerTests
 {
     private readonly Mock<HealthCheckService> _healthCheckServiceMock = new();
 
+    /// <summary>What every probe's HTTP call answers; the unit tier never leaves the process.</summary>
+    private Func<HttpRequestMessage, HttpResponseMessage> _answer = _ => new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{}") };
+
     private DiagReportHandler BuildSut(string environmentName = "Development", Dictionary<string, string?>? settings = null)
     {
         var config = new ConfigurationBuilder()
@@ -23,11 +26,17 @@ public class DiagReportHandlerTests
             })
             .Build();
 
+        var environment = Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environmentName);
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient(new StubHandler(r => _answer(r))));
+        var probes = new ServiceProbes(factory.Object, config, environment, TimeProvider.System,
+            Mock.Of<IServiceProvider>(), NullLogger<ServiceProbes>.Instance);
+
         return new DiagReportHandler(
-            config,
             _healthCheckServiceMock.Object,
-            Mock.Of<IHostEnvironment>(e => e.EnvironmentName == environmentName),
+            environment,
             TimeProvider.System,
+            probes,
             NullLogger<DiagReportHandler>.Instance);
     }
 
@@ -97,6 +106,82 @@ public class DiagReportHandlerTests
         Assert.Equal("Unhealthy", failed.Status);
         Assert.Contains(nameof(InvalidOperationException), failed.Problem, StringComparison.Ordinal);
         Assert.DoesNotContain("secret-host", System.Text.Json.JsonSerializer.Serialize(result), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ServicesSwitchedOffOnPurpose_AreOff_AndLeftOutOfTheOverallStatus()
+    {
+        SetupHealth([]);
+
+        // Development, no Key Vault, no sign-in secret, no ntfy topic, no telemetry, remaster off.
+        _answer = request => new HttpResponseMessage(request.RequestUri!.Host.Contains("places", StringComparison.Ordinal)
+            ? System.Net.HttpStatusCode.BadRequest
+            : System.Net.HttpStatusCode.OK)
+        { Content = new StringContent("{}") };
+        var result = await BuildSut(settings: new Dictionary<string, string?>
+        {
+            ["AzureOpenAI:Endpoint"] = "https://ai.example/",
+            ["AzureOpenAI:ApiKey"] = "k",
+            ["GoogleMaps:ApiKey"] = "g"
+        }).ExecuteAsync(default);
+
+        foreach (var name in new[] { "key-vault", "microsoft-sign-in", "owner-alerts", "telemetry", "remaster", "content-safety" })
+        {
+            var row = Assert.Single(result.Checks, c => c.Name == name);
+            Assert.Equal(ServiceProbes.Off, row.Status);
+            Assert.Equal(0, row.LatencyMs);
+            Assert.Null(row.Problem);
+        }
+
+        Assert.Equal("Healthy", result.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ProbesTheAiServiceLive_AndReportsARejectedKey()
+    {
+        SetupHealth([]);
+        var calls = new List<string>();
+        _answer = request =>
+        {
+            calls.Add(request.RequestUri!.AbsolutePath);
+            return new HttpResponseMessage(request.RequestUri.AbsolutePath.Contains("/openai/models", StringComparison.Ordinal)
+                ? System.Net.HttpStatusCode.Unauthorized
+                : System.Net.HttpStatusCode.BadRequest)
+            { Content = new StringContent("{}") };
+        };
+
+        var result = await BuildSut(settings: new Dictionary<string, string?>
+        {
+            ["AzureOpenAI:Endpoint"] = "https://ai.example/",
+            ["AzureOpenAI:ApiKey"] = "k",
+            ["GoogleMaps:ApiKey"] = "g"
+        }).ExecuteAsync(default);
+
+        Assert.Contains("/openai/models", calls);
+        Assert.Contains("/v1/places:searchText", calls);
+        Assert.Equal("Unhealthy", Assert.Single(result.Checks, c => c.Name == "ai").Status);
+        Assert.Equal("Healthy", Assert.Single(result.Checks, c => c.Name == "google-maps").Status);
+        Assert.Equal("Unhealthy", result.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GoogleMapsKeyRejected_IsUnhealthy()
+    {
+        SetupHealth([]);
+        _answer = request => new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(request.RequestUri!.Host.Contains("places", StringComparison.Ordinal) ? "{\"reason\":\"API_KEY_INVALID\"}" : "{}")
+        };
+
+        var result = await BuildSut(settings: new Dictionary<string, string?> { ["GoogleMaps:ApiKey"] = "bad" }).ExecuteAsync(default);
+
+        Assert.Equal("Unhealthy", Assert.Single(result.Checks, c => c.Name == "google-maps").Status);
+    }
+
+    private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> answer) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(answer(request));
     }
 
     private void SetupHealth(Dictionary<string, HealthReportEntry> entries)

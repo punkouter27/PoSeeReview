@@ -48,7 +48,7 @@
     @if (IsTooNormal)
     {
         <div class="cta-wrap" @onclick:stopPropagation="true">
-            <button type="button" class="btn btn-secondary cta-btn" disabled>Too normal to draw</button>
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary cta-btn" Disabled="true">Too normal to draw</RadzenButton>
         </div>
     }
     else if (IsEnabled)
@@ -56,8 +56,8 @@
         @* The whole card is clickable too, so the button's click must not also bubble up to it.
            stopPropagation is only valid on an HTML element, hence the wrapper. *@
         <div class="cta-wrap" @onclick:stopPropagation="true">
-            <button type="button" class="btn @(IsCached ? "btn-primary" : "btn-secondary") cta-btn" disabled="@IsLoading"
-                    @onclick="OnClickIfEnabled" data-testid="comic-generate-btn"
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain btn {(IsCached ? "btn-primary" : "btn-secondary")} cta-btn")" Disabled="@IsLoading"
+                    Click="OnClickIfEnabled" data-testid="comic-generate-btn"
                     title="@(IsCached ? "Already drawn — opens instantly and costs nothing" : "Not drawn yet — takes about 10 seconds and uses one of today's generations")">
                 @if (IsLoading)
                 {
@@ -71,7 +71,7 @@
                 {
                     <text>Draw comic · ~10s</text>
                 }
-            </button>
+            </RadzenButton>
         </div>
     }
     else

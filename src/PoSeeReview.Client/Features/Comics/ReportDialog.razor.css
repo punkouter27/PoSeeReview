@@ -1,37 +1,10 @@
 /* Scoped to ReportDialog. */
 
-/* A modal <dialog> is centred by the UA, which also gives it a border, padding and a fixed
-   max-width that clips on a phone. All of that is overridden here; the panel below owns the
-   visible surface, and this element is only the positioning box. */
-.report-dialog {
-    padding: var(--space-md);
-    border: none;
-    background: transparent;
-    max-width: 100vw;
-    max-height: 100dvh;
-}
-
-/* The scrim. ::backdrop is not an element in the DOM and cannot be reached by a class selector,
-   so it has to be styled through the pseudo-element — which is also why the old `.report-backdrop`
-   div became this. The inverse veil token, not a hardcoded rgba: the scrim has to read as a
-   scrim in both themes, and a literal black would swallow the dark-mode panel edge. */
-.report-dialog::backdrop {
-    background: var(--surface-inverse-veil);
-}
-
+/* The Radzen dialog (DialogService, CssClass "report-dialog") owns the surface, title and
+   scrim; the panel is only its content. */
 .report-panel {
-    width: min(100%, 30rem);
-    max-height: 90dvh;
+    max-height: 70dvh;
     overflow-y: auto;
-    padding: var(--space-lg);
-    border-radius: var(--radius-card);
-    border: 1px solid var(--color-border-strong);
-}
-
-.report-title {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    color: var(--color-text-primary);
 }
 
 .report-body {
@@ -49,31 +22,21 @@
     border: none;
 }
 
-.report-reason {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    /* Full-row target: the label is the hit area, not just the 13px radio. */
+/* RadzenRadioButtonList: each reason is a full-row target, not just the radio. */
+.report-reasons ::deep .rz-radio-btn {
     min-height: var(--tap-target);
     padding: var(--space-2xs) var(--space-xs);
     border-radius: var(--radius-card);
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    cursor: pointer;
 }
 
-.report-reason:hover {
+.report-reasons ::deep .rz-radio-btn:hover {
     background: var(--brand-a08);
 }
 
-/* The inputs are rendered by InputRadio / InputText / InputTextArea (child components), so they
-   carry no scope attribute and are reached through ::deep. */
-.report-reason ::deep input {
-    /* Bigger than the UA default, which is well under any reasonable target on a phone. */
-    width: 1.15rem;
-    height: 1.15rem;
-    accent-color: var(--color-brand);
-    flex-shrink: 0;
+.report-reasons ::deep .rz-radiobutton-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    cursor: pointer;
 }
 
 .report-field {
@@ -132,6 +95,6 @@
     margin-top: var(--space-lg);
 }
 
-.report-actions .btn {
+.report-actions ::deep .btn{
     flex: 1 1 8rem;
 }

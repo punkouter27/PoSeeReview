@@ -234,6 +234,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddModerationAuthorization(configuration);
         services.AddScoped<GenerationBudgetService>();
         services.AddScoped<DiagReportHandler>();
+        services.AddSingleton<ServiceProbes>();
+        // /diag probes: one short attempt each, no retries (a retried probe only hides an outage).
+        services.AddHttpClient(ServiceProbes.HttpClientName)
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(6));
 
         // Register services
         services.AddHttpClient<GoogleMapsService>()

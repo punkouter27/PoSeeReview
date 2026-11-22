@@ -33,7 +33,7 @@
             {
                 <div class="alert alert-danger" role="alert">
                     <p>@_error</p>
-                    <button type="button" class="btn btn-primary" @onclick="LoadAsync">Try again</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary" Click="LoadAsync">Try again</RadzenButton>
                 </div>
             }
 
@@ -66,7 +66,6 @@
                    scrolled sideways on a phone. Both are rendered and CSS picks one; the action menu
                    is one template (ActionsFor) keyed per layout so popover ids stay unique. Remove
                    still names what it erases, in a confirm dialog. *@
-                <RadzenScope>
                 <ul class="moderation-cards">
                     @foreach (var item in _queue.Items.OrderByDescending(i => i.LastReportedAt))
                     {
@@ -129,7 +128,6 @@
                         </Columns>
                     </RadzenDataGrid>
                 </div>
-                </RadzenScope>
             }
         </Authorized>
     </AuthorizeView>
@@ -144,9 +142,9 @@
                 <h2 id="moderation-drawer-title" class="moderation-drawer-title">
                     AI triage · @(string.IsNullOrWhiteSpace(drawer.RestaurantName) ? drawer.PlaceId : drawer.RestaurantName)
                 </h2>
-                <button type="button" class="btn btn-secondary btn-icon" aria-label="Close triage" @onclick="() => _drawerItem = null">
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary btn-icon" aria-label="Close triage" Click="() => _drawerItem = null">
                     <span aria-hidden="true">&#215;</span>
-                </button>
+                </RadzenButton>
             </div>
             @if (drawer.Triage is { } triage)
             {
@@ -258,41 +256,41 @@
                           Click="@(() => Navigation.NavigateTo($"/comic/{item.PlaceId}"))" />
             @* One overflow menu instead of five inline buttons: the row stays
                compact and every action is still one tap away. *@
-            <button type="button" class="btn btn-secondary btn-icon moderation-menu-btn"
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary btn-icon moderation-menu-btn"
                     popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
                     title="More actions" aria-label="@($"More actions for {item.RestaurantName}")">
                 <span aria-hidden="true">⋯</span>
-            </button>
+            </RadzenButton>
             <div id="@($"mod-menu-{where}-{item.PlaceId}")" class="popover-menu moderation-popover" popover>
                 @if (item.IsHidden)
                 {
-                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Restore)">Clear</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            Disabled="@_isBusy" Click="() => ActAsync(item, ModerationAction.Restore)">Clear</RadzenButton>
                 }
                 else
                 {
-                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Hide)">Hide</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            Disabled="@_isBusy" Click="() => ActAsync(item, ModerationAction.Hide)">Hide</RadzenButton>
                 }
                 @if (!item.IsSuppressed)
                 {
-                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                            disabled="@_isBusy" @onclick="() => ActAsync(item, ModerationAction.Suppress)">Suppress</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            Disabled="@_isBusy" Click="() => ActAsync(item, ModerationAction.Suppress)">Suppress</RadzenButton>
                 }
                 @if (item.HasLiveComic)
                 {
-                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                            disabled="@(_isBusy || _triaging is not null)"
-                            @onclick="() => TriageAsync(item)">@(_triaging == item.PlaceId ? "Reading…" : item.Triage is null ? "AI triage" : "Re-triage")</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            Disabled="@(_isBusy || _triaging is not null)"
+                            Click="() => TriageAsync(item)">@(_triaging == item.PlaceId ? "Reading…" : item.Triage is null ? "AI triage" : "Re-triage")</RadzenButton>
                 }
                 @if (item.Triage is not null)
                 {
-                    <button type="button" class="popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                            @onclick="() => _drawerItem = item">View triage</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                            Click="() => _drawerItem = item">View triage</RadzenButton>
                 }
                 <hr class="popover-menu-divider" />
-                <button type="button" class="popover-menu-item moderation-menu-item--danger" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
-                        disabled="@_isBusy" @onclick="() => ConfirmRemoveAsync(item)">Remove</button>
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain popover-menu-item moderation-menu-item--danger" popovertarget="@($"mod-menu-{where}-{item.PlaceId}")"
+                        Disabled="@_isBusy" Click="() => ConfirmRemoveAsync(item)">Remove</RadzenButton>
             </div>
         </div>
         @if (!string.IsNullOrWhiteSpace(item.Reason))

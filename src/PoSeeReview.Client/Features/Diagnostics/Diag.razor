@@ -16,7 +16,7 @@
 <div class="po-diag" data-status="@OverallStatus">
     <div class="po-diag__head">
         <h1>System status</h1>
-        <button type="button" class="po-link-btn small" @onclick="LoadAsync" disabled="@_loading">@(_loading ? "Checking…" : "Refresh")</button>
+        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain po-link-btn small" Click="LoadAsync" Disabled="@_loading">@(_loading ? "Checking…" : "Refresh")</RadzenButton>
     </div>
 
     <p class="po-diag__banner po-diag__banner--@BannerTone" role="status" data-testid="diag-banner">@BannerText</p>
@@ -39,7 +39,7 @@
                     </div>
                     <span class="po-badge po-badge--@Tone(check.Status)">@check.Status</span>
                     <span class="po-diag__meta">
-                        @FormatMs(check.LatencyMs) · @check.Detail
+                        @(check.Status == "Off" ? "" : $"{FormatMs(check.LatencyMs)} · ")@check.Detail
                         @if (!string.IsNullOrEmpty(check.Problem))
                         {
                             <span class="po-diag__problem"> · @check.Problem</span>
@@ -139,7 +139,8 @@
                 return $"Not working: {string.Join(", ", unhealthy)}";
             }
 
-            var degraded = _checks.Count(c => c.Status != "Healthy");
+            // "Off" = switched off on purpose: shown, but never counted as a problem.
+            var degraded = _checks.Count(c => c.Status is not ("Healthy" or "Off"));
             return degraded == 0
                 ? "Everything is working"
                 : $"Working, with {degraded} {(degraded == 1 ? "thing" : "things")} degraded";
@@ -150,6 +151,7 @@
     {
         "Healthy" => "ok",
         "Degraded" => "warn",
+        "Off" => "off",
         _ => "bad"
     };
 

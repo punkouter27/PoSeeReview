@@ -43,7 +43,7 @@
             {
                 <div class="alert alert-danger error-message" role="alert">
                     <span>@_errorMessage</span>
-                    <button type="button" class="btn btn-secondary retry-link" @onclick="RetryLastAttemptAsync">@RetryLabel</button>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary retry-link" Click="RetryLastAttemptAsync">@RetryLabel</RadzenButton>
                 </div>
             }
 
@@ -57,44 +57,43 @@
                 <div class="layout-toggle category-toggle" role="group" aria-label="What to search for">
                     @foreach (var (kind, label, icon) in Kinds)
                     {
-                        <button type="button" class="chip-toggle @(_category == kind ? "chip-toggle--active" : "")"
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_category == kind ? "chip-toggle--active" : "")}")"
                                 aria-pressed="@(_category == kind ? "true" : "false")"
-                                disabled="@(IsBusy && _category != kind)"
+                                Disabled="@(IsBusy && _category != kind)"
                                 data-testid="@($"category-{kind.ToWire()}")"
-                                @onclick="() => SwitchCategoryAsync(kind)">
+                                Click="() => SwitchCategoryAsync(kind)">
                             <span aria-hidden="true">@icon</span> @label
-                        </button>
+                        </RadzenButton>
                     }
                 </div>
                 <div class="search-row">
                     @if (_flowState != LocationFlowState.Denied)
                     {
-                        <button type="button" class="btn btn-primary location-btn"
-                                disabled="@IsBusy"
-                                @onclick="NearMeAsync"
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary location-btn"
+                                Disabled="@IsBusy"
+                                Click="NearMeAsync"
                                 title="Use my location">
                             <span aria-hidden="true">📍</span>
                             <span class="location-btn-label">@(IsLocating ? "Finding you..." : "Near me")</span>
-                        </button>
+                        </RadzenButton>
                     }
                     <label for="city-search-input" class="visually-hidden">Search city, address, or ZIP code</label>
-                    <input id="city-search-input" class="search-field" type="search" autocomplete="off" enterkeyhint="search"
-                           @ref="_searchInput"
-                           @bind="_searchQuery" @bind:event="oninput" placeholder="@_searchPlaceholder" @onkeydown="HandleSearchKeyDown" />
+                    <RadzenTextBox @ref="_searchBox" id="city-search-input" class="sr-plain search-field" type="search" autocomplete="off" enterkeyhint="search"
+                                   @bind-Value="_searchQuery" Immediate="true" Placeholder="@_searchPlaceholder" @onkeydown="HandleSearchKeyDown" />
                     @* Clears the text only; the results stay. The brand link is the way back to the landing. *@
                     @if (!string.IsNullOrEmpty(_searchQuery))
                     {
-                        <button type="button" class="btn btn-secondary btn-icon clear-search-btn" @onclick="ClearQueryAsync"
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary btn-icon clear-search-btn" Click="ClearQueryAsync"
                                 title="Clear the search box" aria-label="Clear the search box">
                             <span aria-hidden="true">&#215;</span>
-                        </button>
+                        </RadzenButton>
                     }
-                    <button type="button" class="btn btn-secondary"
-                            @onclick="SearchByLocationAsync"
-                            disabled="@(IsBusy || string.IsNullOrWhiteSpace(_searchQuery))"
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary"
+                            Click="SearchByLocationAsync"
+                            Disabled="@(IsBusy || string.IsNullOrWhiteSpace(_searchQuery))"
                             title="@(string.IsNullOrWhiteSpace(_searchQuery) ? "Type a city, address, or ZIP code first" : "Search this location")">
                         @(IsTextSearching ? "Searching..." : "Search")
-                    </button>
+                    </RadzenButton>
                     @if (HasResults)
                     {
                         <div class="results-meta">
@@ -102,12 +101,12 @@
                             @if (!_mapUnavailable)
                             {
                                 <div class="layout-toggle" role="group" aria-label="Show results as">
-                                    <button type="button" class="chip-toggle @(_layout == ResultsLayout.List ? "chip-toggle--active" : "")"
+                                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_layout == ResultsLayout.List ? "chip-toggle--active" : "")}")"
                                             aria-pressed="@(_layout == ResultsLayout.List ? "true" : "false")"
-                                            @onclick="() => SetLayoutAsync(ResultsLayout.List)">List</button>
-                                    <button type="button" class="chip-toggle @(_layout == ResultsLayout.Map ? "chip-toggle--active" : "")"
+                                            Click="() => SetLayoutAsync(ResultsLayout.List)">List</RadzenButton>
+                                    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_layout == ResultsLayout.Map ? "chip-toggle--active" : "")}")"
                                             aria-pressed="@(_layout == ResultsLayout.Map ? "true" : "false")"
-                                            @onclick="() => SetLayoutAsync(ResultsLayout.Map)">Map</button>
+                                            Click="() => SetLayoutAsync(ResultsLayout.Map)">Map</RadzenButton>
                                 </div>
                             }
                         </div>
@@ -117,7 +116,7 @@
                 {
                     <p class="denied-alert" role="alert">
                         📍 Location access was denied — search above, or
-                        <button type="button" class="link-button" @onclick="RequestLocationAsync">try location again</button>.
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain link-button" Click="RequestLocationAsync">try location again</RadzenButton>.
                     </p>
                 }
             </div>
@@ -137,12 +136,12 @@
                     @if (HasTop && HasRecent)
                     {
                         <div class="layout-toggle" role="group" aria-label="Show">
-                            <button type="button" class="chip-toggle @(_landingTab == LandingTab.Strangest ? "chip-toggle--active" : "")"
+                            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_landingTab == LandingTab.Strangest ? "chip-toggle--active" : "")}")"
                                     aria-pressed="@(_landingTab == LandingTab.Strangest ? "true" : "false")"
-                                    @onclick="() => _landingTab = LandingTab.Strangest">Strangest</button>
-                            <button type="button" class="chip-toggle @(_landingTab == LandingTab.Recent ? "chip-toggle--active" : "")"
+                                    Click="() => _landingTab = LandingTab.Strangest">Strangest</RadzenButton>
+                            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="@($"sr-plain chip-toggle {(_landingTab == LandingTab.Recent ? "chip-toggle--active" : "")}")"
                                     aria-pressed="@(_landingTab == LandingTab.Recent ? "true" : "false")"
-                                    @onclick="() => _landingTab = LandingTab.Recent">Recent</button>
+                                    Click="() => _landingTab = LandingTab.Recent">Recent</RadzenButton>
                         </div>
                     }
                     @if (ShowingTop)
@@ -224,10 +223,10 @@
                         {
                             if (area.Zoom >= MinSearchZoom)
                             {
-                                <button type="button" class="btn btn-primary map-overlay-btn" disabled="@_areaSearching"
-                                        @onclick="SearchThisAreaAsync">
+                                <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary map-overlay-btn" Disabled="@_areaSearching"
+                                        Click="SearchThisAreaAsync">
                                     @(_areaSearching ? "Searching..." : "Search this area")
-                                </button>
+                                </RadzenButton>
                             }
                             else
                             {
@@ -258,9 +257,9 @@
                     @* A phone shows the closest three under the map; the rest are one tap away. *@
                     @if (PanePicks.Count > PhonePaneCount)
                     {
-                        <button type="button" class="btn btn-secondary pane-show-all" @onclick="() => SetLayoutAsync(ResultsLayout.List)">
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary pane-show-all" Click="() => SetLayoutAsync(ResultsLayout.List)">
                             Show all @_restaurants.Count as a list
-                        </button>
+                        </RadzenButton>
                     }
                 </section>
             </div>
@@ -316,7 +315,7 @@
     [SupplyParameterFromQuery(Name = "q")]
     public string? Q { get; set; }
     private string _searchQuery = string.Empty;
-    private ElementReference _searchInput;
+    private RadzenTextBox? _searchBox;
     private string _searchPlaceholder = "City or ZIP";
     private string _lastSearch = string.Empty;
     private bool _isNavigatingToComic;
@@ -1037,7 +1036,10 @@
     private async Task ClearQueryAsync()
     {
         _searchQuery = string.Empty;
-        await _searchInput.FocusAsync();
+        if (_searchBox is not null)
+        {
+            await _searchBox.Element.FocusAsync();
+        }
     }
 
     /// <summary>The brand link cleared <see cref="DiscoveryState"/> while this page was showing results.</summary>

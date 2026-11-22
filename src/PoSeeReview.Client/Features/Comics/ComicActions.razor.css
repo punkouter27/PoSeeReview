@@ -7,6 +7,6 @@
 }
 
 /* Share is the point of the whole screen, so it takes the row. */
-.action-share {
+::deep .action-share{
     flex: 1 0 auto;
 }

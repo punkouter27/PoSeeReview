@@ -36,13 +36,30 @@ No `.cursorrules`, `.copilotignore`, `SPEC.md`, `tasks/`, `DOCS/` at the root (f
   phones) — or, signed out, one **Sign in** button `class="po-link-btn filled small"` (same style on every page) —
   then the settings gear ONLY if the app has a settings page (the owner removed settings from some apps — don't
   re-add it). Apps without OAuth show nothing in place of the email (no fake identity chips).
-- Version badge `.po-version` fixed bottom-right showing `vYYMMDD`. It must never cover content: `main` gets
-  `padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom))`, and when a mobile bottom nav exists the
-  badge sits above it (`--po-stamp-lift: <nav height>`).
+- Version badge `.po-version` showing `vYYMMDD`: fixed bottom-right on wide screens; on phones (<= 768px) it is
+  static and the last thing in the page flow, after the content, so it never covers anything. When the mobile bottom
+  nav exists (signed in) the badge keeps clear of it by margin (`--po-stamp-lift: <nav height>`).
+- Signed out, nothing that needs a sign-in is shown: no header nav and no bottom nav. The sign-in page shows the
+  header title only, then the app title and ONE "Sign in with Microsoft" button (the guest button exists only in
+  Development/Test, for the browser tests).
 - Colours only from `wwwroot/css/po-tokens.css` (`--po-*`). All text ≥ 4.5:1 contrast in light AND dark mode
   (status banners: use `--po-text` on `--po-*-soft` backgrounds, never warning-on-peach).
 - Login-only data must not be requested for signed-out visitors (no 401s in the console on public pages), and
   actions a signed-out visitor cannot perform are hidden.
+
+#### Components (Radzen)
+- Radzen.Blazor (pinned in `Directory.Packages.props`) is the only component library, on every page (owner
+  decision 2026-11-21, "Radzen wins": it overrides any older note that kept Radzen to operator pages). Buttons are
+  `RadzenButton`, fields `RadzenTextBox`/`RadzenTextArea`/`RadzenSlider`/`RadzenRadioButtonList`, dialogs and
+  confirms go through `DialogService`; never `alert()`/`confirm()` or a native `<dialog>`.
+- To keep the app's look: `ButtonStyle.Base` + `Variant.Text` + `class="sr-plain <app classes>"`. The theme is
+  imported into `@layer vendor` and the `plain` layer reverts it on `.sr-plain`, so `.btn`, `.chip-toggle`,
+  `.search-field` draw the control. Scoped `.razor.css` rules for those classes need `::deep`.
+- **Allowed native exceptions** (the only ones): native `<audio>`/`<video>` (`AudioComic.razor`: the audio comic
+  player), native file inputs for resumable uploads (none today), read-only data tables (none today; the
+  moderation queue is a `RadzenDataGrid`). Anything else native is a bug.
+- Forms: FluentValidation with inline `ValidationMessage`s; validators are registered BY TYPE in `Program.cs`
+  (`AddScoped<IValidator<X>, XValidator>`), never by assembly scan, so trimming cannot drop one.
 
 #### Version
 - `Directory.Build.props` stamps ONE assembly metadata key: `BuildVersion` = UTC `yyMMdd`. No `BuildStamp`/`BuildDate`
@@ -54,13 +71,16 @@ No `.cursorrules`, `.copilotignore`, `SPEC.md`, `tasks/`, `DOCS/` at the root (f
   DiagReportDto(string Status, string Environment, string Version, DateTimeOffset CheckedAt, double CheckedMs,
                 DiagCheckDto[] Checks)
   DiagCheckDto(string Name, string Group /* "api" | "data" | "service" */, string Label, string Status
-               /* Healthy|Degraded|Unhealthy */, string Purpose, string Detail, double LatencyMs, string? Problem)
+               /* Healthy|Degraded|Unhealthy|Off */, string Purpose, string Detail, double LatencyMs, string? Problem)
   ```
 - UI route `/diag` ONLY (delete other diagnostics pages/routes such as `/system`, `/diagnostics`, `/status`). Page
   `<title>` and `h1`: **System status**. Layout: overall banner in plain words ("Everything is working" /
   "Working, with N things degraded" / "Not working: …"), then three sections in this order: **API**, **Data**,
   **Services**; each row = label, purpose, status pill, latency ms, problem/detail text. Every external dependency
   the app really calls appears as a check. Anonymous, nothing secret in the payload.
+- Every check is LIVE (`Features/Diagnostics/ServiceProbes.cs`: free calls only, cached 60 s); a configuration
+  read alone is not a check. A service switched off on purpose reports Status `Off` (grey pill), which never
+  counts toward the overall status or the banner.
 
 #### Workflow (`.github/workflows/deploy.yml`, the only one)
 push to master → format check → build (Release, warnings as errors) → Unit tests → Integration tests (Testcontainers /
@@ -91,16 +111,17 @@ App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowerc
 
 ## 3. Verification
 
-Every command below was run on 2026-11-20 (PowerShell or bash, repo root).
+Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
 |---|---|---|
 | Format | `dotnet format PoSeeReview.slnx --verify-no-changes` | — |
 | Build | `dotnet build PoSeeReview.slnx -c Release` | warnings are errors |
-| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (224 tests) |
-| Integration | `dotnet test tests/PoSeeReview.Integration -c Release` | Docker (Testcontainers Azurite); skips with one message without it (43) |
-| E2E API | `dotnet test tests/PoSeeReview.E2EAPI -c Release` | Docker; skips without it (38) |
-| E2E UI | `E2E_BASE_URL=http://localhost:7318 dotnet test tests/PoSeeReview.E2EUI -c Release` | a running app + Playwright Chromium; skips with the reason otherwise (42) |
+| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (227 tests) |
+| Integration | `dotnet test tests/PoSeeReview.Integration -c Release` | Docker (Testcontainers Azurite); skips with one message without it (44) |
+| E2E API | `dotnet test tests/PoSeeReview.E2EAPI -c Release` | Docker (its own Testcontainers Azurite, not a local one); skips without it (38) |
+| E2E UI (the trimmed Release publish) | `pwsh scripts/run-e2eui.ps1` (publishes `-c Release -p:WasmApplicationEnvironmentName=Test`, starts Azurite in Docker + the published app on :7318, runs the tier, stops both; `-Filter <x>` narrows it) | Docker + Playwright Chromium (50) |
+| E2E UI against an app you already run | `E2E_BASE_URL=http://localhost:7318 dotnet test tests/PoSeeReview.E2EUI -c Release` | a running app + Playwright Chromium; skips with the reason otherwise |
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
 | Run locally (mock data, no secrets) | `KeyVault__Uri= UseMockData=true Storage__AzuritePorts=21000,21001,21002 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7318 dotnet run --project src/PoSeeReview.Api --no-launch-profile` | → http://localhost:7318 and http://localhost:7318/diag |
 

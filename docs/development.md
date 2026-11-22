@@ -420,11 +420,16 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   while a submit is in flight. New submitting forms follow the same pattern.
 - **Moderation on a phone.** Under 48rem `/moderation` is cards, the grid above it; both render and
   CSS picks one, so the row menu is one `ActionsFor(item, where)` template with per-layout popover ids.
-- **Radzen is operator-only.** `/moderation` and `/diag` wrap their Radzen components in
-  `RadzenScope`, which loads `js/radzen-theme.js` (theme into `@layer vendor`, script) first and hosts
-  `RadzenDialog`. Its `--rz-*` variables are re-pointed at app tokens at the end of `app.css`, so
-  no Radzen colour needs a dark-mode copy. Keep `@using Radzen` local to those files — global, it
-  shadows app names. A `RowRender` "class" replaces Radzen's row class; use a data attribute.
+- **Radzen is the component library (owner decision 2026-11-21).** Every button is a
+  `RadzenButton`, every field a Radzen input, dialogs go through `DialogService` (`RadzenDialog` lives
+  in `MainLayout`). `app.css` imports the `material-base` theme into `@layer vendor` and
+  `index.html` loads `Radzen.Blazor.min.js`. A control that keeps the app's look is
+  `ButtonStyle.Base` + `Variant.Text` + class `sr-plain` plus the app class (`btn btn-primary`,
+  `chip-toggle`, ...): the `plain` layer reverts Radzen's theme on it. Scoped `.razor.css` rules for
+  those classes need `::deep` (the element is rendered by the Radzen component). Its `--rz-*`
+  variables are re-pointed at app tokens at the end of `app.css`, so no Radzen colour needs a
+  dark-mode copy. Allowed native exceptions are listed in AGENTS.md. A `RowRender` "class" replaces
+  Radzen's row class; use a data attribute.
 - **State services.** `DiscoveryState` keeps the last search so Back restores it without a refetch
   (text searches also live in `?q=`); `ToastService` drives the one `<Toast />` in `MainLayout`;
   `ShareService.ShareComicAsync` is the only share path and always uses the short link.
@@ -464,7 +469,7 @@ Read its header comment before adding CSS.
   fonts alias `--po-*`. The few deliberate adjustments to po-tokens.css are in the unlayered
   "PO SHELL ADAPTERS" block at the end of app.css. There is no `data-theme`: the device decides.
 
-- **Cascade layers**: `reset, tokens, base, vendor, page, shared, utilities` (`vendor` = injected third-party CSS: MapLibre, and Radzen on the operator pages). `page` (the scoped-CSS
+- **Cascade layers**: `reset, tokens, base, vendor, plain, page, shared, utilities` (`vendor` = third-party CSS: MapLibre, and the Radzen theme; `plain` = the `sr-plain` revert for Radzen controls that keep the app's look). `page` (the scoped-CSS
   bundle, pulled in via `@import … layer(page)`) sits **before** `shared`, so a scoped sheet cannot
   fork `.btn`. Element selectors go in `base`; class components in `shared` — layer order beats
   specificity. Never add a plain `<link>` for scoped or third-party CSS: unlayered CSS beats every layer.
@@ -492,9 +497,9 @@ Read its header comment before adding CSS.
 `propagateAudioState()` fans a sound-preference change out to haptics.
 
 Live modules: `gfx-core.js`, `gradient.js`, `audio.js`, `haptics.js`, `comic-reveal.js`,
-`panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `modal.js`, `glass.js`,
+`panel-scrub.js`, `view-transitions.js`, `scroll-guard.js`, `glass.js`,
 `confetti.js`, `ink-motes.js`, `ink-fx.js`, `vendor.js` (+ `share-utils.js`, a classic script loaded by `index.html`;
-`map-view.js` is imported by `MapView`, `radzen-theme.js` by `RadzenScope`, and `audio-comic.js` by `AudioComic`, each on its own).
+`map-view.js` is imported by `MapView`, and `audio-comic.js` by `AudioComic`, each on its own).
 Shared helpers live once: `prefersDark` in `gfx-core.js`, `hashString`/`seededRandom`/`SCALES` in
 `audio.js`, script and `@layer vendor` stylesheet loading in `vendor.js`.
 
@@ -623,11 +628,16 @@ check fails the deploy and rolls it back; `GET /api/diag` (anonymous, every envi
 
 **`/diag`** follows the /diag contract in AGENTS.md: the anonymous client page `Diag.razor`, titled
 "System status", shows a plain-words banner, then API (the app server, round trip measured by the
-page), Data (table and blob storage) and Services (Google Maps, image rendering, AI, Key Vault,
-Microsoft sign-in), one `.po-diag__card` and `.po-badge--ok|warn|bad` per check, then version and
+page), Data (table and blob storage) and Services (image rendering, then the live probes in
+`ServiceProbes`: Google Maps, AI, content safety, Gemini remaster, Key Vault, Microsoft sign-in, owner
+alerts, telemetry), one `.po-diag__card` and `.po-badge--ok|warn|bad|off` per check, then version and
 environment, Refresh, and a collapsed "Graphics on this device" readout. The JSON is
 `GET /api/diag` → `DiagReportDto`, built by `DiagReportHandler`, which emits only fixed
 labels/purposes, statuses, timings and an exception **type** — never a value, URI, id, path or message.
+Every service row is a LIVE call that costs nothing (a listing, a metadata read, or a request the
+service rejects only after accepting the key), cached 60 s. A service switched off on purpose (mock
+mode, no ntfy topic, remastering off, no Key Vault locally) is **Off**: a grey pill, left out of the
+overall status and the banner.
 `DiagnosticsEndpointTests` (Integration) checks the body against the app's own configuration.
 
 ## Conventions

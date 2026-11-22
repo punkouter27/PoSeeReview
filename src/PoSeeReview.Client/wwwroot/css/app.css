@@ -18,7 +18,7 @@
    because that is the only way to place framework-generated CSS into a layer.
    ============================================================================================ */
 
-@layer reset, tokens, base, vendor, page, shared, utilities;
+@layer reset, tokens, base, vendor, plain, page, shared, utilities;
 
 /* `vendor` holds third-party CSS that must be layered rather than linked: MapLibre's stylesheet,
    injected by js/map-view.js the first time a map opens. Above `base` so element defaults do
@@ -35,6 +35,42 @@
    go in `shared`. */
 
 @import url("/PoSeeReview.Client.styles.css") layer(page);
+
+/* Radzen is the component library on every page (owner decision 2026-11-21, "Radzen wins"):
+   every button is a RadzenButton, every field a Radzen input. Its theme sits in `vendor`, so the
+   app's own layers (page, shared) still draw the app; the `--rz-*` bridge below maps its colours
+   to the tokens. */
+@import url("/_content/Radzen.Blazor/css/material-base.css?v=12.2.0") layer(vendor);
+
+/* `plain`: a Radzen control that keeps the app's look carries class "sr-plain". Everything the
+   Radzen theme set on it is reverted to the browser's native control (all: revert), then the
+   reset layer's control defaults are restored, so .btn, .chip-toggle, .search-field and friends
+   (page/shared, later layers) style it exactly as they styled the native element. The button's
+   content box steps out of the layout, so flex gaps still see the children. */
+@layer plain {
+    :where(.rz-button.sr-plain, .rz-textbox.sr-plain, .rz-textarea.sr-plain),
+    :where(.rz-button.sr-plain)::before,
+    :where(.rz-button.sr-plain)::after {
+        all: revert;
+    }
+
+    :where(.rz-button.sr-plain, .rz-textbox.sr-plain, .rz-textarea.sr-plain) {
+        box-sizing: border-box;
+        font: inherit;
+        color: inherit;
+    }
+
+    :where(.rz-button.sr-plain) {
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    :where(.rz-button.sr-plain > .rz-button-box) {
+        all: revert;
+        display: contents;
+    }
+}
 
 /* ============================================================================================
    RESET — replaces Bootstrap (was 31KB gzipped for six classes we actually used, all of which
@@ -2169,7 +2205,7 @@
 }
 
 /* ============================================================================================
-   RADZEN BRIDGE — the operator pages' component kit (RadzenScope + js/radzen-theme.js)
+   RADZEN BRIDGE — the component library on every page (theme imported at the top of this file)
 
    Radzen's theme is injected into `vendor`; these redefine its variables from the app's tokens
    in `shared`, which wins by layer order. Every value is a token, so light/dark and the WCAG
@@ -2261,9 +2297,9 @@
     padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* The phone bottom nav (BottomNav, under 40rem) is 48px plus the home indicator. */
+/* The phone bottom nav (BottomNav, under 40rem, signed in only) is 48px plus the home indicator. */
 @media (max-width: 40rem) {
-    :root {
+    :root:has(.po-bottom-nav) {
         --po-stamp-lift: 48px;
     }
 }

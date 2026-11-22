@@ -230,9 +230,18 @@ main { padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom, 0px)
   pointer-events: none;
   opacity: 0.9;
 }
-/* Apps with a bottom nav on phones lift the stamp above it by setting --po-stamp-lift. */
+/* Phones: a fixed badge would sit on whatever scrolls under it, so the stamp leaves the fixed
+   layer and becomes the last thing in the page flow, right-aligned after the content. A bottom
+   nav (--po-stamp-lift: its height) keeps it clear by margin, not by floating over cards. */
 @media (max-width: 768px) {
-  .po-version { bottom: calc(max(var(--po-space-3), env(safe-area-inset-bottom, 0px)) + var(--po-stamp-lift, 0px)); }
+  .po-version {
+    position: static;
+    display: block;
+    width: fit-content;
+    margin: var(--po-space-2) max(var(--po-space-3), env(safe-area-inset-right, 0px))
+            calc(var(--po-space-3) + var(--po-stamp-lift, 0px) + env(safe-area-inset-bottom, 0px)) auto;
+    opacity: 1;
+  }
 }
 
 /* ── Shell: /diag (System status) ── */
@@ -271,3 +280,5 @@ main { padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom, 0px)
 .po-badge--ok { background: var(--po-success-soft); box-shadow: inset 0 0 0 1px var(--po-success); }
 .po-badge--warn { background: var(--po-warning-soft); box-shadow: inset 0 0 0 1px var(--po-warning); }
 .po-badge--bad { background: var(--po-danger-soft); box-shadow: inset 0 0 0 1px var(--po-danger); }
+/* Off: switched off on purpose. Neutral grey, never a warning colour. */
+.po-badge--off { background: var(--po-surface-2); box-shadow: inset 0 0 0 1px var(--po-border); color: var(--po-text-muted); }

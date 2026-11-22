@@ -7,9 +7,9 @@
 @inject FxService Fx
 
 <div class="comic-actions">
-    <button type="button" class="btn btn-primary action-share" @onclick="ShareAsync" disabled="@_isBusy">
+    <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-primary action-share" Click="ShareAsync" Disabled="@_isBusy">
         <span aria-hidden="true">📤</span> Share
-    </button>
+    </RadzenButton>
 </div>
 
 @code {

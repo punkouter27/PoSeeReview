@@ -45,6 +45,8 @@ internal static class KeyVaultConfigurationExtensions
             Log.Information("Key Vault: shared secrets registered");
 
             builder.Configuration.AddAzureKeyVault(secretClient, new PrefixKeyVaultSecretManager());
+            // /diag lists one secret name through this same client: a live check, not a config read.
+            builder.Services.AddSingleton(new PoSeeReview.Api.Features.Diagnostics.KeyVaultSource(secretClient));
             Log.Information("Key Vault: PoSeeReview app-specific secrets registered");
         }
         catch (Exception ex)

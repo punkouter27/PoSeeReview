@@ -24,13 +24,18 @@
             </ErrorBoundary>
         </article>
     </main>
+
+    @* Last in the page flow: fixed bottom-right on wide screens, after the content on phones. *@
+    <BuildVersion />
 </div>
 
 <Toast />
 <RadzenNotification />
 <RadzenDialog />
-<BottomNav />
-<BuildVersion />
+@* Every bottom-nav destination needs a sign-in, so signed-out visitors don't get the bar. *@
+<AuthorizeView>
+    <Authorized><BottomNav /></Authorized>
+</AuthorizeView>
 
 @code {
     private ElementReference _backdrop;

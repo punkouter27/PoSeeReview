@@ -44,10 +44,11 @@ main {
 }
 
 @media (max-width: 40rem) {
-    /* Clear of the fixed bottom nav (48px) and the build stamp lifted above it. */
+    /* The build stamp follows the content here (po-tokens.css) and carries the bottom-nav
+       clearance itself, so the content only needs its gutter. */
     .content {
         --gutter: var(--space-sm);
-        padding-bottom: calc(max(var(--gutter), env(safe-area-inset-bottom)) + 48px + var(--space-xl));
+        padding-bottom: var(--gutter);
     }
 }
 

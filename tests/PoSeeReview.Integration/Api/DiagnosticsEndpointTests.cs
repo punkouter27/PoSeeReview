@@ -1,8 +1,11 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using PoSeeReview.Api.Features.Diagnostics;
 using PoSeeReview.Api;
 using PoSeeReview.Shared.Dtos;
 using Xunit;
@@ -58,6 +61,35 @@ public partial class DiagnosticsEndpointTests(CustomWebApplicationFactory<Progra
 
         Assert.DoesNotMatch(GuidPattern(), body);
         Assert.DoesNotMatch(EmailPattern(), body);
+    }
+
+    [DockerFact]
+    public async Task ApiDiag_Shows_Unconfigured_Services_As_Off_And_Leaves_Them_Out_Of_The_Overall_Status()
+    {
+        // Every live probe answers "accepted" from a stub, so only the Off rows are in question.
+        using var stubbed = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddHttpClient(ServiceProbes.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => new AcceptEverything())));
+
+        var report = await stubbed.CreateClient().GetFromJsonAsync<DiagReportDto>("/api/diag", JsonSerializerOptions.Web);
+
+        Assert.NotNull(report);
+        // The Test host has no Key Vault, no sign-in secret, no ntfy topic, no telemetry and remastering off.
+        foreach (var name in new[] { "key-vault", "microsoft-sign-in", "owner-alerts", "telemetry", "remaster" })
+        {
+            var row = Assert.Single(report.Checks, c => c.Name == name);
+            Assert.Equal(ServiceProbes.Off, row.Status);
+            Assert.Null(row.Problem);
+        }
+
+        Assert.Equal("Healthy", Assert.Single(report.Checks, c => c.Name == "ai").Status);
+        Assert.Equal("Healthy", report.Status);
+    }
+
+    private sealed class AcceptEverything : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
     }
 
     [GeneratedRegex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")]

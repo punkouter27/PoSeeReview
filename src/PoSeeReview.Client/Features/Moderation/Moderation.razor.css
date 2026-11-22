@@ -53,7 +53,7 @@
     gap: var(--space-3xs);
 }
 
-.moderation-menu-btn {
+::deep .moderation-menu-btn{
     --btn-pad-x: var(--space-2xs);
     font-weight: 700;
 }
@@ -67,11 +67,11 @@
     margin: 0;
 }
 
-.moderation-menu-item--danger {
+::deep .moderation-menu-item--danger{
     color: var(--color-danger-text);
 }
 
-.moderation-menu-item--danger:hover {
+::deep .moderation-menu-item--danger:hover{
     background: var(--color-danger-surface);
 }
 

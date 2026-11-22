@@ -105,13 +105,13 @@
     align-items: stretch;
 }
 
-.location-btn {
+::deep .location-btn{
     flex-shrink: 0;
     padding-inline: var(--space-md);
 }
 
 /* The field has to be allowed to grow, or it sits at its intrinsic width between the buttons. */
-.search-field {
+::deep .search-field{
     flex: 1 1 auto;
     min-width: 0;
     min-height: var(--tap-target);
@@ -123,7 +123,7 @@
     font-size: var(--text-md);
 }
 
-.search-field:focus {
+::deep .search-field:focus{
     border-color: var(--color-brand);
     outline: none;
 }
@@ -166,19 +166,19 @@
     padding-inline: var(--space-2xs);
 }
 
-.clear-search-btn {
+::deep .clear-search-btn{
     flex-shrink: 0;
 }
 
 /* The bar's own × clears the field; the native one beside it read as a duplicate. */
-.search-field::-webkit-search-cancel-button {
+::deep .search-field::-webkit-search-cancel-button{
     display: none;
 }
 
 /* On a phone the field takes its own row and the two buttons share the next, so "Near me"
    keeps its label — an unlabelled pin was the page's primary action. */
 @media (max-width: 40rem) {
-    .search-field {
+    ::deep .search-field{
         flex-basis: 100%;
         order: -1;
     }
@@ -187,7 +187,7 @@
         --btn-pad-x: var(--space-sm);
     }
 
-    .search-row > .btn {
+    .search-row > ::deep .btn{
         flex: 1;
         white-space: nowrap;
     }
@@ -197,12 +197,12 @@
     }
 
     /* Compact: one row — the pin, the field, Search, clear — then the count and switch. */
-    .location-prompt--compact .search-field {
+    .location-prompt--compact ::deep .search-field{
         flex-basis: auto;
         order: 0;
     }
 
-    .location-prompt--compact .search-row > .btn {
+    .location-prompt--compact .search-row > ::deep .btn{
         flex: 0 0 auto;
     }
 
@@ -259,14 +259,14 @@
 }
 
 /* Laid over the map (MapView's overlay slot), so they carry their own shadow to read on tiles. */
-.map-overlay-btn {
+::deep .map-overlay-btn{
     --btn-pad-x: var(--space-md);
     box-shadow: var(--shadow-sm);
 }
 
 /* Both fit one row across a phone's map, between its edge and the zoom buttons. */
 @media (max-width: 40rem) {
-    .map-overlay-btn {
+    ::deep .map-overlay-btn{
         --btn-pad-x: var(--space-sm);
     }
 }
@@ -333,7 +333,7 @@
         grid-template-columns: 1fr;
     }
 
-    .pane-show-all {
+    ::deep .pane-show-all{
         display: none;
     }
 }

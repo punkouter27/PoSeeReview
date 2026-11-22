@@ -1,11 +1,9 @@
 @page "/my-comics"
 @attribute [Authorize]
 @using PoSeeReview.Client.Services
-@using Microsoft.JSInterop
-@implements IAsyncDisposable
 @inject ComicHistoryService History
 @inject FxService Fx
-@inject IJSRuntime JS
+@inject DialogService Dialogs
 
 <PageTitle>My Comics · PoSeeReview</PageTitle>
 
@@ -15,7 +13,7 @@
     <Header>
         @if (_entries is { Count: > 0 })
         {
-            <button type="button" class="btn btn-secondary" @onclick="() => _confirmingClear = true">Clear history</button>
+            <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-secondary" Click="ConfirmClearAsync">Clear history</RadzenButton>
         }
     </Header>
     <ChildContent>
@@ -55,12 +53,12 @@
                           Meta="@(entry.IsExpired ? "expired — tap to redraw" : RelativeTime.Format(entry.ViewedAt))"
                           data-freshness="@entry.Freshness">
                     <Actions>
-                        <button type="button" class="btn btn-icon comic-row-action"
-                                @onclick="(e) => ForgetAsync(entry.PlaceId, e)"
+                        <RadzenButton ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" class="sr-plain btn btn-icon comic-row-action"
+                                Click="(e) => ForgetAsync(entry.PlaceId, e)"
                                 title="@($"Forget {entry.RestaurantName}")"
                                 aria-label="@($"Forget {entry.RestaurantName}")">
                             <span aria-hidden="true">×</span>
-                        </button>
+                        </RadzenButton>
                     </Actions>
                 </ComicRow>
             }
@@ -69,73 +67,24 @@
     </ChildContent>
 </PageShell>
 
-@if (_confirmingClear)
-{
-    <dialog @ref="_clearDialog" class="clear-dialog" aria-labelledby="clear-title" @onclick="CancelClearAsync">
-        <div class="clear-panel glass" @onclick:stopPropagation="true">
-            <h2 id="clear-title" class="clear-title">Forget all of them?</h2>
-            <p class="clear-body">Comics you've opened are remembered only in this browser. Clearing forgets them all here.</p>
-            <div class="clear-actions">
-                <button type="button" class="btn btn-primary" @onclick="ClearAsync">Yes, clear</button>
-                <button type="button" class="btn btn-secondary" @onclick="CancelClearAsync">Cancel</button>
-            </div>
-        </div>
-    </dialog>
-}
-
 @code {
     private List<ComicHistoryEntry>? _entries;
-    private bool _confirmingClear;
     private int _expiredCount;
-    private ElementReference _clearDialog;
-    private IJSObjectReference? _clearModule;
-    private DotNetObjectReference<MyComics>? _self;
-    private bool _clearModalActive;
 
     protected override async Task OnInitializedAsync() => await ReloadAsync();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    /// <summary>A Radzen confirm (focus-trapped, Escape cancels); nothing is forgotten without a yes.</summary>
+    private async Task ConfirmClearAsync()
     {
-        if (!_confirmingClear)
+        var confirmed = await Dialogs.Confirm(
+            "Comics you've opened are remembered only in this browser. Clearing forgets them all here.",
+            "Forget all of them?",
+            new ConfirmOptions { OkButtonText = "Yes, clear", CancelButtonText = "Cancel" });
+        if (confirmed == true)
         {
-            return;
+            await History.ClearAsync();
+            await ReloadAsync();
         }
-
-        try
-        {
-            _clearModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/modal.js");
-            _clearModalActive = await _clearModule.InvokeAsync<bool>("open", _clearDialog, _self ??= DotNetObjectReference.Create(this));
-        }
-        catch (JSException)
-        {
-            // The panel still renders and its buttons still work without the modal semantics.
-        }
-    }
-
-    /// <summary>Raised by js/modal.js when Escape or the backdrop closes the native dialog.</summary>
-    [JSInvokable]
-    public Task OnNativeCloseAsync()
-    {
-        _confirmingClear = false;
-        return Task.CompletedTask;
-    }
-
-    private async Task CancelClearAsync()
-    {
-        if (_clearModalActive && _clearModule is not null)
-        {
-            try
-            {
-                await _clearModule.InvokeVoidAsync("close", _clearDialog);
-                return;
-            }
-            catch (JSException)
-            {
-                // Fall through to the plain flag below.
-            }
-        }
-
-        _confirmingClear = false;
     }
 
     private async Task ReloadAsync()
@@ -159,41 +108,5 @@
         await Fx.PlayTapAtAsync(args.ClientX);
         await History.RemoveAsync(placeId);
         await ReloadAsync();
-    }
-
-    private async Task ClearAsync()
-    {
-        _confirmingClear = false;
-
-        if (_clearModalActive && _clearModule is not null)
-        {
-            try
-            {
-                await _clearModule.InvokeVoidAsync("close", _clearDialog);
-            }
-            catch (JSException)
-            {
-                // The flag above already tears the dialog down.
-            }
-        }
-
-        await History.ClearAsync();
-        await ReloadAsync();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _self?.Dispose();
-        if (_clearModule is not null)
-        {
-            try
-            {
-                await _clearModule.DisposeAsync();
-            }
-            catch (JSException)
-            {
-                // Page is going away anyway.
-            }
-        }
     }
 }

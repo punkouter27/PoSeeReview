@@ -53,6 +53,8 @@
     <!-- Graphics + audio. Loaded before Blazor so window.poseeFx exists by the time the first
          component calls into it. -->
     <script type="module" src="js/fx.js"></script>
+    <!-- Radzen (the component library): its script must exist before the first component renders. -->
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.min.js?v=12.2.0"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 
     <!-- Registered after Blazor starts loading so the worker never competes with the boot

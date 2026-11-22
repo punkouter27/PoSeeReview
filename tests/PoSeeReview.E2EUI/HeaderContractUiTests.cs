@@ -78,17 +78,49 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
         await signedIn.Locator(".po-header__settings").ClickAsync();
         await Assertions.Expect(signedIn.GetByTestId("settings-sign-out")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
 
-        // Signed out, the header is still there: Sign in and the gear instead of the email, with
-        // the sign-in card in the page body under it.
+        // Signed out on an ordinary page: Sign in and the gear instead of the email, and no nav
+        // (every nav destination needs a sign-in).
         var anonymous = await fixture.NewPageAsync(viewport);
-        await anonymous.GotoAsync($"{fixture.BaseUrl}/login");
-        await anonymous.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
-
-        await Assertions.Expect(anonymous.Locator(".po-header")).ToBeVisibleAsync();
+        await anonymous.GotoAsync($"{fixture.BaseUrl}/diag");
+        await Assertions.Expect(anonymous.Locator("h1")).ToHaveTextAsync("System status", new() { Timeout = RenderTimeout });
         await Assertions.Expect(anonymous.Locator(".po-header__email")).ToHaveCountAsync(0);
         await Assertions.Expect(anonymous.Locator(".po-header__actions a.po-link-btn.filled.small", new() { HasTextString = "Sign in" })).ToBeVisibleAsync();
         await Assertions.Expect(anonymous.Locator(".po-header__settings")).ToBeVisibleAsync();
+        await Assertions.Expect(anonymous.Locator("nav.nav-links, .po-bottom-nav")).ToHaveCountAsync(0);
+
+        // The sign-in page itself: the header carries the title only, and the page shows the app
+        // title and one sign-in button (plus the guest button, which exists only in Dev/Test).
+        await anonymous.GotoAsync($"{fixture.BaseUrl}/login");
+        await anonymous.Locator(".login-container").WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = RenderTimeout });
+        await Assertions.Expect(anonymous.Locator(".po-header .po-header__title")).ToBeVisibleAsync();
+        await Assertions.Expect(anonymous.Locator(".po-header__actions")).ToHaveCountAsync(0);
+        await Assertions.Expect(anonymous.Locator(".login-container h1")).ToHaveTextAsync("PoSeeReview");
+        await Assertions.Expect(anonymous.Locator(".login-container p")).ToHaveCountAsync(0);
         await Assertions.Expect(anonymous.Locator(".login-btn-microsoft")).ToBeVisibleAsync(new() { Timeout = RenderTimeout });
+        await Assertions.Expect(anonymous.Locator(".login-container button:not(.login-btn-microsoft)")).ToHaveTextAsync(["Continue as guest"]);
+    }
+
+    /// <summary>
+    /// The version stamp never covers content: fixed bottom-right on a desktop, and on a phone the
+    /// last thing in the page flow, below the page's own content.
+    /// </summary>
+    [E2ETheory]
+    [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
+    public async Task VersionStamp_NeverCoversContent(string viewport)
+    {
+        var page = await fixture.NewPageAsync(viewport);
+        await page.GotoAsync($"{fixture.BaseUrl}/diag");
+        await page.GetByTestId("diag-about").WaitForAsync(new() { Timeout = RenderTimeout });
+
+        var position = await page.Locator(".po-version").EvaluateAsync<string>("e => getComputedStyle(e).position");
+        Assert.Equal(viewport == "mobile" ? "static" : "fixed", position);
+
+        if (viewport == "mobile")
+        {
+            var mainBottom = await page.Locator("main").EvaluateAsync<double>("e => e.getBoundingClientRect().bottom + scrollY");
+            var stampTop = await page.Locator(".po-version").EvaluateAsync<double>("e => e.getBoundingClientRect().top + scrollY");
+            Assert.True(stampTop >= mainBottom - 1, $"stamp top {stampTop} is above the end of main ({mainBottom})");
+        }
     }
 
     [E2ETheory]
