@@ -251,7 +251,7 @@ public sealed class ServiceProbes(
     }
 
     // ── Microsoft sign-in: reads the sign-in metadata, then asks for a token with the app's
-    //    client secret. Only a rejected secret (invalid_client) or app (unauthorized_client) fails.
+    //    client secret. Only Entra's "bad/expired secret" codes (AADSTS7000215/7000222) fail.
     private async Task<Outcome> MicrosoftSignInAsync(HttpClient http, CancellationToken ct)
     {
         var clientId = Setting("AzureAd:ClientId");
@@ -278,10 +278,33 @@ public sealed class ServiceProbes(
             ["grant_type"] = "client_credentials",
             ["scope"] = "https://graph.microsoft.com/.default"
         }), ct);
-        var body = await token.Content.ReadAsStringAsync(ct);
-        return body.Contains("\"invalid_client\"", StringComparison.Ordinal) || body.Contains("\"unauthorized_client\"", StringComparison.Ordinal)
-            ? Outcome.Unhealthy("Microsoft rejected the app's sign-in secret, so nobody can sign in.")
-            : Outcome.Healthy("Secret accepted (live call)");
+        if (token.IsSuccessStatusCode)
+        {
+            return Outcome.Healthy("Secret accepted (live call)");
+        }
+
+        // Entra checks the secret before anything else, so only its two "secret" codes mean the
+        // secret is wrong; a later refusal (tenant, grant) still proves the secret was accepted.
+        // The AADSTS number is a public error code, safe to show.
+        var codes = await ReadEntraErrorCodesAsync(token, ct);
+        return codes.Any(code => code is 7000215 or 7000222)
+            ? Outcome.Unhealthy($"Microsoft rejected the app's sign-in secret (AADSTS{codes.First(code => code is 7000215 or 7000222)}), so nobody can sign in.")
+            : Outcome.Healthy(codes.Count > 0 ? $"Secret accepted (live call, then AADSTS{codes[0]})" : "Secret accepted (live call)");
+    }
+
+    private static async Task<List<int>> ReadEntraErrorCodesAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        try
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            return json.RootElement.TryGetProperty("error_codes", out var codes) && codes.ValueKind == System.Text.Json.JsonValueKind.Array
+                ? [.. codes.EnumerateArray().Where(c => c.ValueKind == System.Text.Json.JsonValueKind.Number).Select(c => c.GetInt32())]
+                : [];
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
     }
 
     // ── ntfy: the server's own health endpoint. Alerts are off when no topic is configured.

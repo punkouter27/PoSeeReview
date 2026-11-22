@@ -178,6 +178,28 @@ public class DiagReportHandlerTests
         Assert.Equal("Unhealthy", Assert.Single(result.Checks, c => c.Name == "google-maps").Status);
     }
 
+    [Theory]
+    [InlineData(7000215, "Unhealthy")]
+    [InlineData(7000222, "Unhealthy")]
+    [InlineData(90002, "Healthy")]
+    public async Task ExecuteAsync_MicrosoftSignIn_FailsOnlyWhenEntraRejectsTheSecret(int entraCode, string expected)
+    {
+        SetupHealth([]);
+        _answer = request => request.RequestUri!.AbsolutePath.EndsWith("/token", StringComparison.Ordinal)
+            ? new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest) { Content = new StringContent($"{{\"error\":\"invalid_client\",\"error_codes\":[{entraCode}]}}") }
+            : new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{}") };
+
+        var result = await BuildSut("Production", new Dictionary<string, string?>
+        {
+            ["AzureAd:ClientId"] = "app",
+            ["AzureAd:ClientSecret"] = "secret"
+        }).ExecuteAsync(default);
+
+        var row = Assert.Single(result.Checks, c => c.Name == "microsoft-sign-in");
+        Assert.Equal(expected, row.Status);
+        Assert.Contains($"AADSTS{entraCode}", row.Status == "Healthy" ? row.Detail : row.Problem, StringComparison.Ordinal);
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> answer) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

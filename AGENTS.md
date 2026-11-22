@@ -117,7 +117,7 @@ Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 |---|---|---|
 | Format | `dotnet format PoSeeReview.slnx --verify-no-changes` | — |
 | Build | `dotnet build PoSeeReview.slnx -c Release` | warnings are errors |
-| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (227 tests) |
+| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (230 tests) |
 | Integration | `dotnet test tests/PoSeeReview.Integration -c Release` | Docker (Testcontainers Azurite); skips with one message without it (44) |
 | E2E API | `dotnet test tests/PoSeeReview.E2EAPI -c Release` | Docker (its own Testcontainers Azurite, not a local one); skips without it (38) |
 | E2E UI (the trimmed Release publish) | `pwsh scripts/run-e2eui.ps1` (publishes `-c Release -p:WasmApplicationEnvironmentName=Test`, starts Azurite in Docker + the published app on :7318, runs the tier, stops both; `-Filter <x>` narrows it) | Docker + Playwright Chromium (50) |
