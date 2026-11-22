@@ -111,6 +111,13 @@ App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowerc
 
 ## 3. Verification
 
+One command sequence verifies the repo (format, build, Unit, Integration, E2E API, then E2E UI on the trimmed Release
+publish):
+
+```powershell
+dotnet format PoSeeReview.slnx --verify-no-changes && dotnet build PoSeeReview.slnx -c Release && dotnet test tests/PoSeeReview.Unit -c Release && dotnet test tests/PoSeeReview.Integration -c Release && dotnet test tests/PoSeeReview.E2EAPI -c Release && pwsh scripts/run-e2eui.ps1
+```
+
 Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
@@ -132,6 +139,21 @@ Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 - **Live:** https://app-poseereview2.azurewebsites.net and https://app-poseereview2.azurewebsites.net/diag
 - **Pinned:** .NET SDK `10.0.400` (`global.json`, rollForward latestFeature); MAUI client built with the
   `maui-android` workload in CI only (not in the .slnx).
+
+### Deliberate deviations
+
+| Deviation | Why | Commit sha / date | How to undo |
+|---|---|---|---|
+| Radzen exception: native `<audio>` in `AudioComic.razor` (the only one) | native audio player, an allowed kind (Profile A) | `67eef92` 2026-11-21 | — |
+| Sign-in page also shows "Continue as guest" in Development/Test only; Production shows exactly one button | the browser tests need a guest door | `67eef92` 2026-11-21 | remove the guest button (tests then need a real account) |
+| /diag: a service switched off on purpose shows a neutral **Off** pill, not counted (live today: owner alerts/ntfy, no `Moderation:AlertNtfyTopic`) | opt-in features left off are not faults | `67eef92`, `0c321bc` 2026-11-21 | set the key in `kv-poshared2` |
+| Phones (<= 768px): version stamp is static and last in the page flow; nav hidden signed out | a fixed stamp covered /diag cards (overrides the older fixed rule) | `67eef92` 2026-11-21 | `git revert 67eef92` (stamp part) |
+| `run-e2eui.ps1` publishes with `-p:WasmApplicationEnvironmentName=Test` | .NET 10 bakes the client environment at publish; the guest door needs Test | `67eef92` 2026-11-21 | drop the flag |
+| `SCREENSHOTS/` is git-ignored (local review aids only) | committed pages grew the repo by MBs per change | — | un-ignore it |
+| Azure names `app-poseereview2`, plan `asp-PoSeeReview-f1` (standard `app-poseereview`) | renaming means recreating | — | owner-approved recreate |
+
+**Hosting:** App Service F1 (Free, `asp-PoSeeReview-f1`): 165 MB of data out and 60 CPU-minutes per day.
+Never run test suites against the live site; live checks = at most 6 page loads + /diag + X-Commit.
 
 ---
 
@@ -208,4 +230,4 @@ how any coding agent operates in this repo.
 - Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
 - The app answers `/health/live` (process up, no dependencies, `X-Commit` header) and `/health` (dependencies reachable). The deploy waits for `/health/live` to report the pushed commit.
 - Tests pass on any machine: no drive-letter, temp-folder or working-directory assumptions, and no live config value hard-coded as an expected result (read it from the same config the app reads).
-- A red run on the default branch gets an ntfy push from the CI watcher in PoPunkouterSoftware. Fix it, or say why it is red.
+- Nothing alerts on a red run any more (the PoPunkouterSoftware CI watcher was dropped 2026-11-20): check `gh run list -L 1` after a push. Fix it, or say why it is red.
