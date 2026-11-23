@@ -22,6 +22,7 @@
 @inject DialogService Dialogs
 @inject FxService Fx
 @inject ToastService Toasts
+@inject FluentValidation.IValidator<ComicReportRequestDto> Validator
 
 @code {
     /// <summary>The dialog's content. Defined here, so the scoped .report-* styles still reach it.</summary>
@@ -85,9 +86,6 @@
     /// <summary>Raised when the dialog should close, whether or not anything was submitted.</summary>
     [Parameter]
     public EventCallback OnClose { get; set; }
-
-    /// <summary>The API's own rules; stateless, so one instance serves every dialog.</summary>
-    private static readonly ComicReportRequestValidator Validator = new();
 
     /// <summary>How long Undo is offered before the report actually leaves.</summary>
     private static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(5);

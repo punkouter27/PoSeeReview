@@ -37,10 +37,9 @@
 @import url("/PoSeeReview.Client.styles.css") layer(page);
 
 /* Radzen is the component library on every page (owner decision 2026-11-21, "Radzen wins"):
-   every button is a RadzenButton, every field a Radzen input. Its theme sits in `vendor`, so the
-   app's own layers (page, shared) still draw the app; the `--rz-*` bridge below maps its colours
-   to the tokens. */
-@import url("/_content/Radzen.Blazor/css/material-base.css?v=12.2.0") layer(vendor);
+   every button is a RadzenButton, every field a Radzen input. Its theme is imported into `vendor`
+   by css/radzen.css, the first stylesheet index.html loads, so the app's own layers (page, shared)
+   still draw the app; the `--rz-*` bridge below maps its colours to the tokens. */
 
 /* `plain`: a Radzen control that keeps the app's look carries class "sr-plain". Everything the
    Radzen theme set on it is reverted to the browser's native control (all: revert), then the

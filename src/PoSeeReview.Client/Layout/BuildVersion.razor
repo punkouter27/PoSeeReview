@@ -6,7 +6,8 @@
 
 @if (Stamp is not null)
 {
-    <span class="po-version" title="Build version (vYYMMDD)">v@(Stamp)</span>
+    @* A <footer> (contentinfo landmark), so the stamp sits in a landmark like all other content. *@
+    <footer class="po-version" title="Build version (vYYMMDD)">v@(Stamp)</footer>
 }
 
 @code {

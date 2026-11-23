@@ -101,16 +101,20 @@ try
     // BFF cookie session + Entra OIDC (/common) + FakeAuth for Dev/Test (NET_RULES 4.x)
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
 
-    // Configure Health Checks
+    // Configure Health Checks. A storage call that hangs (the SDK retries for minutes) reports
+    // Unhealthy after ten seconds instead of holding /health open.
+    var storageCheckTimeout = TimeSpan.FromSeconds(10);
     builder.Services.AddHealthChecks()
         .AddCheck<AzureTableStorageHealthCheck>(
             "azure_table_storage",
             failureStatus: HealthStatus.Unhealthy,
-            tags: ["ready", "storage"])
+            tags: ["ready", "storage"],
+            timeout: storageCheckTimeout)
         .AddCheck<AzureBlobStorageHealthCheck>(
             "azure_blob_storage",
             failureStatus: HealthStatus.Unhealthy,
-            tags: ["ready", "storage"])
+            tags: ["ready", "storage"],
+            timeout: storageCheckTimeout)
         .AddCheck<GoogleMapsHealthCheck>(
             "google_maps_api",
             failureStatus: HealthStatus.Degraded,
@@ -119,6 +123,8 @@ try
             "skia_imaging",
             failureStatus: HealthStatus.Unhealthy,
             tags: ["ready", "imaging"]);
+    // /health, /health/ready and /api/diag share one report, re-run at most once a minute.
+    builder.Services.AddCachedHealthChecks();
 
     // Configure OpenAPI (built-in .NET 10 support)
     builder.Services.AddOpenApi();

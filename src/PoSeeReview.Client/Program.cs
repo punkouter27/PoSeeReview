@@ -26,6 +26,8 @@ builder.Services.AddScoped<DiscoveryState>();
 builder.Services.AddScoped<BoardMemoryService>();
 builder.Services.AddScoped<ComicHistoryService>();
 builder.Services.AddScoped<ModerationClient>();
+// Form rules shared with the API, registered BY TYPE (no assembly scan, so trimming keeps them).
+builder.Services.AddScoped<FluentValidation.IValidator<PoSeeReview.Shared.Dtos.ComicReportRequestDto>, PoSeeReview.Shared.Validation.ComicReportRequestValidator>();
 // Radzen is the component library (DialogService for confirms and the report form).
 builder.Services.AddRadzenComponents();
 

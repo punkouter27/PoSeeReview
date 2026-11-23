@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PoSeeReview</title>
     <base href="/" />
+    <!-- Radzen first: its theme loads before any app stylesheet, inside the `vendor` cascade layer. -->
+    <link rel="stylesheet" href="css/radzen.css" />
     <!-- Po web standard: the estate tokens, fonts (Inter + Space Grotesk, self-hosted) and shell
          styles come first; tokens.css aliases this app's own variables onto them. -->
     <link rel="stylesheet" href="css/po-tokens.css" />

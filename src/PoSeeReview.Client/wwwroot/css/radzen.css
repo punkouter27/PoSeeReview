@@ -1,0 +1,10 @@
+/* Radzen (the component library) loads FIRST, before every app stylesheet (Profile A rule), and
+   sits in the lowest app-facing cascade layer, `vendor`, so the app's own styles always win.
+
+   This statement fixes the layer order for the whole page, because the first stylesheet to name a
+   layer decides where it goes. It keeps the order the app already had: `tokens` first (tokens.css
+   used to name it first), then the order app.css documents. Unlayered sheets (po-tokens.css,
+   po-motion.css) beat every layer, Radzen included. */
+@layer tokens, reset, base, vendor, plain, page, shared, utilities;
+
+@import url("/_content/Radzen.Blazor/css/material-base.css?v=12.2.0") layer(vendor);

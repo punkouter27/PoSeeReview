@@ -48,7 +48,8 @@ No `.cursorrules`, `.copilotignore`, `SPEC.md`, `tasks/`, `DOCS/` at the root (f
   actions a signed-out visitor cannot perform are hidden.
 
 #### Components (Radzen)
-- Radzen.Blazor (pinned in `Directory.Packages.props`) is the only component library, on every page (owner
+- Radzen.Blazor (pinned in `Directory.Packages.props`) is the only component library; its theme loads first
+  (`css/radzen.css`, the first `<link>`, imports it into `@layer vendor` below the app's layers), on every page (owner
   decision 2026-11-21, "Radzen wins": it overrides any older note that kept Radzen to operator pages). Buttons are
   `RadzenButton`, fields `RadzenTextBox`/`RadzenTextArea`/`RadzenSlider`/`RadzenRadioButtonList`, dialogs and
   confirms go through `DialogService`; never `alert()`/`confirm()` or a native `<dialog>`.
@@ -78,8 +79,9 @@ No `.cursorrules`, `.copilotignore`, `SPEC.md`, `tasks/`, `DOCS/` at the root (f
   "Working, with N things degraded" / "Not working: …"), then three sections in this order: **API**, **Data**,
   **Services**; each row = label, purpose, status pill, latency ms, problem/detail text. Every external dependency
   the app really calls appears as a check. Anonymous, nothing secret in the payload.
-- Every check is LIVE (`Features/Diagnostics/ServiceProbes.cs`: free calls only, cached 60 s); a configuration
-  read alone is not a check. A service switched off on purpose reports Status `Off` (grey pill), which never
+- Every check is LIVE (`Features/Diagnostics/ServiceProbes.cs`: free calls only, cached 60 s; the storage/imaging
+  health checks behind `/health`, `/health/ready` and `/api/diag` share one report cached 60 s,
+  `Health/CachedHealthCheckService.cs`); a configuration read alone is not a check. A service switched off on purpose reports Status `Off` (grey pill), which never
   counts toward the overall status or the banner.
 
 #### Workflow (`.github/workflows/deploy.yml`, the only one)
@@ -118,16 +120,16 @@ publish):
 dotnet format PoSeeReview.slnx --verify-no-changes && dotnet build PoSeeReview.slnx -c Release && dotnet test tests/PoSeeReview.Unit -c Release && dotnet test tests/PoSeeReview.Integration -c Release && dotnet test tests/PoSeeReview.E2EAPI -c Release && pwsh scripts/run-e2eui.ps1
 ```
 
-Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
+Every command below was run on 2026-11-23 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
 |---|---|---|
 | Format | `dotnet format PoSeeReview.slnx --verify-no-changes` | — |
 | Build | `dotnet build PoSeeReview.slnx -c Release` | warnings are errors |
-| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (230 tests) |
+| Unit | `dotnet test tests/PoSeeReview.Unit -c Release` | nothing (232 tests) |
 | Integration | `dotnet test tests/PoSeeReview.Integration -c Release` | Docker (Testcontainers Azurite); skips with one message without it (44) |
 | E2E API | `dotnet test tests/PoSeeReview.E2EAPI -c Release` | Docker (its own Testcontainers Azurite, not a local one); skips without it (38) |
-| E2E UI (the trimmed Release publish) | `pwsh scripts/run-e2eui.ps1` (publishes `-c Release -p:WasmApplicationEnvironmentName=Test`, starts Azurite in Docker + the published app on :7318, runs the tier, stops both; `-Filter <x>` narrows it) | Docker + Playwright Chromium (50) |
+| E2E UI (the trimmed Release publish) | `pwsh scripts/run-e2eui.ps1` (publishes `-c Release -p:WasmApplicationEnvironmentName=Test`, starts Azurite in Docker + the published app on :7318, runs the tier, stops both; `-Filter <x>` narrows it) | Docker + Playwright Chromium (53) |
 | E2E UI against an app you already run | `E2E_BASE_URL=http://localhost:7318 dotnet test tests/PoSeeReview.E2EUI -c Release` | a running app + Playwright Chromium; skips with the reason otherwise |
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
 | Run locally (mock data, no secrets) | `KeyVault__Uri= UseMockData=true Storage__AzuritePorts=21000,21001,21002 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7318 dotnet run --project src/PoSeeReview.Api --no-launch-profile` | → http://localhost:7318 and http://localhost:7318/diag |

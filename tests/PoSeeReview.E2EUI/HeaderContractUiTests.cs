@@ -71,7 +71,16 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
     {
         var signedIn = await SignedInPageAsync(viewport);
 
-        await Assertions.Expect(signedIn.Locator(".po-header__actions .po-header__email")).ToContainTextAsync("@");
+        // The exact signed-in email (the guest sign-in's own address, read back from /auth/me),
+        // in the upper-right of the header.
+        var me = await (await signedIn.APIRequest.GetAsync($"{fixture.BaseUrl}/auth/me")).JsonAsync();
+        var email = me?.GetProperty("email").GetString();
+        Assert.Matches(@"^anon\d{6}@guest\.localhost$", email);
+        var emailChip = signedIn.Locator(".po-header__actions .po-header__email");
+        await Assertions.Expect(emailChip).ToHaveTextAsync(email!);
+        var chipBox = await emailChip.BoundingBoxAsync();
+        var width = signedIn.ViewportSize!.Width;
+        Assert.True(chipBox!.X + chipBox.Width > width * 0.6 && chipBox.Y < 56, $"email chip at ({chipBox.X},{chipBox.Y}) is not upper-right");
         await Assertions.Expect(signedIn.Locator(".po-header__actions a.po-header__settings")).ToHaveAttributeAsync("href", "/settings");
 
         // Sign out lives on /settings, behind the gear.
@@ -121,6 +130,61 @@ public sealed class HeaderContractUiTests(PlaywrightFixture fixture)
             var stampTop = await page.Locator(".po-version").EvaluateAsync<double>("e => e.getBoundingClientRect().top + scrollY");
             Assert.True(stampTop >= mainBottom - 1, $"stamp top {stampTop} is above the end of main ({mainBottom})");
         }
+    }
+
+    /// <summary>
+    /// Signed out, every page a visitor can reach (the sign-in page, /diag, /settings and a
+    /// sign-in-only route that bounces to the sign-in page) shows no header nav and no bottom nav.
+    /// </summary>
+    [E2ETheory]
+    [MemberData(nameof(PlaywrightFixture.Viewports), MemberType = typeof(PlaywrightFixture))]
+    public async Task SignedOut_ShowsNoNavigation(string viewport)
+    {
+        var page = await fixture.NewPageAsync(viewport);
+        foreach (var (route, ready) in new[] { ("/login", ".login-container"), ("/diag", "[data-testid=diag-about]"), ("/settings", ".po-header__actions"), ("/leaderboard", ".login-container") })
+        {
+            await page.GotoAsync($"{fixture.BaseUrl}{route}");
+            await page.Locator(ready).First.WaitForAsync(new() { Timeout = RenderTimeout });
+            await Assertions.Expect(page.Locator(".po-header__title")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("nav, .nav-links, .po-bottom-nav")).ToHaveCountAsync(0);
+        }
+    }
+
+    /// <summary>
+    /// Radzen's theme loads before any app stylesheet (the first &lt;link&gt; in the head) and sits
+    /// in the `vendor` cascade layer, ordered below the app's own layers, so the app's look wins.
+    /// </summary>
+    [E2EFact]
+    public async Task Radzen_Css_Loads_Before_The_App_Css()
+    {
+        var page = await fixture.NewPageAsync();
+        await page.GotoAsync($"{fixture.BaseUrl}/login");
+        await page.Locator(".login-container").WaitForAsync(new() { Timeout = RenderTimeout });
+
+        var sheets = await page.EvaluateAsync<string[]>(
+            "() => [...document.querySelectorAll('head link[rel=stylesheet]')].map(l => new URL(l.href).pathname)");
+        Assert.Equal("/css/radzen.css", sheets[0]);
+        Assert.Contains("/css/app.css", sheets);
+
+        // Inside radzen.css: the layer order statement, then the theme imported into `vendor`,
+        // and the theme really loaded (it has rules).
+        var radzen = await page.EvaluateAsync<string[]>(@"() => {
+            const sheet = [...document.styleSheets].find(s => s.href && s.href.endsWith('/css/radzen.css'));
+            return [...sheet.cssRules].map(r => r instanceof CSSLayerStatementRule ? 'layers:' + r.nameList.join(',')
+                : r instanceof CSSImportRule ? 'import:' + r.layerName + ':' + (r.styleSheet && r.styleSheet.cssRules.length > 0) + ':' + r.href
+                : r.constructor.name);
+        }");
+        Assert.StartsWith("layers:", radzen[0]);
+        var layers = radzen[0]["layers:".Length..].Split(',');
+        Assert.True(Array.IndexOf(layers, "vendor") < Array.IndexOf(layers, "plain"));
+        Assert.True(Array.IndexOf(layers, "vendor") < Array.IndexOf(layers, "page"));
+        Assert.True(Array.IndexOf(layers, "vendor") < Array.IndexOf(layers, "shared"));
+        Assert.Matches(@"^import:vendor:true:.*Radzen\.Blazor/css/material-base\.css", radzen[1]);
+
+        // A plain-class Radzen button keeps the app look: the sign-in button is the app's pill, not
+        // Radzen's material button (no uppercase text transform, the app's rounded radius).
+        var button = page.Locator(".login-btn-microsoft");
+        Assert.Equal("none", await button.EvaluateAsync<string>("e => getComputedStyle(e).textTransform"));
     }
 
     [E2ETheory]

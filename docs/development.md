@@ -422,8 +422,8 @@ the scorer's `temperature: 0.3`. Reasoning deployments also reject `max_tokens`,
   CSS picks one, so the row menu is one `ActionsFor(item, where)` template with per-layout popover ids.
 - **Radzen is the component library (owner decision 2026-11-21).** Every button is a
   `RadzenButton`, every field a Radzen input, dialogs go through `DialogService` (`RadzenDialog` lives
-  in `MainLayout`). `app.css` imports the `material-base` theme into `@layer vendor` and
-  `index.html` loads `Radzen.Blazor.min.js`. A control that keeps the app's look is
+  in `MainLayout`). `css/radzen.css`, the first stylesheet `index.html` links (before every app sheet), imports the
+  `material-base` theme into `@layer vendor` and fixes the layer order; `index.html` also loads `Radzen.Blazor.min.js`. A control that keeps the app's look is
   `ButtonStyle.Base` + `Variant.Text` + class `sr-plain` plus the app class (`btn btn-primary`,
   `chip-toggle`, ...): the `plain` layer reverts Radzen's theme on it. Scoped `.razor.css` rules for
   those classes need `::deep` (the element is rendered by the Radzen component). Its `--rz-*`
