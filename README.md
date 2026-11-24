@@ -103,6 +103,8 @@ The problem is not a lack of content; it is a lack of a lens that makes that con
 - [AGENTS.md](./AGENTS.md) — the Po web app standard this repo follows, plus the working rules.
 - [docs/development.md](./docs/development.md) — commands, test tiers, architecture, configuration and conventions.
 - [infra/README.md](./infra/README.md) — Azure resources and how they are applied.
+- `SCREENSHOTS/` — before/after pages of UI changes (`YYMMDD-feature-name.html` + one annotated `.png`), made by
+  `pwsh scripts/screenshots.ps1 -Feature <name>`. Git-ignored: local review aids, not committed.
 
 ## Refactor Blast Radius Assessment
 

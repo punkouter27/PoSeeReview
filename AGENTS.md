@@ -132,6 +132,7 @@ Every command below was run on 2026-11-23 (PowerShell or bash, repo root).
 | E2E UI (the trimmed Release publish) | `pwsh scripts/run-e2eui.ps1` (publishes `-c Release -p:WasmApplicationEnvironmentName=Test`, starts Azurite in Docker + the published app on :7318, runs the tier, stops both; `-Filter <x>` narrows it) | Docker + Playwright Chromium (53) |
 | E2E UI against an app you already run | `E2E_BASE_URL=http://localhost:7318 dotnet test tests/PoSeeReview.E2EUI -c Release` | a running app + Playwright Chromium; skips with the reason otherwise |
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
+| Before/after page (UI changes) | `pwsh scripts/screenshots.ps1 -Feature <kebab-name>` (`-Before <ref>`, default `HEAD~1`; `-After <ref>`, default the working tree; or `-BeforeDir <folder of PNGs>`; `-Screens name=in:/route,...`; `-Notes "..."`) | Docker + Playwright Chromium. Publishes each side locally (trimmed Release, Test env, mock data, its own Azurite, http://localhost:7319; never the live site), shoots every screen at 1366x768 and 390x844, writes `SCREENSHOTS/{YYMMDD}-{feature}.html` and one annotated `.png` (changed areas boxed red, <= ~300 KB), stops what it started. `SCREENSHOTS/` is git-ignored: give the two paths |
 | Run locally (mock data, no secrets) | `KeyVault__Uri= UseMockData=true Storage__AzuritePorts=21000,21001,21002 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:7318 dotnet run --project src/PoSeeReview.Api --no-launch-profile` | → http://localhost:7318 and http://localhost:7318/diag |
 
 - **Deploy:** push to `master` runs `.github/workflows/deploy.yml` (format, build, Unit, Integration, publish,
@@ -210,7 +211,8 @@ how any coding agent operates in this repo.
   new states, annotate what changed, and save it as one self-contained page:
   `SCREENSHOTS/YYMMDD-feature-name.html` (today's date, kebab-case feature), plus a single
   annotated PNG beside it (`SCREENSHOTS/YYMMDD-feature-name.png`) showing before and after side by
-  side with the notes drawn on. Give the full, absolute paths to both files in the reply. The
+  side with the notes drawn on (one command: `pwsh scripts/screenshots.ps1 -Feature feature-name`, see section 3).
+  Give the full, absolute paths to both files in the reply. The
   folder is gitignored (the pages embed their images, and committing them grew the repo by
   megabytes per change): they are local review aids.
 - **Call out big deletions.** If a prompt's changes remove more than 100 lines of code overall
